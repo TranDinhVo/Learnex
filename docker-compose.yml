@@ -1,0 +1,69 @@
+version: '3.9'
+
+# Chỉ dùng khi dev LOCAL
+# Production: PostgreSQL → Neon, Redis → Upstash, Files → Cloudinary
+
+networks:
+  learnex_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: learnex_postgres
+    restart: unless-stopped
+    networks: [learnex_net]
+    environment:
+      POSTGRES_DB:       learnex_db
+      POSTGRES_USER:     learnex_user
+      POSTGRES_PASSWORD: learnex_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U learnex_user -d learnex_db"]
+      interval: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: learnex_redis
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass learnex_redis_pass --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "learnex_redis_pass", "ping"]
+      interval: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: learnex_backend
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override DB/Redis URLs to use Docker service names
+      DATABASE_URL: postgresql://learnex_user:learnex_pass@postgres:5432/learnex_db
+      REDIS_URL: redis://:learnex_redis_pass@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
