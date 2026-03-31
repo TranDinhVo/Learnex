@@ -54,7 +54,7 @@ class _FeedScreenState extends State<FeedScreen> {
             slivers: [
               // Top App Bar implementation using SliverAppBar
               SliverAppBar(
-                backgroundColor: Colors.white.withOpacity(0.9),
+                backgroundColor: Colors.white.withValues(alpha: 0.9),
                 elevation: 0,
                 pinned: true,
                 title: Row(
@@ -123,7 +123,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Center(
-                          child: CircularProgressIndicator(color: theme.colorScheme.primary.withOpacity(0.5)),
+                          child: CircularProgressIndicator(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
                         ),
                       ),
                       childCount: 3,

@@ -18,7 +18,7 @@ class CommentInputBar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -4),
             blurRadius: 20,
           ),
@@ -30,7 +30,7 @@ class CommentInputBar extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.2),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -76,7 +76,7 @@ class CommentInputBar extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withOpacity(0.3),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),

@@ -12,7 +12,7 @@ class PostDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white.withOpacity(0.9),
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -48,7 +48,7 @@ class PostDetailScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 2),
                         ),
@@ -133,7 +133,7 @@ class PostDetailScreen extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: theme.colorScheme.surfaceContainerLow,
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.1)),
+                                  border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1)),
                                 ),
                                 child: Row(
                                   children: [
@@ -141,7 +141,7 @@ class PostDetailScreen extends StatelessWidget {
                                       width: 40,
                                       height: 40,
                                       decoration: BoxDecoration(
-                                        color: theme.colorScheme.error.withOpacity(0.1),
+                                        color: theme.colorScheme.error.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(Icons.picture_as_pdf, color: theme.colorScheme.error),
@@ -184,7 +184,7 @@ class PostDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                           decoration: BoxDecoration(
                             border: Border.symmetric(
-                              horizontal: BorderSide(color: theme.colorScheme.outlineVariant.withOpacity(0.1)),
+                              horizontal: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1)),
                             ),
                           ),
                           child: Row(
