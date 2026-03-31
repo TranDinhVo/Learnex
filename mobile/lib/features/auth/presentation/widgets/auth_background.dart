@@ -20,10 +20,10 @@ class AuthBackground extends StatelessWidget {
               height: MediaQuery.of(context).size.width * 0.4,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.indigo.shade50.withOpacity(0.3),
+                color: Colors.indigo.shade50.withValues(alpha: 0.3),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.indigo.shade50.withOpacity(0.3),
+                    color: Colors.indigo.shade50.withValues(alpha: 0.3),
                     blurRadius: 100,
                     spreadRadius: 20,
                   )
@@ -39,10 +39,10 @@ class AuthBackground extends StatelessWidget {
               height: MediaQuery.of(context).size.width * 0.3,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.cyan.shade50.withOpacity(0.2),
+                color: Colors.cyan.shade50.withValues(alpha: 0.2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.cyan.shade50.withOpacity(0.2),
+                    color: Colors.cyan.shade50.withValues(alpha: 0.2),
                     blurRadius: 80,
                     spreadRadius: 20,
                   )

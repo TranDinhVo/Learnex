@@ -226,17 +226,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Divider
-                Row(
+                const Row(
                   children: [
-                    const Expanded(child: Divider(thickness: 1, color: Color(0xFFE5E7EB))),
-                    const Padding(
+                    Expanded(child: Divider(thickness: 1, color: Color(0xFFE5E7EB))),
+                    Padding(
                       padding: EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
                         'HOẶC TIẾP TỤC VỚI',
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF), letterSpacing: 0.8),
                       ),
                     ),
-                    const Expanded(child: Divider(thickness: 1, color: Color(0xFFE5E7EB))),
+                    Expanded(child: Divider(thickness: 1, color: Color(0xFFE5E7EB))),
                   ],
                 ),
 

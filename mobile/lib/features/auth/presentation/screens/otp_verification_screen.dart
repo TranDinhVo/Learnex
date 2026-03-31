@@ -14,7 +14,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final List<TextEditingController> _otpControllers =
       List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
-  int _resendTimer = 54;
+  final int _resendTimer = 54;
   bool _isLoading = false;
 
   @override
