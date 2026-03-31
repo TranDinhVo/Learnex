@@ -23,7 +23,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.white.withOpacity(0.9),
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
         elevation: 0,
         scrolledUnderElevation: 0,
         leadingWidth: 80,
@@ -55,7 +55,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 Navigator.of(context).pop();
               },
               style: TextButton.styleFrom(
-                backgroundColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 minimumSize: Size.zero,
                 shape: RoundedRectangleBorder(
@@ -295,7 +295,7 @@ class _ActionBtn extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -305,7 +305,7 @@ class _ActionBtn extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 20),

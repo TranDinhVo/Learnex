@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static const _primary = Color(0xFF4F46E5);
   static const _fieldFill = Color(0xFFEEF2FF);
-  static const _labelColor = Color(0xFF6B7280);
+
   static const _bg = Color(0xFFF5F5FF);
 
   Future<void> _handleLogin() async {
