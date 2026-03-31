@@ -87,7 +87,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: theme.colorScheme.primary.withOpacity(0.4), width: 2),
+              borderSide: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.4), width: 2),
             ),
             contentPadding: const EdgeInsets.symmetric(vertical: 16),
           ),
