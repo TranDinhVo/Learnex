@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../folder/presentation/screens/add_document_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -181,47 +182,53 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             
             const SizedBox(height: 16),
             
-            // Upload Zone
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant,
-                  width: 2,
-                ),
+            // Upload Zone (navigates to AddDocumentScreen)
+            InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
               ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.cloud_upload, size: 32, color: theme.colorScheme.primary),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.outlineVariant,
+                    width: 2,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Thêm tài liệu PDF',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: theme.colorScheme.onSurface,
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.cloud_upload, size: 32, color: theme.colorScheme.primary),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'PDF, DOCX... Max 50MB',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.outline,
+                    const SizedBox(height: 16),
+                    Text(
+                      'Thêm tài liệu PDF',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'PDF, DOCX... Max 50MB',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             
@@ -255,6 +262,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.description,
                   label: 'Tài liệu',
                   color: theme.colorScheme.tertiary,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
+                  ),
                 ),
                 _ActionBtn(
                   icon: Icons.person_add,
@@ -280,18 +290,20 @@ class _ActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
   const _ActionBtn({
     required this.icon,
     required this.label,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      onTap: () {},
+      onTap: onTap ?? () {},
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(

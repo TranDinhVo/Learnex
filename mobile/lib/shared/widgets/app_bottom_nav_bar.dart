@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../features/feed/presentation/screens/create_post_screen.dart';
 
 class AppBottomNavBar extends StatelessWidget {
-  const AppBottomNavBar({super.key});
+  const AppBottomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onHomeTap,
+    required this.onFolderTap,
+    required this.onAddTap,
+    required this.onChatTap,
+    required this.onMeetingTap,
+  });
+
+  final int currentIndex;
+  final VoidCallback onHomeTap;
+  final VoidCallback onFolderTap;
+  final VoidCallback onAddTap;
+  final VoidCallback onChatTap;
+  final VoidCallback onMeetingTap;
 
   @override
   Widget build(BuildContext context) {
@@ -24,27 +38,60 @@ class AppBottomNavBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(context, icon: Icons.home, label: 'Home', isActive: true),
-            _buildNavItem(context, icon: Icons.folder_outlined, label: 'Folder'),
-            _buildNavItem(context, icon: Icons.add_circle, label: 'Add', isPrimary: true),
-            _buildNavItem(context, icon: Icons.chat_bubble_outline, label: 'Chat'),
-            _buildNavItem(context, icon: Icons.groups_outlined, label: 'Meeting'),
+            _buildNavItem(
+              context,
+              icon: Icons.home,
+              label: 'Home',
+              isActive: currentIndex == 0,
+              onTap: onHomeTap,
+            ),
+            _buildNavItem(
+              context,
+              icon: Icons.folder_outlined,
+              label: 'Folder',
+              isActive: currentIndex == 1,
+              onTap: onFolderTap,
+            ),
+            _buildNavItem(
+              context,
+              icon: Icons.add_circle,
+              label: 'Add',
+              isPrimary: true,
+              onTap: onAddTap,
+            ),
+            _buildNavItem(
+              context,
+              icon: Icons.chat_bubble_outline,
+              label: 'Chat',
+              isActive: currentIndex == 3,
+              onTap: onChatTap,
+            ),
+            _buildNavItem(
+              context,
+              icon: Icons.groups_outlined,
+              label: 'Meeting',
+              isActive: currentIndex == 4,
+              onTap: onMeetingTap,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(BuildContext context, {required IconData icon, required String label, bool isActive = false, bool isPrimary = false}) {
+  Widget _buildNavItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isActive = false,
+    bool isPrimary = false,
+  }) {
     final theme = Theme.of(context);
     final color = isActive || isPrimary ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
 
     return InkWell(
-      onTap: () {
-        if (isPrimary) {
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-        }
-      },
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(

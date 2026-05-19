@@ -4,6 +4,8 @@ import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import '../../domain/entities/post.dart';
 import '../../data/repositories/mock_feed_repository.dart';
+import 'create_post_screen.dart';
+import '../../../folder/presentation/screens/folder_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -172,11 +174,34 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           
           // Bottom Navigation overlay
-          const Positioned(
+          Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: AppBottomNavBar(),
+            child: AppBottomNavBar(
+              currentIndex: 0,
+              onHomeTap: () {},
+              onFolderTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const FolderScreen()),
+                );
+              },
+              onAddTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                );
+              },
+              onChatTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tính năng Chat đang được phát triển.')),
+                );
+              },
+              onMeetingTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tính năng Meeting đang được phát triển.')),
+                );
+              },
+            ),
           ),
         ],
       ),
