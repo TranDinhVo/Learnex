@@ -5,7 +5,8 @@ import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import '../../domain/entities/post.dart';
 import '../../data/repositories/mock_feed_repository.dart';
 import 'create_post_screen.dart';
-import '../../../folder/presentation/screens/folder_screen.dart';
+import 'notification_screen.dart';
+import '../../../folder/presentation/screens/folder_overview_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -82,7 +83,11 @@ class _FeedScreenState extends State<FeedScreen> {
                     children: [
                       IconButton(
                         icon: Icon(Icons.notifications_none, color: theme.colorScheme.onSurfaceVariant),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                          );
+                        },
                       ),
                       Positioned(
                         top: 12,
@@ -183,7 +188,7 @@ class _FeedScreenState extends State<FeedScreen> {
               onHomeTap: () {},
               onFolderTap: () {
                 Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const FolderScreen()),
+                  MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
                 );
               },
               onAddTap: () {

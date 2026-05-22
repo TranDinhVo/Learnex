@@ -3,8 +3,9 @@ import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
+import 'folder_overview_screen.dart';
 import 'document_viewer_screen.dart';
-import 'folder_document.dart';
+import '../../domain/entities/folder_document.dart';
 
 class FolderScreen extends StatefulWidget {
   const FolderScreen({super.key});
@@ -127,6 +128,12 @@ class _FolderScreenState extends State<FolderScreen> {
     );
   }
 
+  void _goOverview() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
+    );
+  }
+
   void _createPost() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
@@ -162,7 +169,13 @@ class _FolderScreenState extends State<FolderScreen> {
                 backgroundColor: Colors.white.withValues(alpha: 0.9),
                 elevation: 0,
                 pinned: true,
-                titleSpacing: 16,
+                leadingWidth: 56,
+                titleSpacing: 0,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  color: const Color(0xFF9CA3AF),
+                  onPressed: _goOverview,
+                ),
                 title: Row(
                   children: [
                     Container(
@@ -317,7 +330,7 @@ class _FolderScreenState extends State<FolderScreen> {
             child: AppBottomNavBar(
               currentIndex: 1,
               onHomeTap: _goHome,
-              onFolderTap: () {},
+              onFolderTap: _goOverview,
               onAddTap: _createPost,
               onChatTap: () => _showComingSoon('Chat'),
               onMeetingTap: () => _showComingSoon('Meeting'),

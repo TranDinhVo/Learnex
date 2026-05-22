@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
-import 'folder_document.dart';
+import '../../domain/entities/folder_document.dart';
 
 class DocumentViewerScreen extends StatelessWidget {
   const DocumentViewerScreen({super.key, required this.document});
 
   final FolderDocument document;
+
+  void _openAiAssistant(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      builder: (_) => _LearnexAiSheet(document: document),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +212,7 @@ class DocumentViewerScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Align(
                               alignment: Alignment.centerRight,
-                              child: _AIFab(onPressed: () {}),
+                              child: _AIFab(onPressed: () => _openAiAssistant(context)),
                             ),
                           ),
                         ],
@@ -354,6 +365,344 @@ class _AIFab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       ),
+    );
+  }
+}
+
+class _LearnexAiSheet extends StatelessWidget {
+  const _LearnexAiSheet({required this.document});
+
+  final FolderDocument document;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(color: Colors.black.withValues(alpha: 0.2)),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFCFCFD),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1F000000),
+                    blurRadius: 40,
+                    offset: Offset(0, -8),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 48,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE1E3E4),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 16, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3525CD).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Color(0xFF3525CD),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Learnex AI',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF191C1D),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Assistant Active',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: const Color(0xFF777587),
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded),
+                          color: const Color(0xFF6B7280),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                      children: [
+                        _AiSection(
+                          icon: Icons.summarize_outlined,
+                          title: 'Tóm tắt nội dung',
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            child: Text(
+                              'Tài liệu ${document.title} gồm ${document.totalPages > 20 ? 'nhiều' : 'vài'} phần trọng tâm. Chương 1 tập trung vào ${document.chapterTitle.toLowerCase()}, sau đó mở rộng sang các ứng dụng và bài tập liên quan.',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF464555),
+                                height: 1.55,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _AiSection(
+                          icon: Icons.forum_outlined,
+                          title: 'Hỏi đáp về tài liệu',
+                          child: Column(
+                            children: [
+                              const _UserMessageBubble(
+                                text: 'Giải thích phương pháp tích phân từng phần?',
+                                timeLabel: 'Bạn • 10:42 AM',
+                              ),
+                              const SizedBox(height: 14),
+                              _AiMessageBubble(
+                                text: 'Tích phân từng phần dùng công thức ∫u dv = uv - ∫v du. Khi chọn u và dv, hãy ưu tiên Log - Đa - Lượng - Mũ để rút gọn biểu thức hiệu quả hơn.',
+                                timeLabel: 'Learnex AI • Vừa xong',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFCFCFD),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x0D000000),
+                          blurRadius: 18,
+                          offset: Offset(0, -4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 52,
+                            padding: const EdgeInsets.symmetric(horizontal: 18),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F4F5),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                            ),
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Hỏi về nội dung tài liệu...',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: const Color(0xFF9CA3AF),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3525CD),
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x403525CD),
+                                blurRadius: 16,
+                                offset: Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiSection extends StatelessWidget {
+  const _AiSection({required this.icon, required this.title, required this.child});
+
+  final IconData icon;
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: const Color(0xFF6D79F7), size: 16),
+            const SizedBox(width: 8),
+            Text(
+              title.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: const Color(0xFF6B7280),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.6,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        child,
+      ],
+    );
+  }
+}
+
+class _UserMessageBubble extends StatelessWidget {
+  const _UserMessageBubble({required this.text, required this.timeLabel});
+
+  final String text;
+  final String timeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: const BoxDecoration(
+            color: Color(0xFF3525CD),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(18),
+              topRight: Radius.circular(18),
+              bottomLeft: Radius.circular(18),
+            ),
+          ),
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white,
+                  height: 1.45,
+                ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          timeLabel,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: const Color(0xFF9CA3AF),
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AiMessageBubble extends StatelessWidget {
+  const _AiMessageBubble({required this.text, required this.timeLabel});
+
+  final String text;
+  final String timeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: const BoxDecoration(
+                color: Color(0xFFC3C0FF),
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+              child: const Icon(Icons.psychology_rounded, color: Color(0xFF3525CD), size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE1E3E4),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                  border: Border.all(color: const Color(0xFFC7C4D8)),
+                ),
+                child: Text(
+                  text,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF191C1D),
+                        height: 1.5,
+                      ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Padding(
+          padding: const EdgeInsets.only(left: 44),
+          child: Text(
+            timeLabel,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFF9CA3AF),
+                ),
+          ),
+        ),
+      ],
     );
   }
 }
