@@ -67,3 +67,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: learnex_web_admin
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: learnex_mobile_web
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
