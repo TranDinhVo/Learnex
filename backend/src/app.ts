@@ -53,7 +53,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Unhandled Routes
-app.all('*', (req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

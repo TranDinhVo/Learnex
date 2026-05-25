@@ -1,5 +1,5 @@
 import { Server } from 'http';
-import WebSocket, { Server as WebSocketServer } from 'ws';
+import WebSocket from 'ws';
 import jwt from 'jsonwebtoken';
 import { TokenPayload } from '../models/types';
 import { messageService } from './message.service';
@@ -9,7 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export class WebSocketService {
   private static instance: WebSocketService;
-  private wss!: WebSocketServer;
+  private wss!: any;
   private connections: Map<string, WebSocket[]> = new Map();
 
   private constructor() {}
@@ -22,7 +22,7 @@ export class WebSocketService {
   }
 
   public initialize(server: Server): void {
-    this.wss = new WebSocketServer({ noServer: true });
+    this.wss = new (WebSocket as any).Server({ noServer: true });
 
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url || '', `http://${request.headers.host}`);
@@ -36,7 +36,7 @@ export class WebSocketService {
 
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
-        this.wss.handleUpgrade(request, socket, head, (ws) => {
+        this.wss.handleUpgrade(request, socket, head, (ws: any) => {
           this.wss.emit('connection', ws, request, decoded);
         });
       } catch (err) {
@@ -80,7 +80,7 @@ export class WebSocketService {
 
     // Start ping interval
     setInterval(() => {
-      this.wss.clients.forEach((ws) => {
+      this.wss.clients.forEach((ws: any) => {
         if ((ws as any).isAlive === false) return ws.terminate();
         (ws as any).isAlive = false;
         ws.ping();
@@ -189,7 +189,7 @@ export class WebSocketService {
     };
     const dataStr = JSON.stringify(payload);
 
-    this.wss?.clients.forEach((client) => {
+    this.wss?.clients.forEach((client: any) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(dataStr);
       }
