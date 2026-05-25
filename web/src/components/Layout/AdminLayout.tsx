@@ -9,7 +9,6 @@ import {
   Bell,
   LogOut,
   Menu,
-  X,
   ChevronLeft,
   GraduationCap,
 } from 'lucide-react';
