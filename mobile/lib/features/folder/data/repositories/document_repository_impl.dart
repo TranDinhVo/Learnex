@@ -1,0 +1,47 @@
+import '../../domain/repositories/document_repository.dart';
+import '../datasources/document_remote_datasource.dart';
+
+class DocumentRepositoryImpl implements DocumentRepository {
+  final DocumentRemoteDatasource _datasource;
+
+  DocumentRepositoryImpl({required DocumentRemoteDatasource datasource})
+      : _datasource = datasource;
+
+  @override
+  Future<Map<String, dynamic>> getAll({int page = 1, int limit = 20, String? subject}) =>
+      _datasource.getAll(page: page, limit: limit, subject: subject);
+
+  @override
+  Future<Map<String, dynamic>> search(String query) => _datasource.search(query);
+
+  @override
+  Future<Map<String, dynamic>> getRecommendations() => _datasource.getRecommendations();
+
+  @override
+  Future<Map<String, dynamic>> getById(String id) => _datasource.getById(id);
+
+  @override
+  Future<Map<String, dynamic>> upload({
+    required String filePath,
+    required String title,
+    String? description,
+    String? subject,
+    List<String>? tags,
+  }) =>
+      _datasource.upload(
+        filePath: filePath,
+        title: title,
+        description: description,
+        subject: subject,
+        tags: tags,
+      );
+
+  @override
+  Future<String> download(String id) => _datasource.download(id);
+
+  @override
+  Future<void> trackView(String id) => _datasource.trackView(id);
+
+  @override
+  Future<void> delete(String id) => _datasource.delete(id);
+}
