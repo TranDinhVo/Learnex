@@ -1,0 +1,15 @@
+.dart_tool
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.packages
+build/
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+*/*.lock
+*.log
+.git
+.gitignore
+*.md

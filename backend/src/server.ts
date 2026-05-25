@@ -5,7 +5,7 @@ import http from 'http';
 import app from './app';
 import { checkDatabaseConnection } from './config/database';
 import { connectRedis } from './config/redis';
-// import { setupWebSocket } from './websocket'; // To be implemented later
+import { webSocketService } from './services/websocket.service';
 
 // --- Handle Uncaught Exceptions ---
 process.on('uncaughtException', (err) => {
@@ -22,8 +22,8 @@ const startServer = async () => {
   await checkDatabaseConnection();
   await connectRedis();
 
-  // 2. Setup WebSocket (if needed in future)
-  // setupWebSocket(server);
+  // 2. Setup WebSocket
+  webSocketService.initialize(server);
 
   // 3. Start HTTP Server
   server.listen(PORT, () => {

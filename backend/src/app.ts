@@ -7,6 +7,16 @@ import { errorHandler } from './middleware/errorHandler';
 import { AppError } from './utils/AppError';
 import { sendResponse } from './utils/response';
 
+import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import postRoutes from './routes/post.routes';
+import documentRoutes from './routes/document.routes';
+import friendRoutes from './routes/friend.routes';
+import messageRoutes from './routes/message.routes';
+import roomRoutes from './routes/room.routes';
+import searchRoutes from './routes/search.routes';
+import uploadRoutes from './routes/upload.routes';
+
 const app = express();
 
 // Security Middleware
@@ -31,11 +41,19 @@ app.get('/api/health', (req: Request, res: Response) => {
   sendResponse(res, 200, { status: 'OK', timestamp: new Date() }, 'LearnEx API is running');
 });
 
-// App Routes (To be added here)
-// app.use('/api/auth', authRoutes);
+// App Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/rooms', roomRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Unhandled Routes
-app.all('*', (req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
 

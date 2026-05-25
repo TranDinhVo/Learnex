@@ -23,7 +23,7 @@ services:
       POSTGRES_USER:     learnex_user
       POSTGRES_PASSWORD: learnex_pass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -67,3 +67,27 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: learnex_web_admin
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  mobile:
+    build:
+      context: ./mobile
+      dockerfile: Dockerfile
+    container_name: learnex_mobile_web
+    restart: unless-stopped
+    networks: [learnex_net]
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
