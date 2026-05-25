@@ -16,19 +16,19 @@ export const searchService = {
     const result: { users?: any[]; posts?: any[]; documents?: any[]; total: number } = { total: 0 };
 
     if (type === 'all' || type === 'users') {
-      const users = await this.searchUsers(searchTerm, pagination);
+      const users = await searchService.searchUsers(searchTerm, pagination);
       result.users = users.data;
       result.total += users.total;
     }
 
     if (type === 'all' || type === 'posts') {
-      const posts = await this.searchPosts(searchTerm, pagination);
+      const posts = await searchService.searchPosts(searchTerm, pagination);
       result.posts = posts.data;
       result.total += posts.total;
     }
 
     if (type === 'all' || type === 'documents') {
-      const documents = await this.searchDocuments(searchTerm, pagination);
+      const documents = await searchService.searchDocuments(searchTerm, pagination);
       result.documents = documents.data;
       result.total += documents.total;
     }
