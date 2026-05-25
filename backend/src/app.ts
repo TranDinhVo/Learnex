@@ -16,6 +16,7 @@ import messageRoutes from './routes/message.routes';
 import roomRoutes from './routes/room.routes';
 import searchRoutes from './routes/search.routes';
 import uploadRoutes from './routes/upload.routes';
+import adminRoutes from './routes/admin.routes';
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Unhandled Routes
 app.use((req: Request, res: Response, next: NextFunction) => {

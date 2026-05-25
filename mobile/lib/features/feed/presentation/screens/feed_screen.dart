@@ -191,10 +191,11 @@ class _FeedScreenState extends State<FeedScreen> {
                   MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
                 );
               },
-              onAddTap: () {
-                Navigator.of(context).push(
+              onAddTap: () async {
+                await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
+                _loadPosts();
               },
               onChatTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(

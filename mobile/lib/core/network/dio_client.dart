@@ -9,8 +9,8 @@ import 'api_interceptor.dart';
 class DioClient {
   const DioClient._();
 
-  /// Base URL mặc định cho Android emulator
-  static const String _defaultBaseUrl = 'http://10.0.2.2:8080/api';
+  /// Base URL mặc định cho Flutter Web kết nối qua máy chủ host
+  static const String _defaultBaseUrl = 'http://localhost:8080/api';
 
   /// Tạo Dio instance với interceptor Auth + Log.
   static Dio create({

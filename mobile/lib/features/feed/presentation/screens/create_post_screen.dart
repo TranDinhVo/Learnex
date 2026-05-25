@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../folder/presentation/screens/add_document_screen.dart';
+import '../../data/repositories/mock_feed_repository.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -51,9 +52,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: TextButton(
-              onPressed: () {
-                // Return to feed
-                Navigator.of(context).pop();
+              onPressed: () async {
+                final content = _contentController.text.trim();
+                if (content.isNotEmpty) {
+                  try {
+                    await MockFeedRepository().createPost(content);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                }
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
               },
               style: TextButton.styleFrom(
                 backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),

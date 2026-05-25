@@ -13,37 +13,37 @@ export default function StatCard({ title, value, icon, trend, className }: StatC
   return (
     <div
       className={clsx(
-        'group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:border-white/20 hover:bg-white/10 hover:shadow-lg hover:shadow-indigo-500/5',
+        'group relative overflow-hidden rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm shadow-slate-100/60 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-200/50',
         className,
       )}
     >
-      {/* Gradient glow on hover */}
-      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-600/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100" />
+      {/* Subtle background glow on hover */}
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500/5 to-purple-600/5 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100" />
 
       <div className="relative flex items-start justify-between">
         <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-400">{title}</p>
-          <p className="text-3xl font-bold tracking-tight text-white">
+          <p className="text-sm font-semibold text-slate-500">{title}</p>
+          <p className="text-3xl font-extrabold tracking-tight text-slate-800">
             {typeof value === 'number' ? value.toLocaleString('vi-VN') : value}
           </p>
           {trend && (
             <div className="flex items-center gap-1.5">
               <span
                 className={clsx(
-                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold',
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold border',
                   trend.value >= 0
-                    ? 'bg-emerald-500/15 text-emerald-400'
-                    : 'bg-red-500/15 text-red-400',
+                    ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
+                    : 'bg-red-50 border-red-100 text-red-600',
                 )}
               >
                 {trend.value >= 0 ? '↑' : '↓'} {Math.abs(trend.value)}%
               </span>
-              <span className="text-xs text-gray-500">{trend.label}</span>
+              <span className="text-xs font-medium text-slate-400">{trend.label}</span>
             </div>
           )}
         </div>
 
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-600/20 text-indigo-400 transition-colors duration-300 group-hover:from-indigo-500/30 group-hover:to-purple-600/30">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-600/10 text-indigo-600 transition-all duration-300 group-hover:from-indigo-500/20 group-hover:to-purple-600/20">
           {icon}
         </div>
       </div>

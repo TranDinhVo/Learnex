@@ -4,12 +4,13 @@ import { PaginationInfo } from '../models/types';
 export interface PaginationParams {
   page: number;
   limit: number;
+  search?: string;
 }
 
-export function getPaginationParams(query: { page?: string; limit?: string }): PaginationParams {
+export function getPaginationParams(query: { page?: string; limit?: string; search?: string }): PaginationParams {
   const page = Math.max(1, parseInt(query.page || '1', 10));
   const limit = Math.min(50, Math.max(1, parseInt(query.limit || '10', 10)));
-  return { page, limit };
+  return { page, limit, search: query.search };
 }
 
 export function getOffset(params: PaginationParams): number {
