@@ -200,6 +200,10 @@ class _FeedScreenState extends State<FeedScreen> {
                               : '@student';
                           final content = post['content'] ?? '';
                           final id = post['id']?.toString() ?? '0';
+                          final postUserId = post['user_id']?.toString();
+                          final authState = context.read<AuthBloc>().state;
+                          final currentUserId = authState is Authenticated ? authState.user.id : '';
+                          final isOwner = postUserId == currentUserId;
 
                           String? imageUrl;
                           final imageList = post['image_urls'];
@@ -244,6 +248,9 @@ class _FeedScreenState extends State<FeedScreen> {
                               comments: post['comment_count'] ?? 0,
                               isLiked: post['is_liked'] == true,
                               isSaved: post['is_saved'] == true,
+                              onDeleteTap: isOwner
+                                  ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
+                                  : null,
                               onLikeTap: () {
                                 context.read<FeedBloc>().add(LikePostEvent(postId: id));
                               },

@@ -104,6 +104,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
+  Future<void> _deletePost(String postId) async {
+    try {
+      setState(() {
+        _myPosts = _myPosts.where((post) => post['id'].toString() != postId).toList();
+      });
+      await getIt<FeedRepositoryImpl>().deletePost(postId);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -409,6 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 isSaved: post['is_saved'] == true,
                                 onLikeTap: () => _toggleLikePost(post['id'].toString()),
                                 onSaveTap: () => _toggleSavePost(post['id'].toString()),
+                                onDeleteTap: () => _deletePost(post['id'].toString()),
                                 onCommentTap: () async {
                                   final updated = await Navigator.of(context).push(
                                     MaterialPageRoute(
