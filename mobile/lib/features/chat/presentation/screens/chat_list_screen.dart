@@ -232,8 +232,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               avatarColor: Colors.indigo.shade600,
                               avatarTextColor: Colors.white,
                               onTap: () {
+                                final otherUserId = otherUser['id']?.toString() ?? '';
                                 Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const ChatDetailScreen()),
+                                  MaterialPageRoute(
+                                    builder: (_) => ChatDetailScreen(
+                                      conversationId: otherUserId,
+                                      partnerName: name,
+                                    ),
+                                  ),
                                 );
                               },
                             ),
