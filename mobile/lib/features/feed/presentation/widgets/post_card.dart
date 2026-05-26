@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 enum PostType { document, image, text }
 
@@ -23,6 +24,9 @@ class PostCard extends StatelessWidget {
   final VoidCallback? onCommentTap;
   final VoidCallback? onSaveTap;
   final VoidCallback? onShareTap;
+  final VoidCallback? onMoreTap;
+  final VoidCallback? onDeleteTap;
+  final VoidCallback? onEditTap;
 
   const PostCard({
     super.key,
@@ -46,6 +50,9 @@ class PostCard extends StatelessWidget {
     this.onCommentTap,
     this.onSaveTap,
     this.onShareTap,
+    this.onMoreTap,
+    this.onDeleteTap,
+    this.onEditTap,
   });
 
   @override
@@ -71,7 +78,7 @@ class PostCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(theme),
+                _buildHeader(context, theme),
                 const SizedBox(height: 12),
                 Text(
                   content,
@@ -98,14 +105,14 @@ class PostCard extends StatelessWidget {
           ],
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: _buildFooter(theme),
+            child: _buildFooter(context, theme),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  Widget _buildHeader(BuildContext context, ThemeData theme) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -155,7 +162,7 @@ class PostCard extends StatelessWidget {
         ),
         IconButton(
           icon: Icon(Icons.more_horiz, color: theme.colorScheme.onSurfaceVariant),
-          onPressed: () {},
+          onPressed: onMoreTap ?? () => _showMoreBottomSheet(context),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
         ),
@@ -213,7 +220,7 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter(ThemeData theme) {
+  Widget _buildFooter(BuildContext context, ThemeData theme) {
     return Column(
       children: [
         Row(
@@ -252,10 +259,10 @@ class PostCard extends StatelessWidget {
               onTap: onSaveTap,
             ),
             _buildActionButton(
-              icon: Icons.share_outlined,
+              icon: Icons.share,
               label: '',
               color: theme.colorScheme.onSurfaceVariant,
-              onTap: onShareTap,
+              onTap: onShareTap ?? () => _showShareBottomSheet(context),
             ),
           ],
         ),
@@ -292,6 +299,287 @@ class PostCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showMoreBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (onEditTap != null)
+                _buildBottomSheetTile(
+                  context,
+                  icon: Icons.edit_outlined,
+                  label: 'Chỉnh sửa bài viết',
+                  color: const Color(0xFF4F46E5),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onEditTap!();
+                  },
+                ),
+              if (onDeleteTap != null)
+                _buildBottomSheetTile(
+                  context,
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Xóa bài viết',
+                  color: const Color(0xFFEF4444),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDeleteConfirmationDialog(context);
+                  },
+                ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.copy_rounded,
+                label: 'Sao chép liên kết',
+                color: const Color(0xFF10B981),
+                onTap: () {
+                  Navigator.pop(context);
+                  Clipboard.setData(ClipboardData(text: content));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã sao chép liên kết bài viết vào khay nhớ tạm!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.report_gmailerrorred_rounded,
+                label: 'Báo cáo bài viết',
+                color: const Color(0xFFF59E0B),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showReportDialog(context);
+                },
+              ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.visibility_off_outlined,
+                label: 'Không quan tâm',
+                color: const Color(0xFF6B7280),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã ẩn bài viết này khỏi bảng tin của bạn.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Xóa bài viết?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy', style: TextStyle(color: Color(0xFF6B7280))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (onDeleteTap != null) onDeleteTap!();
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Báo cáo bài viết',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text('Cảm ơn bạn đã phản hồi. Chúng tôi sẽ xem xét bài viết này để đảm bảo môi trường học tập lành mạnh.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng', style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showShareBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24.0),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Chia sẻ bài viết',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF191C1D),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.link_rounded,
+                label: 'Sao chép liên kết',
+                color: const Color(0xFF10B981),
+                onTap: () {
+                  Navigator.pop(context);
+                  Clipboard.setData(ClipboardData(text: content));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã sao chép liên kết bài viết vào khay nhớ tạm!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.send_rounded,
+                label: 'Chia sẻ qua tin nhắn LearnEx',
+                color: const Color(0xFF4F46E5),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tính năng chia sẻ qua chat đang được phát triển.'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.repeat_rounded,
+                label: 'Chia sẻ lên Bảng tin của tôi',
+                color: const Color(0xFF10B981),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đã chia sẻ bài viết này lên bảng tin của bạn!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              _buildBottomSheetTile(
+                context,
+                icon: Icons.share_rounded,
+                label: 'Chia sẻ khác...',
+                color: const Color(0xFF8B5CF6),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Đang mở bảng chia sẻ hệ thống...'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetTile(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF464555),
+        ),
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
     );
   }
 }
