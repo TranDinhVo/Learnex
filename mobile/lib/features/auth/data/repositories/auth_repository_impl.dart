@@ -140,8 +140,9 @@ class AuthRepositoryImpl {
   // ── Helpers ──
 
   Future<void> _saveTokens(Map<String, dynamic> data) async {
-    final accessToken = data['accessToken'] as String?;
-    final refreshToken = data['refreshToken'] as String?;
+    final tokens = data['tokens'] as Map<String, dynamic>?;
+    final accessToken = tokens != null ? tokens['accessToken'] as String? : data['accessToken'] as String?;
+    final refreshToken = tokens != null ? tokens['refreshToken'] as String? : data['refreshToken'] as String?;
     if (accessToken != null) {
       await _storage.write(
         key: StorageKeys.accessToken,
@@ -159,5 +160,10 @@ class AuthRepositoryImpl {
   Future<void> _clearTokens() async {
     await _storage.delete(key: StorageKeys.accessToken);
     await _storage.delete(key: StorageKeys.refreshToken);
+  }
+
+  /// Lấy chi tiết thông tin người dùng theo ID
+  Future<User> getUserById(String id) async {
+    return await _datasource.getUserById(id);
   }
 }

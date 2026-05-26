@@ -140,4 +140,11 @@ class AuthRemoteDatasource {
       data: {'refreshToken': refreshToken},
     );
   }
+
+  /// Lấy chi tiết thông tin người dùng bất kỳ theo ID
+  Future<User> getUserById(String id) async {
+    final response = await _dio.get(ApiEndpoints.userById(id));
+    final data = response.data['data'] ?? response.data;
+    return User.fromJson(data as Map<String, dynamic>);
+  }
 }

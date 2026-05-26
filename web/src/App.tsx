@@ -2,6 +2,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
+import Posts from './pages/Posts';
+import Documents from './pages/Documents';
+import Rooms from './pages/Rooms';
+import Notifications from './pages/Notifications';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/Layout/AdminLayout';
 
@@ -23,40 +27,10 @@ export default function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="users" element={<Users />} />
-          
-          {/* Fallback routes for under construction views */}
-          <Route
-            path="posts"
-            element={
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-8 text-center text-slate-500 shadow-sm">
-                Tính năng Quản lý bài viết đang phát triển.
-              </div>
-            }
-          />
-          <Route
-            path="documents"
-            element={
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-8 text-center text-slate-500 shadow-sm">
-                Tính năng Quản lý tài liệu đang phát triển.
-              </div>
-            }
-          />
-          <Route
-            path="rooms"
-            element={
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-8 text-center text-slate-500 shadow-sm">
-                Tính năng Quản lý phòng học đang phát triển.
-              </div>
-            }
-          />
-          <Route
-            path="notifications"
-            element={
-              <div className="rounded-2xl border border-slate-200/60 bg-white p-8 text-center text-slate-500 shadow-sm">
-                Tính năng Gửi thông báo hệ thống đang phát triển.
-              </div>
-            }
-          />
+          <Route path="posts" element={<Posts />} />
+          <Route path="documents" element={<Documents />} />
+          <Route path="rooms" element={<Rooms />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* Fallback to dashboard */}

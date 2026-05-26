@@ -55,3 +55,9 @@ class DeleteCommentEvent extends FeedEvent {
 
 /// Refresh feed (pull to refresh)
 class RefreshFeedEvent extends FeedEvent {}
+
+/// Cập nhật cục bộ một bài viết trong danh sách feed
+class UpdatePostInListEvent extends FeedEvent {
+  final Map<String, dynamic> updatedPost;
+  UpdatePostInListEvent({required this.updatedPost});
+}

@@ -1,7 +1,36 @@
 import 'package:flutter/material.dart';
 
-class CommentInputBar extends StatelessWidget {
-  const CommentInputBar({super.key});
+class CommentInputBar extends StatefulWidget {
+  final Function(String) onSend;
+  final String userInitials;
+
+  const CommentInputBar({
+    super.key,
+    required this.onSend,
+    this.userInitials = 'U',
+  });
+
+  @override
+  State<CommentInputBar> createState() => _CommentInputBarState();
+}
+
+class _CommentInputBarState extends State<CommentInputBar> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _submit() {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      widget.onSend(text);
+      _controller.clear();
+      FocusScope.of(context).unfocus();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +64,7 @@ class CommentInputBar extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              'B',
+              widget.userInitials,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -46,6 +75,9 @@ class CommentInputBar extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 hintText: 'Thêm bình luận...',
                 hintStyle: TextStyle(
@@ -84,7 +116,7 @@ class CommentInputBar extends StatelessWidget {
             ),
             child: IconButton(
               icon: const Icon(Icons.send, color: Colors.white, size: 20),
-              onPressed: () {},
+              onPressed: _submit,
             ),
           ),
         ],

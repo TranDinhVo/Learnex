@@ -2,6 +2,10 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/document_bloc.dart';
+import '../bloc/document_event.dart';
+import '../bloc/document_state.dart';
 
 class AddDocumentScreen extends StatefulWidget {
   const AddDocumentScreen({super.key});
@@ -78,12 +82,16 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   }
 
   void _onUpload() {
-    // Đây là chỗ gọi API hoặc xử lý upload file.
-    // Hiện tại chỉ hiển thị thông báo thành công mô phỏng.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã gửi tài liệu để kiểm duyệt.')),
+    if (_pickedFile == null || _pickedFile!.path == null) return;
+    context.read<DocumentBloc>().add(
+      UploadDocumentEvent(
+        filePath: _pickedFile!.path!,
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        subject: _subject,
+        tags: _tags,
+      ),
     );
-    Navigator.of(context).maybePop();
   }
 
   @override
@@ -98,8 +106,21 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.black45,
-      body: SafeArea(
-        child: Stack(
+      body: BlocListener<DocumentBloc, DocumentState>(
+        listener: (context, state) {
+          if (state is DocumentUploaded) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('🎉 Tài liệu đã được tải lên thành công!'), backgroundColor: Colors.green),
+            );
+            Navigator.of(context).maybePop();
+          } else if (state is DocumentUploadError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: SafeArea(
+          child: Stack(
           children: [
             // Backdrop - taps outside close
             GestureDetector(onTap: () => Navigator.of(context).maybePop()),
@@ -419,6 +440,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

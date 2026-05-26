@@ -1,38 +1,155 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../app/di.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../data/repositories/feed_repository_impl.dart';
+import '../widgets/post_card.dart';
 import '../widgets/comment_item.dart';
 import '../widgets/comment_input_bar.dart';
+import '../../../../shared/utils/date_formatter.dart';
 
-class PostDetailScreen extends StatelessWidget {
-  const PostDetailScreen({super.key});
+class PostDetailScreen extends StatefulWidget {
+  final Map<String, dynamic> post;
+
+  const PostDetailScreen({super.key, required this.post});
+
+  @override
+  State<PostDetailScreen> createState() => _PostDetailScreenState();
+}
+
+class _PostDetailScreenState extends State<PostDetailScreen> {
+  late Map<String, dynamic> _post;
+  List<dynamic> _comments = [];
+  bool _commentsLoading = true;
+  String? _commentsError;
+
+  @override
+  void initState() {
+    super.initState();
+    _post = Map<String, dynamic>.from(widget.post);
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    try {
+      final res = await getIt<FeedRepositoryImpl>().getComments(_post['id'].toString());
+      final data = res['data'] as List<dynamic>? ?? [];
+      setState(() {
+        _comments = data;
+        _commentsLoading = false;
+        _commentsError = null;
+      });
+    } catch (e) {
+      setState(() {
+        _commentsError = 'Không thể tải bình luận.';
+        _commentsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addComment(String content) async {
+    // Optimistically update comment count
+    setState(() {
+      final currentCount = _post['comment_count'] as int? ?? 0;
+      _post['comment_count'] = currentCount + 1;
+    });
+
+    try {
+      await getIt<FeedRepositoryImpl>().addComment(_post['id'].toString(), content);
+      _loadComments();
+    } catch (_) {
+      // Revert if error
+      setState(() {
+        final currentCount = _post['comment_count'] as int? ?? 0;
+        _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gửi bình luận thất bại. Vui lòng thử lại.')),
+      );
+    }
+  }
+
+  Future<void> _toggleLike() async {
+    final postId = _post['id'].toString();
+    try {
+      setState(() {
+        final isCurrentlyLiked = _post['is_liked'] == true;
+        final currentLikeCount = _post['like_count'] as int? ?? 0;
+        _post['is_liked'] = !isCurrentlyLiked;
+        _post['like_count'] = isCurrentlyLiked
+            ? (currentLikeCount > 0 ? currentLikeCount - 1 : 0)
+            : currentLikeCount + 1;
+      });
+      await getIt<FeedRepositoryImpl>().toggleLike(postId);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleSave() async {
+    final postId = _post['id'].toString();
+    try {
+      setState(() {
+        final isCurrentlySaved = _post['is_saved'] == true;
+        _post['is_saved'] = !isCurrentlySaved;
+      });
+      await getIt<FeedRepositoryImpl>().toggleSave(postId);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          'Bài đăng',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
+    // User initials from AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    String userInitials = 'U';
+    if (authState is Authenticated) {
+      final name = authState.user.fullName;
+      userInitials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+    }
+
+    final authorName = _post['author_name'] ?? 'Học viên Learnex';
+    final authorHandle = _post['author_username'] != null 
+        ? '@${_post['author_username']}' 
+        : '@student';
+    final postContent = _post['content'] ?? '';
+
+    String? imageUrl;
+    final imageList = _post['image_urls'];
+    if (imageList is List && imageList.isNotEmpty) {
+      imageUrl = imageList.first as String?;
+    } else if (imageList is String && imageList.isNotEmpty) {
+      if (imageList.startsWith('[')) {
+        imageUrl = imageList.replaceAll(RegExp('[\\[\\]"\' ]'), '');
+      } else {
+        imageUrl = imageList;
+      }
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.of(context).pop(_post);
+      },
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        appBar: AppBar(
+          backgroundColor: Colors.white.withValues(alpha: 0.9),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, color: theme.colorScheme.onSurface, size: 20),
+            onPressed: () => Navigator.of(context).pop(_post),
+          ),
+          title: Text(
+            'Bài đăng',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.share, color: theme.colorScheme.onSurface),
-            onPressed: () {},
-          ),
-        ],
-      ),
       body: Column(
         children: [
           Expanded(
@@ -41,176 +158,29 @@ class PostDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Main Post Container
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Post Header
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.primaryContainer,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'AN',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.onPrimaryContainer,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Anh Nam',
-                                        style: theme.textTheme.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: theme.colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        '12 giờ trước • Cộng đồng Giải tích 1',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                icon: Icon(Icons.more_vert, color: theme.colorScheme.onSurfaceVariant),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Post Content
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Chào mọi người, mình vừa tổng hợp xong bộ tài liệu ôn tập chương 2: Đạo hàm và Vi phân. Tài liệu này bao gồm các dạng bài tập từ cơ bản đến nâng cao, có kèm theo lời giải chi tiết cho các câu hỏi khó trong đề thi các năm trước. Hy vọng nó sẽ giúp ích cho kỳ thi giữa kỳ sắp tới của các bạn!',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onSurface,
-                                  height: 1.5,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              
-                              // Document Chip
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.surfaceContainerLow,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.error.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(Icons.picture_as_pdf, color: theme.colorScheme.error),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            'On-tap-Giai-tich-Chương-2.pdf',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            '2.4 MB • PDF Document',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: theme.colorScheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Icon(Icons.download, color: theme.colorScheme.onSurfaceVariant),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                        ),
-                        
-                        // Post Stats Row
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                          decoration: BoxDecoration(
-                            border: Border.symmetric(
-                              horizontal: BorderSide(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1)),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildStatItem('128', 'lượt thích', theme),
-                              _buildStatItem('24', 'bình luận', theme, isMiddle: true),
-                              _buildStatItem('12', 'lượt lưu', theme),
-                            ],
-                          ),
-                        ),
-                        
-                        // Post Action Row
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildActionButton(Icons.favorite, 'Thích (128)', theme.colorScheme.primary),
-                              _buildActionButton(Icons.chat_bubble_outline, 'Bình luận', theme.colorScheme.onSurfaceVariant),
-                              _buildActionButton(Icons.bookmark_outline, 'Lưu', theme.colorScheme.onSurfaceVariant),
-                              _buildActionButton(Icons.send_outlined, 'Chia sẻ', theme.colorScheme.onSurfaceVariant),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  // Original Post rendered through PostCard
+                  PostCard(
+                    authorName: authorName,
+                    authorHandle: authorHandle,
+                    timeAgo: formatTimeAgo(_post['created_at']?.toString()),
+                    authorInitials: authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U',
+                    avatarColor: Colors.indigo.shade100,
+                    avatarTextColor: Colors.indigo.shade700,
+                    content: postContent,
+                    postType: imageUrl != null
+                        ? PostType.image
+                        : (_post['document_id'] != null ? PostType.document : PostType.text),
+                    imageUrl: imageUrl,
+                    documentName: _post['document_title'] ?? 'Tài liệu.pdf',
+                    documentSize: _post['document_size'] != null
+                        ? '${(_post['document_size'] / 1024).toStringAsFixed(0)} KB'
+                        : '1.2 MB',
+                    likes: _post['like_count'] ?? 0,
+                    comments: _post['comment_count'] ?? 0,
+                    isLiked: _post['is_liked'] == true,
+                    isSaved: _post['is_saved'] == true,
+                    onLikeTap: _toggleLike,
+                    onSaveTap: _toggleSave,
                   ),
                   
                   // Comment Section Header
@@ -220,108 +190,74 @@ class PostDetailScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Bình luận (24)',
+                          'Bình luận (${_post['comment_count'] ?? 0})',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
                           ),
                         ),
-                        Row(
-                          children: [
-                            Text(
-                              'Mới nhất',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            Icon(Icons.expand_more, size: 20, color: theme.colorScheme.onSurfaceVariant),
-                          ],
-                        ),
                       ],
                     ),
                   ),
                   
-                  // Comment List
-                  CommentItem(
-                    authorName: 'Hoài My',
-                    authorInitials: 'HM',
-                    timeAgo: '2 giờ trước',
-                    content: 'Cảm ơn bạn nhiều lắm! 🙏 Bộ đề này đúng lúc mình đang cần để ôn thi luôn.',
-                    avatarColor: theme.colorScheme.secondaryContainer,
-                    avatarTextColor: theme.colorScheme.onSecondaryContainer,
-                  ),
-                  const SizedBox(height: 24),
-                  CommentItem(
-                    authorName: 'Thanh Khoa',
-                    authorInitials: 'TK',
-                    timeAgo: '5 giờ trước',
-                    content: 'Bạn có tài liệu Giải tích 3 không? Mình đang bị kẹt ở phần phương trình vi phân cấp cao.',
-                    avatarColor: theme.colorScheme.tertiaryContainer,
-                    avatarTextColor: theme.colorScheme.onTertiaryContainer,
-                  ),
-                  const SizedBox(height: 80), // Optional extra spacing
+                  // Comment List Section
+                  if (_commentsLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_commentsError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20.0),
+                      child: Center(
+                        child: Text(_commentsError!, style: const TextStyle(color: Colors.red)),
+                      ),
+                    )
+                  else if (_comments.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40.0),
+                      child: Center(
+                        child: Text(
+                          'Chưa có bình luận nào. Hãy là người đầu tiên!',
+                          style: TextStyle(color: theme.colorScheme.outline, fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _comments.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 20),
+                      itemBuilder: (context, index) {
+                        final comment = _comments[index];
+                        final cName = comment['author_name'] ?? 'Học viên';
+                        final cInitials = cName.isNotEmpty ? cName[0].toUpperCase() : 'U';
+                        final cContent = comment['content'] ?? '';
+                        
+                        return CommentItem(
+                          authorName: cName,
+                          authorInitials: cInitials,
+                          timeAgo: formatTimeAgo(comment['created_at']?.toString()),
+                          content: cContent,
+                          avatarColor: theme.colorScheme.primaryContainer,
+                          avatarTextColor: theme.colorScheme.onPrimaryContainer,
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
           ),
           
-          // Bottom Input Bar
-          const CommentInputBar(),
+          // Bottom Dynamic Input Bar
+          CommentInputBar(
+            userInitials: userInitials,
+            onSend: _addComment,
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatItem(String value, String label, ThemeData theme, {bool isMiddle = false}) {
-    return Row(
-      children: [
-        if (isMiddle) Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text('·', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
-        ),
-        Text(
-          value,
-          style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface, fontSize: 13),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
-        ),
-        if (isMiddle) Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text('·', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, String label, Color color) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 20, color: color),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    ),
     );
   }
 }

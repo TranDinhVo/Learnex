@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../data/repositories/mock_auth_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_event.dart';
+import '../bloc/auth_state.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
@@ -12,7 +15,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final MockAuthRepository _authRepository = MockAuthRepository();
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -26,30 +28,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   static const _bg = Color(0xFFF5F5FF);
 
-  Future<void> _handleLogin() async {
+  void _handleLogin() {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    try {
-      final success = await _authRepository.login(
-        _emailController.text,
-        _passwordController.text,
-      );
-      if (success && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const FeedScreen()),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
-      });
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+    context.read<AuthBloc>().add(
+      LoginEvent(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      ),
+    );
   }
 
   @override
@@ -61,8 +48,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Authenticated) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const FeedScreen()),
+          );
+        } else if (state is AuthError) {
+          setState(() {
+            _errorMessage = state.message;
+            _isLoading = false;
+          });
+        } else if (state is AuthLoading) {
+          setState(() {
+            _isLoading = true;
+            _errorMessage = null;
+          });
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: _bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
@@ -291,6 +301,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  },
     );
   }
 

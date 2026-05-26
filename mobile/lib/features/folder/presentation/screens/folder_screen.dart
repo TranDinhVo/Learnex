@@ -6,6 +6,8 @@ import '../../../feed/presentation/screens/feed_screen.dart';
 import 'folder_overview_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../domain/entities/folder_document.dart';
+import '../../../chat/presentation/screens/chat_list_screen.dart';
+import '../../../room/presentation/screens/room_list_screen.dart';
 
 class FolderScreen extends StatefulWidget {
   const FolderScreen({super.key});
@@ -137,6 +139,18 @@ class _FolderScreenState extends State<FolderScreen> {
   void _createPost() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+    );
+  }
+
+  void _goChat() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const ChatListScreen()),
+    );
+  }
+
+  void _goRooms() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const RoomListScreen()),
     );
   }
 
@@ -332,8 +346,8 @@ class _FolderScreenState extends State<FolderScreen> {
               onHomeTap: _goHome,
               onFolderTap: _goOverview,
               onAddTap: _createPost,
-              onChatTap: () => _showComingSoon('Chat'),
-              onMeetingTap: () => _showComingSoon('Meeting'),
+              onChatTap: _goChat,
+              onMeetingTap: _goRooms,
             ),
           ),
         ],

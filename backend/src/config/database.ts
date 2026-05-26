@@ -17,6 +17,10 @@ export const checkDatabaseConnection = async () => {
   try {
     await db.raw('SELECT 1');
     console.log('✅ PostgreSQL connected successfully');
+
+    // Run migration checks
+    await db.raw('ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT NULL');
+    console.log('✅ PostgreSQL migrations checked successfully');
   } catch (error) {
     console.error('❌ PostgreSQL connection failed:', error);
     process.exit(1);

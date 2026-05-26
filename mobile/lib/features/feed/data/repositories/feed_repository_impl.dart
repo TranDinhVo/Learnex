@@ -9,8 +9,8 @@ class FeedRepositoryImpl implements FeedRepository {
       : _datasource = datasource;
 
   @override
-  Future<Map<String, dynamic>> getFeed({int page = 1, int limit = 20}) =>
-      _datasource.getFeed(page: page, limit: limit);
+  Future<Map<String, dynamic>> getFeed({int page = 1, int limit = 20, String? userId}) =>
+      _datasource.getFeed(page: page, limit: limit, userId: userId);
 
   @override
   Future<Map<String, dynamic>> getSavedPosts({int page = 1, int limit = 20}) =>

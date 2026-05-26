@@ -71,5 +71,129 @@ export const adminController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  // ── Posts Moderation ──
+  async getAllPosts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as any);
+      const result = await adminService.getAllPosts(pagination);
+      sendResponse(res, 200, result, 'Posts retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async hidePost(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const post = await adminService.hidePost(id);
+      sendResponse(res, 200, post, 'Post hidden successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async unhidePost(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const post = await adminService.unhidePost(id);
+      sendResponse(res, 200, post, 'Post unhidden successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async deletePost(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      await adminService.deletePost(id);
+      sendResponse(res, 200, null, 'Post deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ── Documents Management ──
+  async getAllDocuments(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as any);
+      const result = await adminService.getAllDocuments(pagination);
+      sendResponse(res, 200, result, 'Documents retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async approveDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const doc = await adminService.approveDocument(id);
+      sendResponse(res, 200, doc, 'Document approved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async rejectDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const doc = await adminService.rejectDocument(id);
+      sendResponse(res, 200, doc, 'Document rejected successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async deleteDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      await adminService.deleteDocument(id);
+      sendResponse(res, 200, null, 'Document deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ── Rooms Moderation ──
+  async getAllRooms(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as any);
+      const result = await adminService.getAllRooms(pagination);
+      sendResponse(res, 200, result, 'Rooms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async deleteRoom(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      await adminService.deleteRoom(id);
+      sendResponse(res, 200, null, 'Room deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ── System Notifications ──
+  async sendNotification(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const senderId = req.user!.userId;
+      const notification = await adminService.sendNotification(senderId, req.body);
+      sendResponse(res, 201, notification, 'Notification sent successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getNotificationHistory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as any);
+      const result = await adminService.getNotificationHistory(pagination);
+      sendResponse(res, 200, result, 'Notification history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
   }
 };
