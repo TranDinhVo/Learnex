@@ -43,7 +43,8 @@ export const postController = {
   async getFeed(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
-      const { data, total } = await postService.getFeed(pagination, req.user?.userId);
+      const targetUserId = req.query.userId as string | undefined;
+      const { data, total } = await postService.getFeed(pagination, req.user?.userId, targetUserId);
 
       res.status(200).json({
         success: true,

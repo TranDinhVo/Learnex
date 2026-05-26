@@ -47,7 +47,7 @@ export default function ConfirmModal({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-md animate-modal-in rounded-2xl border border-white/10 bg-gray-800/90 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="relative w-full max-w-md animate-modal-in rounded-2xl border border-slate-200/80 bg-white p-6 shadow-2xl">
         <div className="flex flex-col items-center text-center">
           <div
             className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full ${iconColors[variant]}`}
@@ -55,14 +55,14 @@ export default function ConfirmModal({
             <AlertTriangle className="h-7 w-7" />
           </div>
 
-          <h3 className="mb-2 text-lg font-bold text-white">{title}</h3>
-          <div className="mb-6 text-sm text-gray-400">{message}</div>
+          <h3 className="mb-2 text-lg font-bold text-slate-800">{title}</h3>
+          <div className="mb-6 text-sm font-medium text-slate-500">{message}</div>
 
           <div className="flex w-full gap-3">
             <button
               onClick={onCancel}
               disabled={loading}
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-gray-300 transition-all hover:bg-white/10 disabled:opacity-50"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-slate-100 disabled:opacity-50 cursor-pointer"
             >
               {cancelLabel}
             </button>

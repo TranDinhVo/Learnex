@@ -16,6 +16,8 @@ import messageRoutes from './routes/message.routes';
 import roomRoutes from './routes/room.routes';
 import searchRoutes from './routes/search.routes';
 import uploadRoutes from './routes/upload.routes';
+import adminRoutes from './routes/admin.routes';
+import notificationRoutes from './routes/notification.routes';
 
 const app = express();
 
@@ -23,7 +25,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.CORS_ORIGINS?.split(',') || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGINS?.split(',') || ['http://localhost:5173', 'http://localhost:3000'],
     credentials: true,
   })
 );
@@ -51,6 +53,8 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Unhandled Routes
 app.use((req: Request, res: Response, next: NextFunction) => {

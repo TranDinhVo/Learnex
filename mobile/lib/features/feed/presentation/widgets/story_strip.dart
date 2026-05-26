@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../friends/presentation/bloc/friend_bloc.dart';
+import '../../../friends/presentation/bloc/friend_state.dart';
 
 class StoryStrip extends StatelessWidget {
   const StoryStrip({super.key});
@@ -6,31 +11,65 @@ class StoryStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Get current user initial dynamically from AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    String userInitials = 'U';
+    if (authState is Authenticated) {
+      final name = authState.user.fullName;
+      userInitials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Row(
-          children: [
-            _buildUserStory(theme),
-            const SizedBox(width: 16),
-            _buildFriendStory(theme, 'Hùng Dũng', 'https://i.pravatar.cc/150?u=hungdung'),
-            const SizedBox(width: 16),
-            _buildFriendStory(theme, 'Minh Tú', 'https://i.pravatar.cc/150?u=minhtu'),
-            const SizedBox(width: 16),
-            _buildFriendStory(theme, 'Thế Anh', 'https://i.pravatar.cc/150?u=theanh'),
-          ],
-        ),
+      child: BlocBuilder<FriendBloc, FriendState>(
+        builder: (context, friendState) {
+          List<dynamic> friendsList = [];
+          if (friendState is FriendsLoaded) {
+            friendsList = friendState.friends;
+          }
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                _buildUserStory(theme, userInitials),
+                if (friendsList.isNotEmpty) ...[
+                  const SizedBox(width: 16),
+                  ...List.generate(friendsList.length, (index) {
+                    final friend = friendsList[index];
+                    final name = friend['full_name'] ?? 'Học viên';
+                    final avatarUrl = friend['avatar_url'];
+
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: index < friendsList.length - 1 ? 16.0 : 0.0,
+                      ),
+                      child: _buildFriendStory(theme, name, avatarUrl),
+                    );
+                  }),
+                ] else if (friendState is FriendLoading) ...[
+                  const SizedBox(width: 16),
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildUserStory(ThemeData theme) {
+  Widget _buildUserStory(ThemeData theme, String initials) {
     return Column(
       children: [
         Stack(
@@ -46,7 +85,7 @@ class StoryStrip extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                'B', // Current user initial
+                initials,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -71,12 +110,21 @@ class StoryStrip extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text('Của bạn', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+        Text(
+          'Của bạn',
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildFriendStory(ThemeData theme, String name, String imageUrl) {
+  Widget _buildFriendStory(ThemeData theme, String name, String? imageUrl) {
+    final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
     return Column(
       children: [
         Stack(
@@ -89,7 +137,10 @@ class StoryStrip extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.secondary,
+                  ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
@@ -97,10 +148,31 @@ class StoryStrip extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  color: Colors.white,
                 ),
-                child: ClipOval(
-                  child: Image.network(imageUrl, fit: BoxFit.cover),
+                padding: const EdgeInsets.all(2),
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: theme.colorScheme.primaryContainer,
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  alignment: Alignment.center,
+                  child: imageUrl != null && imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          width: 56,
+                          height: 56,
+                        )
+                      : Text(
+                          initials,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -120,7 +192,20 @@ class StoryStrip extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(name, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
+        SizedBox(
+          width: 64,
+          child: Text(
+            name,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
       ],
     );
   }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../folder/presentation/screens/add_document_screen.dart';
+import '../bloc/feed_bloc.dart';
+import '../bloc/feed_event.dart';
+import '../bloc/feed_state.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -21,59 +25,78 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leadingWidth: 80,
-        leading: TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(
-            'Hủy',
-            style: TextStyle(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w500,
-              fontSize: 16,
-            ),
-          ),
-        ),
-        title: Text(
-          'Tạo bài đăng',
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: TextButton(
-              onPressed: () {
-                // Return to feed
-                Navigator.of(context).pop();
-              },
-              style: TextButton.styleFrom(
-                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                minimumSize: Size.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: Text(
-                'Đăng',
-                style: TextStyle(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
+    return BlocListener<FeedBloc, FeedState>(
+      listener: (context, state) {
+        if (state is PostCreated) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('🎉 Đăng bài thành công!'), backgroundColor: Colors.green),
+          );
+          Navigator.of(context).pop();
+        } else if (state is PostCreateError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white.withValues(alpha: 0.9),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          leadingWidth: 80,
+          leading: TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Hủy',
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w500,
+                fontSize: 16,
               ),
             ),
           ),
-        ],
-      ),
+          title: Text(
+            'Tạo bài đăng',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton(
+                onPressed: () {
+                  final content = _contentController.text.trim();
+                  if (content.isNotEmpty) {
+                    context.read<FeedBloc>().add(
+                      CreatePostEvent(content: content),
+                    );
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                child: Text(
+                  'Đăng',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -282,8 +305,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _ActionBtn extends StatelessWidget {

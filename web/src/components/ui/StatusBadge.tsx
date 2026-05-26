@@ -12,7 +12,9 @@ type StatusVariant =
   | 'info'
   | 'warning'
   | 'success'
-  | 'error';
+  | 'error'
+  | 'admin'
+  | 'user';
 
 interface StatusBadgeProps {
   status: StatusVariant;
@@ -20,18 +22,20 @@ interface StatusBadgeProps {
 }
 
 const config: Record<StatusVariant, { bg: string; text: string; dot: string; defaultLabel: string }> = {
-  active:   { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400', defaultLabel: 'Hoạt động' },
-  inactive: { bg: 'bg-gray-500/15',    text: 'text-gray-400',    dot: 'bg-gray-400',    defaultLabel: 'Không hoạt động' },
-  banned:   { bg: 'bg-red-500/15',     text: 'text-red-400',     dot: 'bg-red-400',     defaultLabel: 'Bị cấm' },
-  pending:  { bg: 'bg-amber-500/15',   text: 'text-amber-400',   dot: 'bg-amber-400',   defaultLabel: 'Chờ duyệt' },
-  approved: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400', defaultLabel: 'Đã duyệt' },
-  rejected: { bg: 'bg-red-500/15',     text: 'text-red-400',     dot: 'bg-red-400',     defaultLabel: 'Từ chối' },
-  hidden:   { bg: 'bg-orange-500/15',  text: 'text-orange-400',  dot: 'bg-orange-400',  defaultLabel: 'Đã ẩn' },
-  visible:  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400', defaultLabel: 'Hiển thị' },
-  info:     { bg: 'bg-blue-500/15',    text: 'text-blue-400',    dot: 'bg-blue-400',    defaultLabel: 'Thông tin' },
-  warning:  { bg: 'bg-amber-500/15',   text: 'text-amber-400',   dot: 'bg-amber-400',   defaultLabel: 'Cảnh báo' },
-  success:  { bg: 'bg-emerald-500/15', text: 'text-emerald-400', dot: 'bg-emerald-400', defaultLabel: 'Thành công' },
-  error:    { bg: 'bg-red-500/15',     text: 'text-red-400',     dot: 'bg-red-400',     defaultLabel: 'Lỗi' },
+  active:   { bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-500',  defaultLabel: 'Hoạt động' },
+  inactive: { bg: 'bg-slate-100',   text: 'text-slate-600',    dot: 'bg-slate-400',    defaultLabel: 'Không hoạt động' },
+  banned:   { bg: 'bg-rose-50',     text: 'text-rose-700',     dot: 'bg-rose-500',     defaultLabel: 'Bị cấm' },
+  pending:  { bg: 'bg-amber-50',    text: 'text-amber-700',    dot: 'bg-amber-500',    defaultLabel: 'Chờ duyệt' },
+  approved: { bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-500',  defaultLabel: 'Đã duyệt' },
+  rejected: { bg: 'bg-rose-50',     text: 'text-rose-700',     dot: 'bg-rose-500',     defaultLabel: 'Từ chối' },
+  hidden:   { bg: 'bg-orange-50',   text: 'text-orange-700',   dot: 'bg-orange-500',   defaultLabel: 'Đã ẩn' },
+  visible:  { bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-500',  defaultLabel: 'Hiển thị' },
+  info:     { bg: 'bg-sky-50',      text: 'text-sky-700',      dot: 'bg-sky-500',      defaultLabel: 'Thông tin' },
+  warning:  { bg: 'bg-amber-50',    text: 'text-amber-700',    dot: 'bg-amber-500',    defaultLabel: 'Cảnh báo' },
+  success:  { bg: 'bg-emerald-50',  text: 'text-emerald-700',  dot: 'bg-emerald-500',  defaultLabel: 'Thành công' },
+  error:    { bg: 'bg-rose-50',     text: 'text-rose-700',     dot: 'bg-rose-500',     defaultLabel: 'Lỗi' },
+  admin:    { bg: 'bg-violet-50',   text: 'text-violet-700',   dot: 'bg-violet-500',   defaultLabel: 'Admin' },
+  user:     { bg: 'bg-indigo-50',   text: 'text-indigo-700',   dot: 'bg-indigo-500',   defaultLabel: 'Học viên' },
 };
 
 export default function StatusBadge({ status, label }: StatusBadgeProps) {

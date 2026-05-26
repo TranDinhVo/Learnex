@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/auth_bloc.dart';
+import '../bloc/auth_state.dart';
+import '../../../feed/presentation/screens/feed_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,6 +15,9 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _progressController;
+  bool _isTimerFinished = false;
+  bool _isAuthResolved = false;
+  AuthState? _resolvedState;
 
   @override
   void initState() {
@@ -20,14 +27,36 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       duration: const Duration(seconds: 2),
     )..forward();
 
-    // Chuyển sang LoginScreen sau 2.5s
+    // Check if Auth state is already resolved on startup
+    final currentState = context.read<AuthBloc>().state;
+    if (currentState is Authenticated || currentState is Unauthenticated || currentState is AuthError) {
+      _resolvedState = currentState;
+      _isAuthResolved = true;
+    }
+
+    // Minimum display timer for premium brand loading
     Timer(const Duration(milliseconds: 2500), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
+        setState(() {
+          _isTimerFinished = true;
+        });
+        _checkAndNavigate();
       }
     });
+  }
+
+  void _checkAndNavigate() {
+    if (!_isTimerFinished || !_isAuthResolved || !mounted) return;
+
+    if (_resolvedState is Authenticated) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const FeedScreen()),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
   @override
@@ -38,7 +67,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Authenticated || state is Unauthenticated || state is AuthError) {
+          _resolvedState = state;
+          _isAuthResolved = true;
+          _checkAndNavigate();
+        }
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
@@ -141,8 +178,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFaintCircle(double size) {
     return Container(

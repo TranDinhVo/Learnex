@@ -5,7 +5,10 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
   user: User;
 }
 
@@ -13,6 +16,7 @@ export interface LoginResponse {
 export interface User {
   _id: string;
   name: string;
+  username: string;
   email: string;
   avatar?: string;
   role: 'user' | 'admin';

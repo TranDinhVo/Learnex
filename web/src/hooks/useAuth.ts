@@ -9,7 +9,7 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: (data: LoginRequest) => authApi.login(data),
     onSuccess: (res) => {
-      setAuth(res.token, res.user);
+      setAuth(res.tokens.accessToken, res.user);
     },
   });
 

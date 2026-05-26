@@ -11,10 +11,15 @@ class FeedRemoteDatasource {
   Future<Map<String, dynamic>> getFeed({
     int page = 1,
     int limit = 20,
+    String? userId,
   }) async {
     final response = await _dio.get(
       ApiEndpoints.feed,
-      queryParameters: {'page': page, 'limit': limit},
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (userId != null) 'userId': userId,
+      },
     );
     return response.data as Map<String, dynamic>;
   }

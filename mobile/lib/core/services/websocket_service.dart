@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/api_interceptor.dart';
@@ -31,8 +33,16 @@ class WebSocketService {
   int _reconnectAttempts = 0;
   static const int _maxBackoffSeconds = 30;
 
-  // Mặc định ws URL cho Android emulator
-  static const String _defaultWsUrl = 'ws://10.0.2.2:8080/api';
+  // Mặc định ws URL tự động nhận diện nền tảng
+  static String get _defaultWsUrl {
+    if (kIsWeb) {
+      return 'ws://localhost:8080/api';
+    }
+    if (Platform.isAndroid) {
+      return 'ws://10.0.2.2:8080/api';
+    }
+    return 'ws://localhost:8080/api';
+  }
 
   WebSocketService({
     required FlutterSecureStorage storage,

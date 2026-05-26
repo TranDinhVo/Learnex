@@ -19,10 +19,10 @@ interface DataTableProps<T> {
 
 function SkeletonRow({ cols }: { cols: number }) {
   return (
-    <tr className="border-b border-white/5">
+    <tr className="border-b border-slate-100">
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-5 py-4">
-          <div className="h-4 w-3/4 animate-pulse rounded bg-gray-700/50" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-slate-100" />
         </td>
       ))}
     </tr>
@@ -38,15 +38,15 @@ export default function DataTable<T>({
   onRowClick,
 }: DataTableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200/60 bg-white shadow-sm">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-white/10 bg-white/5">
+          <tr className="border-b border-slate-200/60 bg-slate-50/50">
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={clsx(
-                  'px-5 py-4 text-xs font-semibold uppercase tracking-wider text-gray-400',
+                  'px-5 py-4 text-xs font-bold uppercase tracking-wider text-slate-500',
                   col.className,
                 )}
               >
@@ -64,10 +64,10 @@ export default function DataTable<T>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="px-5 py-16 text-center text-gray-500"
+                className="px-5 py-16 text-center text-slate-400"
               >
                 <div className="flex flex-col items-center gap-2">
-                  <svg className="h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-12 w-12 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                   </svg>
                   {emptyMessage}
@@ -80,16 +80,16 @@ export default function DataTable<T>({
                 key={keyExtractor(item)}
                 onClick={() => onRowClick?.(item)}
                 className={clsx(
-                  'border-b border-white/5 transition-colors duration-150',
-                  idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]',
+                  'border-b border-slate-100 transition-colors duration-150',
+                  idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-50/10',
                   onRowClick && 'cursor-pointer',
-                  'hover:bg-white/[0.06]',
+                  'hover:bg-slate-50/70',
                 )}
               >
                 {columns.map((col) => (
                   <td
                     key={col.key}
-                    className={clsx('px-5 py-4 text-gray-300', col.className)}
+                    className={clsx('px-5 py-4 text-slate-600 font-medium', col.className)}
                   >
                     {col.render
                       ? col.render(item)

@@ -21,6 +21,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<LoadCommentsEvent>(_onLoadComments);
     on<AddCommentEvent>(_onAddComment);
     on<DeleteCommentEvent>(_onDeleteComment);
+    on<UpdatePostInListEvent>(_onUpdatePostInList);
   }
 
   Future<void> _onLoadFeed(
@@ -116,10 +117,27 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     Emitter<FeedState> emit,
   ) async {
     try {
+      final currentState = state;
+      if (currentState is FeedLoaded) {
+        final updatedPosts = currentState.posts.map((post) {
+          if (post['id'].toString() == event.postId) {
+            final isCurrentlyLiked = post['is_liked'] == true;
+            final currentLikeCount = post['like_count'] as int? ?? 0;
+            return {
+              ...post,
+              'is_liked': !isCurrentlyLiked,
+              'like_count': isCurrentlyLiked
+                  ? (currentLikeCount > 0 ? currentLikeCount - 1 : 0)
+                  : currentLikeCount + 1,
+            };
+          }
+          return post;
+        }).toList();
+        emit(currentState.copyWith(posts: updatedPosts));
+      }
       await _repository.toggleLike(event.postId);
-      // Có thể update state cục bộ nếu cần tối ưu
     } catch (_) {
-      // Bỏ qua lỗi like
+      // Revert or ignore
     }
   }
 
@@ -128,6 +146,20 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     Emitter<FeedState> emit,
   ) async {
     try {
+      final currentState = state;
+      if (currentState is FeedLoaded) {
+        final updatedPosts = currentState.posts.map((post) {
+          if (post['id'].toString() == event.postId) {
+            final isCurrentlySaved = post['is_saved'] == true;
+            return {
+              ...post,
+              'is_saved': !isCurrentlySaved,
+            };
+          }
+          return post;
+        }).toList();
+        emit(currentState.copyWith(posts: updatedPosts));
+      }
       await _repository.toggleSave(event.postId);
     } catch (_) {}
   }
@@ -175,6 +207,22 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       await _repository.deleteComment(event.postId, event.commentId);
       add(LoadCommentsEvent(postId: event.postId));
     } catch (_) {}
+  }
+
+  void _onUpdatePostInList(
+    UpdatePostInListEvent event,
+    Emitter<FeedState> emit,
+  ) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final updatedPosts = currentState.posts.map((post) {
+        if (post['id'].toString() == event.updatedPost['id'].toString()) {
+          return event.updatedPost;
+        }
+        return post;
+      }).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    }
   }
 
   // ── Helpers ──

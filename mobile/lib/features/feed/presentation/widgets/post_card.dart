@@ -16,6 +16,13 @@ class PostCard extends StatelessWidget {
   final String? imageUrl;
   final int likes;
   final int comments;
+  final VoidCallback? onAuthorTap;
+  final bool isLiked;
+  final bool isSaved;
+  final VoidCallback? onLikeTap;
+  final VoidCallback? onCommentTap;
+  final VoidCallback? onSaveTap;
+  final VoidCallback? onShareTap;
 
   const PostCard({
     super.key,
@@ -32,6 +39,13 @@ class PostCard extends StatelessWidget {
     this.imageUrl,
     required this.likes,
     required this.comments,
+    this.onAuthorTap,
+    this.isLiked = false,
+    this.isSaved = false,
+    this.onLikeTap,
+    this.onCommentTap,
+    this.onSaveTap,
+    this.onShareTap,
   });
 
   @override
@@ -95,45 +109,49 @@ class PostCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: avatarColor,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                authorInitials,
-                style: TextStyle(
-                  color: avatarTextColor,
-                  fontWeight: FontWeight.bold,
+        GestureDetector(
+          onTap: onAuthorTap,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: avatarColor,
+                  shape: BoxShape.circle,
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  authorName,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  '$authorHandle · $timeAgo',
+                alignment: Alignment.center,
+                child: Text(
+                  authorInitials,
                   style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: avatarTextColor,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    authorName,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    '$authorHandle · $timeAgo',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         IconButton(
           icon: Icon(Icons.more_horiz, color: theme.colorScheme.onSurfaceVariant),
@@ -215,31 +233,65 @@ class PostCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildActionLabel(Icons.favorite, 'Thích', theme.colorScheme.primary),
-            _buildActionLabel(Icons.chat_bubble_outline, 'Bình luận', theme.colorScheme.onSurfaceVariant),
-            _buildActionLabel(Icons.bookmark_outline, '', theme.colorScheme.onSurfaceVariant),
-            _buildActionLabel(Icons.share, '', theme.colorScheme.onSurfaceVariant),
+            _buildActionButton(
+              icon: isLiked ? Icons.favorite : Icons.favorite_border,
+              label: 'Thích',
+              color: isLiked ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              onTap: onLikeTap,
+            ),
+            _buildActionButton(
+              icon: Icons.chat_bubble_outline,
+              label: 'Bình luận',
+              color: theme.colorScheme.onSurfaceVariant,
+              onTap: onCommentTap,
+            ),
+            _buildActionButton(
+              icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
+              label: '',
+              color: isSaved ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+              onTap: onSaveTap,
+            ),
+            _buildActionButton(
+              icon: Icons.share_outlined,
+              label: '',
+              color: theme.colorScheme.onSurfaceVariant,
+              onTap: onShareTap,
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildActionLabel(IconData icon, String label, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: color),
-        if (label.isNotEmpty) const SizedBox(width: 8),
-        if (label.isNotEmpty)
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: color,
-            ),
-          ),
-      ],
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: color),
+            if (label.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

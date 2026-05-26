@@ -75,14 +75,17 @@ export const postService = {
 
   async getFeed(
     pagination: PaginationParams,
-    currentUserId?: string
+    currentUserId?: string,
+    targetUserId?: string
   ): Promise<{ data: any[]; total: number }> {
-    const [{ count }] = await db('posts')
-      .where('is_deleted', false)
-      .count('* as count');
+    const baseQuery = db('posts').where('is_deleted', false);
+    if (targetUserId) {
+      baseQuery.where('user_id', targetUserId);
+    }
+    const [{ count }] = await baseQuery.clone().count('* as count');
     const total = parseInt(count as string, 10);
 
-    const posts = await db('posts as p')
+    const postsQuery = db('posts as p')
       .select(
         'p.*',
         'u.full_name as author_name',
@@ -96,6 +99,12 @@ export const postService = {
       .orderBy('p.created_at', 'desc')
       .limit(pagination.limit)
       .offset((pagination.page - 1) * pagination.limit);
+
+    if (targetUserId) {
+      postsQuery.where('p.user_id', targetUserId);
+    }
+
+    const posts = await postsQuery;
 
     if (currentUserId) {
       for (const post of posts) {

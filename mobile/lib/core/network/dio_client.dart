@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_interceptor.dart';
@@ -9,8 +11,18 @@ import 'api_interceptor.dart';
 class DioClient {
   const DioClient._();
 
-  /// Base URL mặc định cho Android emulator
-  static const String _defaultBaseUrl = 'http://10.0.2.2:8080/api';
+  /// Base URL mặc định tự động nhận diện nền tảng
+  static String get _defaultBaseUrl {
+    if (kIsWeb) {
+      return 'http://localhost:8080/api';
+    }
+    if (Platform.isAndroid) {
+      // 10.0.2.2 trỏ về localhost của máy tính host từ Android emulator.
+      // Nếu chạy máy thật, đổi thành IP mạng LAN của máy tính (ví dụ: 'http://192.168.1.5:8080/api')
+      return 'http://10.0.2.2:8080/api';
+    }
+    return 'http://localhost:8080/api'; // iOS simulator hoặc Web/Khác
+  }
 
   /// Tạo Dio instance với interceptor Auth + Log.
   static Dio create({

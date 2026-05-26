@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import '../../../../app/di.dart';
+import '../../../../shared/utils/date_formatter.dart';
+import 'post_detail_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -8,87 +12,136 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  late final List<_NotificationItemData> _newNotifications;
-  final List<_NotificationItemData> _olderNotifications = const [
-    _NotificationItemData(
-      name: 'Minh Hoàng',
-      message: 'đã đăng một tài liệu mới trong lớp Lịch sử kiến trúc.',
-      timeAgo: '2 giờ trước',
-      icon: Icons.school,
-      iconBackground: Color(0xFF58579B),
-      avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBXOF6SeKkFCHdOtPiTVupXVCxOVPBplDwV11hu3CZ59DxMRjB1xn-FeofUPAlPSBmcyEW-a3N3im8skltO_-_px0T-TlCNIXe69fesrfHDQJ2jew3h1G0DMDk-fJc2qrECyTfi00G1OtKGJpJxtFDx4RQcH1O879Vy_IyBooovZjntO_NgVa5isPHZOVkRQH-JgmgoZtUfiLkHUe41-wXoJ-DZpk0aKKlwmeRAdLlMxaCODcu-EdsnSX8BH4DMjUSoyPGbIS83s58',
-      avatarBackground: Color(0xFFF3F4F5),
-      isUnread: false,
-      avatarGrayscale: true,
-    ),
-    _NotificationItemData(
-      name: 'Mai Anh',
-      message: 'đã chia sẻ bài viết của bạn với nhóm Nghiên cứu.',
-      timeAgo: '5 giờ trước',
-      icon: Icons.share,
-      iconBackground: Color(0xFFC3C0FF),
-      avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAYJMeOYtRPb6Flavl75hTAc64pjv5L8QIcVwjNdiPj7Tfdxp03cUS3uPK4QW_x6_lAlaMb6PYMu3RzeV658j0JaUqV9Q12vyDs8r_y_uTrGyJ67qvOHqtBzqYp4vaVsFbaQB7sTgDb2Ah6Pf58VkhCHsOajnsCow7SIIBF6Z5BdtyRIzZY75mhaxrHYe9qWkcIj2Y3ojXX55bg_EXC6EH8tYVKpxB7IfwNdy_Ov5B9MBvW-9b3K7sK5l_7Gc9YZIB56H8_qqomO6k',
-      avatarBackground: Color(0xFFF3F4F5),
-      isUnread: false,
-      avatarGrayscale: true,
-    ),
-    _NotificationItemData(
-      name: 'Đức Anh',
-      message: 'đã bình luận vào bài đăng của bạn.',
-      timeAgo: 'Hôm qua',
-      icon: Icons.star,
-      iconBackground: Color(0xFFA44100),
-      avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA6gK6o_O4QbIq6filgWaFi2eEhs1VayTdjzwzd-t1MZ9otWF2cE1aPsky5EeGRrjm0QfW05lVfWqArkqi8iCpDeM5SvrXbXO0tJpLutP1rv4PcIPqIGLPqoi0btUCnSHYrIHsA6FwiVYZFfWTyLTIYkGqww40Pfsi5JZKNgH1O4I63J4fXcY4_mzX43JsABh7e64_Icrvl_MTZMPdNSiqwNxmzLnRZAoBd4fCvLahafIR5oipvNs4SOxdJM9zRipUhnBel6cb8xKY',
-      avatarBackground: Color(0xFFF3F4F5),
-      isUnread: false,
-      avatarGrayscale: true,
-    ),
-  ];
+  List<_NotificationItemData> _notifications = [];
+  bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _newNotifications = [
-      _NotificationItemData(
-        name: 'Anh Nam',
-        message: 'đã thích bài đăng của bạn',
-        timeAgo: '2 phút trước',
-        icon: Icons.favorite,
-        iconBackground: const Color(0xFFBA1A1A),
-        avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCc3pB7Js-XMXn3M73Mta3J05tck9CvIJj58efRGnKYOD0m4Q5HpDqtbi7xD9tYvly59vTBpkNj7hxtFl7hbMVQITP7ALFXQwjgr-S6eADztqSU0GY5vNYgmaaTxDg854gVdqgQQV_FDZnyXjmzo_kf0kXgBXPOAv6pe1b5c6R1lg6Z7sSpQ-0c3ecLrVhcp43KHXA9AyIzwx4nKEphCPV-kQbM94i_PMsOyauGqIMDf7e6pPmUdcREAHJcdVq82nCqA83dSaN18Ik',
-        avatarBackground: const Color(0xFFEDEEFF),
-        isUnread: true,
-      ),
-      _NotificationItemData(
-        name: 'Thanh Trúc',
-        message: 'đã bình luận về bộ sưu tập Tài liệu Toán học của bạn.',
-        timeAgo: '15 phút trước',
-        icon: Icons.chat_bubble,
-        iconBackground: const Color(0xFF3525CD),
-        avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAPm7lEktsbDzk-AqrFLqosJrFyPIeDHfYDzGgAQw-DKPKI9ip88YhdQoLt_le_2eQ5l65p3LQu4uHM6Ke19a0sjQV7rUXL9k3BCa9__F_ujChen45yvgkQ4vrfzKbin3YKb08ZEcJYkVD3_NPNKyMZKTuvpxYEifnWizHEuCopu-zMgg57_RSrTfYiETWggXczffQ8Q_CARaQO8iPsTwppIAlmi6UprQqeoIprRXkwkxsxg9KlsH08b60Fk8_2p6Z2IXstKMEoth0',
-        avatarBackground: const Color(0xFFEDEEFF),
-        isUnread: true,
-      ),
-    ];
+    _loadNotifications();
   }
 
-  List<_NotificationItemData> get _visibleNewNotifications =>
-      _newNotifications.where((item) => item.isUnread).toList(growable: false);
+  Future<void> _loadNotifications() async {
+    try {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
 
-  void _markAllAsRead() {
+      final response = await getIt<Dio>().get('/notifications?page=1&limit=50');
+      final list = response.data['data'] as List<dynamic>? ?? [];
+
+      setState(() {
+        _notifications = list.map((json) {
+          final bodyText = json['body']?.toString() ?? '';
+          
+          // Parse name and Vietnamese message from body text
+          String parsedName = 'Học viên';
+          String parsedMessage = bodyText;
+          if (bodyText.contains(' liked your post.')) {
+            parsedName = bodyText.split(' liked your post.').first;
+            parsedMessage = 'đã thích bài đăng của bạn';
+          } else if (bodyText.contains(' commented on your post.')) {
+            parsedName = bodyText.split(' commented on your post.').first;
+            parsedMessage = 'đã bình luận vào bài đăng của bạn';
+          } else if (bodyText.contains(' sent you a friend request.')) {
+            parsedName = bodyText.split(' sent you a friend request.').first;
+            parsedMessage = 'đã gửi lời mời kết bạn cho bạn';
+          } else if (bodyText.contains(' accepted your friend request.')) {
+            parsedName = bodyText.split(' accepted your friend request.').first;
+            parsedMessage = 'đã đồng ý kết bạn';
+          } else {
+            final words = bodyText.split(' ');
+            if (words.length > 2) {
+              parsedName = words.take(2).join(' ');
+              parsedMessage = words.skip(2).join(' ');
+            }
+          }
+
+          // Choose icon and colors based on notification type
+          final type = json['type']?.toString() ?? 'default';
+          IconData iconData = Icons.notifications;
+          Color iconBg = const Color(0xFF777587);
+          if (type == 'like') {
+            iconData = Icons.favorite;
+            iconBg = const Color(0xFFBA1A1A);
+          } else if (type == 'comment') {
+            iconData = Icons.chat_bubble;
+            iconBg = const Color(0xFF3525CD);
+          } else if (type == 'friend_request') {
+            iconData = Icons.person_add;
+            iconBg = const Color(0xFF10B981);
+          } else if (type == 'friend_accept') {
+            iconData = Icons.people;
+            iconBg = const Color(0xFF10B981);
+          } else if (type == 'message') {
+            iconData = Icons.chat;
+            iconBg = const Color(0xFF4F46E5);
+          }
+
+          return _NotificationItemData(
+            id: json['id']?.toString() ?? '',
+            name: parsedName,
+            message: parsedMessage,
+            timeAgo: formatTimeAgo(json['created_at']?.toString()),
+            icon: iconData,
+            iconBackground: iconBg,
+            avatarUrl: '', // Will fallback to initials in UI
+            avatarBackground: const Color(0xFFEDEEFF),
+            isUnread: json['is_read'] != true,
+            refType: json['ref_type']?.toString(),
+            refId: json['ref_id']?.toString(),
+          );
+        }).toList();
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Không thể tải danh sách thông báo.';
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _markAsRead(String id) async {
+    // Optimistic update
     setState(() {
-      _newNotifications.replaceRange(
-        0,
-        _newNotifications.length,
-        _newNotifications.map((item) => item.copyWith(isUnread: false)).toList(growable: false),
-      );
+      _notifications = _notifications.map((item) {
+        if (item.id == id) {
+          return item.copyWith(isUnread: false);
+        }
+        return item;
+      }).toList();
     });
+
+    try {
+      await getIt<Dio>().post('/notifications/$id/read');
+    } catch (_) {
+      // Revert or ignore
+    }
   }
+
+  Future<void> _markAllAsRead() async {
+    setState(() {
+      _notifications = _notifications.map((item) => item.copyWith(isUnread: false)).toList();
+    });
+
+    try {
+      await getIt<Dio>().post('/notifications/read-all');
+    } catch (_) {}
+  }
+
+  List<_NotificationItemData> get _newNotifications =>
+      _notifications.where((item) => item.isUnread).toList();
+
+  List<_NotificationItemData> get _olderNotifications =>
+      _notifications.where((item) => !item.isUnread).toList();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final unreadCount = _visibleNewNotifications.length;
+    final unreadCount = _newNotifications.length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -105,7 +158,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 leadingWidth: 56,
                 titleSpacing: 8,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                   color: const Color(0xFF4F46E5),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
@@ -126,54 +179,109 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   const SizedBox(width: 8),
                 ],
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate(
-                    [
-                      _NotificationSection(
-                        title: 'Mới',
-                        child: Column(
-                          children: [
-                            if (_visibleNewNotifications.isEmpty)
-                              const _EmptyStateCard(
-                                icon: Icons.notifications_off_outlined,
-                                title: 'Không còn thông báo mới',
-                                subtitle: 'Những cập nhật mới sẽ xuất hiện ở đây.',
-                              )
-                            else
-                              ..._visibleNewNotifications.map(
-                                (item) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: _NotificationTile(item: item, unread: true),
+              if (_loading)
+                const SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!, style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                          onPressed: _loadNotifications,
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(
+                      [
+                        _NotificationSection(
+                          title: 'Mới',
+                          child: Column(
+                            children: [
+                              if (_newNotifications.isEmpty)
+                                const _EmptyStateCard(
+                                  icon: Icons.notifications_off_outlined,
+                                  title: 'Không còn thông báo mới',
+                                  subtitle: 'Những cập nhật mới sẽ xuất hiện ở đây.',
+                                )
+                              else
+                                ..._newNotifications.map(
+                                  (item) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _NotificationTile(
+                                      item: item,
+                                      unread: true,
+                                      onTap: () {
+                                        _markAsRead(item.id);
+                                        _handleNotificationTap(item);
+                                      },
+                                    ),
+                                  ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      _NotificationSection(
-                        title: 'Trước đó',
-                        child: Column(
-                          children: [
-                            ..._olderNotifications.map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _NotificationTile(item: item, unread: false),
-                              ),
-                            ),
-                          ],
+                        const SizedBox(height: 16),
+                        _NotificationSection(
+                          title: 'Trước đó',
+                          child: Column(
+                            children: [
+                              if (_olderNotifications.isEmpty)
+                                const _EmptyStateCard(
+                                  icon: Icons.history,
+                                  title: 'Chưa có thông báo cũ',
+                                  subtitle: 'Thông báo đã đọc sẽ hiển thị tại đây.',
+                                )
+                              else
+                                ..._olderNotifications.map(
+                                  (item) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: _NotificationTile(
+                                      item: item,
+                                      unread: false,
+                                      onTap: () => _handleNotificationTap(item),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  void _handleNotificationTap(_NotificationItemData item) async {
+    if (item.refType == 'post' && item.refId != null) {
+      try {
+        final res = await getIt<Dio>().get('/posts/${item.refId}');
+        final post = res.data['data'] ?? res.data;
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PostDetailScreen(post: post),
+            ),
+          );
+        }
+      } catch (_) {}
+    }
   }
 }
 
@@ -254,10 +362,15 @@ class _NotificationSection extends StatelessWidget {
 }
 
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.item, required this.unread});
+  const _NotificationTile({
+    required this.item,
+    required this.unread,
+    required this.onTap,
+  });
 
   final _NotificationItemData item;
   final bool unread;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +396,7 @@ class _NotificationTile extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () {},
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -440,7 +553,7 @@ class _EmptyStateCard extends StatelessWidget {
               color: Color(0xFFF3F4F5),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: Color(0xFF4F46E5)),
+            child: Icon(icon, color: const Color(0xFF4F46E5)),
           ),
           const SizedBox(height: 14),
           Text(
@@ -467,6 +580,7 @@ class _EmptyStateCard extends StatelessWidget {
 
 class _NotificationItemData {
   const _NotificationItemData({
+    required this.id,
     required this.name,
     required this.message,
     required this.timeAgo,
@@ -476,8 +590,11 @@ class _NotificationItemData {
     required this.avatarBackground,
     required this.isUnread,
     this.avatarGrayscale = false,
+    this.refType,
+    this.refId,
   });
 
+  final String id;
   final String name;
   final String message;
   final String timeAgo;
@@ -487,9 +604,12 @@ class _NotificationItemData {
   final Color avatarBackground;
   final bool isUnread;
   final bool avatarGrayscale;
+  final String? refType;
+  final String? refId;
 
   _NotificationItemData copyWith({bool? isUnread}) {
     return _NotificationItemData(
+      id: id,
       name: name,
       message: message,
       timeAgo: timeAgo,
@@ -499,6 +619,8 @@ class _NotificationItemData {
       avatarBackground: avatarBackground,
       isUnread: isUnread ?? this.isUnread,
       avatarGrayscale: avatarGrayscale,
+      refType: refType,
+      refId: refId,
     );
   }
 }

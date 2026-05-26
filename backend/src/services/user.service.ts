@@ -9,8 +9,31 @@ const USER_PUBLIC_FIELDS = [
   'bio', 'school', 'major', 'role', 'created_at',
 ];
 
+async function getUserStats(userId: string): Promise<{ friends_count: number; documents_count: number; posts_count: number }> {
+  const [{ count: friendsCount }] = await db('friendships')
+    .where(function () {
+      this.where({ requester_id: userId }).orWhere({ addressee_id: userId });
+    })
+    .andWhere({ status: 'accepted' })
+    .count('* as count');
+
+  const [{ count: documentsCount }] = await db('documents')
+    .where({ user_id: userId })
+    .count('* as count');
+
+  const [{ count: postsCount }] = await db('posts')
+    .where({ user_id: userId, is_deleted: false })
+    .count('* as count');
+
+  return {
+    friends_count: parseInt(friendsCount as string, 10) || 0,
+    documents_count: parseInt(documentsCount as string, 10) || 0,
+    posts_count: parseInt(postsCount as string, 10) || 0,
+  };
+}
+
 export const userService = {
-  async getMe(userId: string): Promise<UserPublic> {
+  async getMe(userId: string): Promise<any> {
     const user = await db('users')
       .select(USER_PUBLIC_FIELDS)
       .where({ id: userId })
@@ -20,7 +43,8 @@ export const userService = {
       throw new AppError('User not found.', 404);
     }
 
-    return user;
+    const stats = await getUserStats(userId);
+    return { ...user, ...stats };
   },
 
   async updateProfile(
@@ -64,7 +88,7 @@ export const userService = {
     return user;
   },
 
-  async getUserById(userId: string): Promise<UserPublic> {
+  async getUserById(userId: string): Promise<any> {
     const user = await db('users')
       .select(USER_PUBLIC_FIELDS)
       .where({ id: userId })
@@ -74,7 +98,8 @@ export const userService = {
       throw new AppError('User not found.', 404);
     }
 
-    return user;
+    const stats = await getUserStats(userId);
+    return { ...user, ...stats };
   },
 
   async searchUsers(

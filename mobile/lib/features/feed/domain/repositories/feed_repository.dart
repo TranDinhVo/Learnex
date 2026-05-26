@@ -2,7 +2,7 @@
 /// Định nghĩa contract giữa domain và data layer.
 abstract class FeedRepository {
   /// Lấy danh sách bài viết feed, có phân trang
-  Future<Map<String, dynamic>> getFeed({int page = 1, int limit = 20});
+  Future<Map<String, dynamic>> getFeed({int page = 1, int limit = 20, String? userId});
 
   /// Lấy danh sách bài viết đã lưu
   Future<Map<String, dynamic>> getSavedPosts({int page = 1, int limit = 20});
