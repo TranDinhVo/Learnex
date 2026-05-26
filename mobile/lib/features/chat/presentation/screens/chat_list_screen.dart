@@ -67,11 +67,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 100),
-            child: Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Search Bar
@@ -251,35 +249,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ],
             ),
-          ),
-
-          // Bottom Navigation overlay
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: AppBottomNavBar(
-              currentIndex: 3,
-              onHomeTap: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const FeedScreen()),
-                );
-              },
-              onFolderTap: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
-                );
-              },
-              onAddTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-                );
-              },
-              onChatTap: () {},
-              onMeetingTap: () => _goRooms(context),
-            ),
-          ),
-        ],
+      ),
+      bottomNavigationBar: AppBottomNavBar(
+        currentIndex: 3,
+        onHomeTap: () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const FeedScreen()),
+          );
+        },
+        onFolderTap: () {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
+          );
+        },
+        onAddTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+          );
+        },
+        onChatTap: () {},
+        onMeetingTap: () => _goRooms(context),
       ),
     );
   }
