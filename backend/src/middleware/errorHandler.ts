@@ -1,41 +1,55 @@
-import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/AppError';
+import { Request, Response, NextFunction } from "express";
+import AppError from "@/utils/AppError";
+import logger from "@/utils/logger";
 
-// Handle specific database/library errors here if needed
-const handleJWTError = () => new AppError('Invalid token. Please log in again!', 401);
-const handleJWTExpiredError = () => new AppError('Your token has expired! Please log in again.', 401);
+export interface IGlobalError extends Error {
+  statusCode?: number;
+  status?: string;
+  isOperational?: boolean;
+  details?: string[];
+}
 
-export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
-  err.statusCode = err.statusCode || 500;
-  err.status = err.status || 'error';
+export function globalErrorHandler(
+  err: IGlobalError,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+) {
+  let error = err;
 
-  let error = { ...err, message: err.message };
-
-  if (err.name === 'JsonWebTokenError') error = handleJWTError();
-  if (err.name === 'TokenExpiredError') error = handleJWTExpiredError();
-
-  if (process.env.NODE_ENV === 'development') {
-    res.status(err.statusCode).json({
-      status: err.status,
-      error: err,
-      message: err.message,
-      stack: err.stack,
-    });
-  } else {
-    // Production
-    if (error.isOperational) {
-      // Trusted operational error: send message to client
-      res.status(error.statusCode).json({
-        status: error.status,
-        message: error.message,
-      });
-    } else {
-      // Programming or other unknown error: don't leak error details
-      console.error('ERROR 💥', err);
-      res.status(500).json({
-        status: 'error',
-        message: 'Something went very wrong!',
-      });
-    }
+  // Chuẩn hoá lỗi không xác định thành AppError
+  if (!(err instanceof AppError)) {
+    error = new AppError(
+      err.message || "Internal Server Error",
+      err.statusCode || 500,
+      false
+    );
   }
-};
+
+  // Chỉ log lỗi server / lỗi không kiểm soát
+  if ((error.statusCode && error.statusCode >= 500) || !error.isOperational) {
+    logger.error(error);
+  }
+
+  const statusCode = error.statusCode || 500; 
+  const isDev = process.env.NODE_ENV === "development";
+
+  // DEV: trả full thông tin để debug
+  if (isDev) {
+    return res.status(statusCode).json({
+      success: false,
+      statusCode,
+      message: error.message,
+      details: error.details,
+      stack: error.stack,
+    });
+  }
+
+  // PROD: chỉ trả lỗi an toàn
+  res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message: error.isOperational ? error.message : "Internal Server Error",
+    ...(error.details && { details: error.details }),
+  });
+}

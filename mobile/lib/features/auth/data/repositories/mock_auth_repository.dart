@@ -5,7 +5,7 @@ import '../../../feed/data/repositories/mock_feed_repository.dart';
 class MockAuthRepository implements AuthRepository {
   // Static Dio instance for simple, unified API client
   static final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost:8080/api',
+    baseUrl: 'http://localhost:8080/api/v1',
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     headers: {

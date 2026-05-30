@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AppError } from '../utils/AppError';
-import { TokenPayload } from '../models/types';
+import { AppError } from '@/utils/AppError';
+import { TokenPayload } from '@/module/common/common.type';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -46,3 +46,4 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
     next();
   }
 };
+

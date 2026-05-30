@@ -14,14 +14,14 @@ class DioClient {
   /// Base URL mặc định tự động nhận diện nền tảng
   static String get _defaultBaseUrl {
     if (kIsWeb) {
-      return 'http://localhost:8080/api';
+      return 'http://localhost:8080/api/v1';
     }
     if (Platform.isAndroid) {
       // 10.0.2.2 trỏ về localhost của máy tính host từ Android emulator.
-      // Nếu chạy máy thật, đổi thành IP mạng LAN của máy tính (ví dụ: 'http://192.168.1.5:8080/api')
-      return 'http://10.0.2.2:8080/api';
+      // Nếu chạy máy thật, đổi thành IP mạng LAN của máy tính (ví dụ: 'http://192.168.1.5:8080/api/v1')
+      return 'http://10.0.2.2:8080/api/v1';
     }
-    return 'http://localhost:8080/api'; // iOS simulator hoặc Web/Khác
+    return 'http://localhost:8080/api/v1'; // iOS simulator hoặc Web/Khác
   }
 
   /// Tạo Dio instance với interceptor Auth + Log.

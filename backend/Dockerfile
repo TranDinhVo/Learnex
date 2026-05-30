@@ -26,6 +26,7 @@ COPY --from=builder /app/dist ./dist
 
 # Create non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN mkdir -p /app/logs && chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 8080

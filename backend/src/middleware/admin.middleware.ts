@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/AppError';
+import { AppError } from '@/utils/AppError';
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
@@ -12,3 +12,4 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
 
   next();
 };
+

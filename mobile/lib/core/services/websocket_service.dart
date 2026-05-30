@@ -36,12 +36,12 @@ class WebSocketService {
   // Mặc định ws URL tự động nhận diện nền tảng
   static String get _defaultWsUrl {
     if (kIsWeb) {
-      return 'ws://localhost:8080/api';
+      return 'ws://localhost:8080/api/v1';
     }
     if (Platform.isAndroid) {
-      return 'ws://10.0.2.2:8080/api';
+      return 'ws://10.0.2.2:8080/api/v1';
     }
-    return 'ws://localhost:8080/api';
+    return 'ws://localhost:8080/api/v1';
   }
 
   WebSocketService({

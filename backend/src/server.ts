@@ -1,44 +1,44 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import "dotenv/config";
+import "reflect-metadata";
 
-import http from 'http';
-import app from './app';
-import { checkDatabaseConnection } from './config/database';
-import { connectRedis } from './config/redis';
-import { webSocketService } from './services/websocket.service';
+import app from "@/app";
+import clientRoute from "@/api/v1/routes/index.route";
+import { globalErrorHandler } from "@/middleware/errorHandler";
+import cookieParser from "cookie-parser";
+import express from "express";
+import { connectRedis } from "@/config/redis";
+import "@/config/cloudinary";
 
-// --- Handle Uncaught Exceptions ---
-process.on('uncaughtException', (err) => {
-  console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');
-  console.log(err.name, err.message);
-  process.exit(1);
-});
+import http from "http";
+// // import { initSocket } from "@/config/socket";
 
 const PORT = process.env.PORT || 8080;
-const server = http.createServer(app);
 
-const startServer = async () => {
-  // 1. Connect to Database & Redis before starting server
-  await checkDatabaseConnection();
-  await connectRedis();
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-  // 2. Setup WebSocket
-  webSocketService.initialize(server);
 
-  // 3. Start HTTP Server
-  server.listen(PORT, () => {
-    console.log(`LearnEx Backend is running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
+
+
+// Routes
+clientRoute(app);
+
+// Global Error Handler
+app.use(globalErrorHandler);
+
+async function startServer() {
+  // 1. Connect redis trước
+  // await connectRedis();
+
+  // 2. Tạo http server và khởi động socket + worker sau
+  const httpServer = http.createServer(app);
+  // // initSocket(httpServer);
+
+  // 3. Listen trên httpServer thay vì app.listen
+  httpServer.listen(PORT, () => {
+    console.log(`⚡ Server running at http://localhost:${PORT}`);
   });
-};
+}
 
 startServer();
-
-// --- Handle Unhandled Rejections ---
-process.on('unhandledRejection', (err: any) => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
-  console.log(err.name, err.message);
-  server.close(() => {
-    process.exit(1);
-  });
-});

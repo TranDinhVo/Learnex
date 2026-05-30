@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     networks: [learnex_net]
     ports:
-      - "6379:6379"
+      - "6380:6379"
     command: redis-server --requirepass learnex_redis_pass --appendonly yes
     volumes:
       - redis_data:/data

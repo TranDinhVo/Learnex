@@ -6,7 +6,7 @@ import '../../presentation/widgets/post_card.dart';
 class MockFeedRepository {
   // Static Dio instance for simple, unified API client
   static final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost:8080/api',
+    baseUrl: 'http://localhost:8080/api/v1',
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     headers: {

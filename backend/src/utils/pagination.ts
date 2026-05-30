@@ -1,5 +1,5 @@
 import { Knex } from 'knex';
-import { PaginationInfo } from '../models/types';
+import { PaginationInfo } from '@/module/common/common.type';
 
 export interface PaginationParams {
   page: number;

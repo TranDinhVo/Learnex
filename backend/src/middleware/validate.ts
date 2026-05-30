@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { validationResult, ContextRunner } from 'express-validator';
-import { AppError } from '../utils/AppError';
+import { AppError } from '@/utils/AppError';
 
 export const validate = (validations: ContextRunner[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -19,3 +19,4 @@ export const validate = (validations: ContextRunner[]) => {
     return next(new AppError(firstError, 400));
   };
 };
+
