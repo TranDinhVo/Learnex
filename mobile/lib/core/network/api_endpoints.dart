@@ -20,6 +20,9 @@ class ApiEndpoints {
   static const String searchUsers = '/users/search';
   static String userById(String id) => '/users/$id';
 
+  // ── Search ────────────────────────────────────────────────────────
+  static const String search = '/search';
+
   // ── Posts / Feed ─────────────────────────────────────────────────
   static const String feed = '/posts/feed';
   static const String savedPosts = '/posts/saved';
@@ -46,6 +49,7 @@ class ApiEndpoints {
   static String sendFriendRequest(String userId) => '/friends/request/$userId';
   static String acceptFriendRequest(String id) => '/friends/accept/$id';
   static String rejectFriendRequest(String id) => '/friends/reject/$id';
+  static const String friendSuggestions = '/friends/suggestions';
   static String unfriend(String userId) => '/friends/$userId';
 
   // ── Chat (Direct Messages) ──────────────────────────────────────
@@ -65,7 +69,7 @@ class ApiEndpoints {
   static String roomMessages(String id) => '/rooms/$id/messages';
 
   // ── Notifications ───────────────────────────────────────────────
-  static const String notifications = '/notifications';
+  static const String notifications = '/notifications';  
   static String markNotificationRead(String id) => '/notifications/$id/read';
   static const String markAllNotificationsRead = '/notifications/read-all';
   static const String registerFcmToken = '/notifications/fcm-token';

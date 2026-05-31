@@ -21,6 +21,7 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 
 import '../../../friends/presentation/bloc/friend_bloc.dart';
 import '../../../friends/presentation/bloc/friend_event.dart';
+import '../../../friends/presentation/screens/friends_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -79,25 +80,26 @@ class _FeedScreenState extends State<FeedScreen> {
                     ),
                     actions: [
                       IconButton(
-                        icon: Icon(
-                          Icons.search,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        icon: Icon(Icons.people_outline, color: theme.colorScheme.onSurfaceVariant),
+                        tooltip: 'Bạn bè',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const FriendsScreen()),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
                         onPressed: () {},
                       ),
                       Stack(
                         alignment: Alignment.center,
                         children: [
                           IconButton(
-                            icon: Icon(
-                              Icons.notifications_none,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                            icon: Icon(Icons.notifications_none, color: theme.colorScheme.onSurfaceVariant),
                             onPressed: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationScreen(),
-                                ),
+                                MaterialPageRoute(builder: (_) => const NotificationScreen()),
                               );
                             },
                           ),
@@ -110,10 +112,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.error,
                                 shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1.5,
-                                ),
+                                border: Border.all(color: Colors.white, width: 1.5),
                               ),
                             ),
                           ),

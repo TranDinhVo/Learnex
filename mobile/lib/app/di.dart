@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/network/dio_client.dart';
 import '../core/services/websocket_service.dart';
+import '../core/services/webrtc_service.dart';
 
 // Auth
 import '../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -46,6 +47,10 @@ void setupDependencies() {
 
   getIt.registerSingleton<WebSocketService>(
     WebSocketService(storage: getIt<FlutterSecureStorage>()),
+  );
+
+  getIt.registerSingleton<WebRTCService>(
+    WebRTCService(getIt<WebSocketService>()),
   );
 
   // ── Data Sources ──

@@ -24,6 +24,9 @@ router.put('/accept/:id', friendController.acceptRequest);
 // Reject friend request
 router.put('/reject/:id', friendController.rejectRequest);
 
+// Get friend suggestions
+router.get('/suggestions', friendController.getSuggestions);
+
 // Unfriend
 router.delete('/:userId', friendController.unfriend);
 

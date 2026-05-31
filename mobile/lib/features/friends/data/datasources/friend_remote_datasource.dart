@@ -52,8 +52,20 @@ class FriendRemoteDatasource {
   /// Tìm kiếm người dùng
   Future<Map<String, dynamic>> searchUsers(String query) async {
     final response = await _dio.get(
-      ApiEndpoints.searchUsers,
-      queryParameters: {'q': query},
+      ApiEndpoints.search,
+      queryParameters: {'q': query, 'type': 'users'},
+    );
+    // Backend trả về {users: [...], total: n} — chuẩn hoá thành {data: [...]}
+    final raw = response.data as Map<String, dynamic>;
+    final users = raw['users'] as List<dynamic>? ?? [];
+    return {'data': users};
+  }
+
+  /// Gợi ý kết bạn
+  Future<Map<String, dynamic>> getSuggestions({int page = 1, int limit = 20}) async {
+    final response = await _dio.get(
+      ApiEndpoints.friendSuggestions,
+      queryParameters: {'page': page, 'limit': limit},
     );
     return response.data as Map<String, dynamic>;
   }

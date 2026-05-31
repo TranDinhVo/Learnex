@@ -152,13 +152,46 @@ export class WebSocketService {
         break;
       }
 
-      case 'call_signal': {
-        const { receiverId, signal } = data;
-        this.sendToUser(receiverId, {
-          type: 'call_signal',
+      case 'join_call': {
+        const { roomId } = data;
+        const members = await roomService.getMembers(roomId);
+        // Notify other room members that this user is joining the call
+        for (const member of members) {
+          if (member.user_id !== senderId) {
+             this.sendToUser(member.user_id, {
+               type: 'user_joined_call',
+               data: { senderId, roomId }
+             });
+          }
+        }
+        break;
+      }
+
+      case 'leave_call': {
+        const { roomId } = data;
+        const members = await roomService.getMembers(roomId);
+        for (const member of members) {
+          if (member.user_id !== senderId) {
+             this.sendToUser(member.user_id, {
+               type: 'user_left_call',
+               data: { senderId, roomId }
+             });
+          }
+        }
+        break;
+      }
+
+      case 'webrtc_offer':
+      case 'webrtc_answer':
+      case 'webrtc_ice_candidate': {
+        const { targetId, sdp, candidate, roomId } = data;
+        this.sendToUser(targetId, {
+          type,
           data: {
-            senderId,
-            signal,
+            senderId, // Who is sending this signal
+            sdp,      // For offer/answer
+            candidate,// For ice_candidate
+            roomId
           },
         });
         break;
@@ -169,7 +202,7 @@ export class WebSocketService {
     }
   }
 
-  private sendToUser(userId: string, payload: any): void {
+  public sendToUser(userId: string, payload: any): void {
     const userConns = this.connections.get(userId);
     if (userConns) {
       const dataStr = JSON.stringify(payload);

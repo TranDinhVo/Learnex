@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../app/di.dart';
+import '../../../../app/routes.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../widgets/my_room_card.dart';
@@ -218,12 +220,14 @@ class _RoomListScreenState extends State<RoomListScreen> {
         _isLoading = true;
       });
 
+      // Owner vào phòng trực tiếp, không cần gọi join
       if (isOwner) {
+        setState(() => _isLoading = false);
         _enterRoom(room);
         return;
       }
 
-      // Call join endpoint
+      // Thử gọi join endpoint
       await dio.post('/rooms/$roomId/join');
 
       if (mounted) {
@@ -235,15 +239,27 @@ class _RoomListScreenState extends State<RoomListScreen> {
         );
       }
       _loadRooms();
+      // Sau khi join thành công cũng vào thẳng phòng
+      if (mounted) _enterRoom(room);
     } catch (e) {
-      // If already joined, we can enter the room directly
-      if (e.toString().contains('already a member')) {
-        _enterRoom(room);
+      // Nếu đã là thành viên (status 400) → vào phòng trực tiếp
+      bool alreadyMember = false;
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final responseData = e.response?.data;
+        final message = responseData is Map ? (responseData['message'] ?? '') : '';
+        alreadyMember = statusCode == 400 &&
+            (message.toString().contains('already a member') ||
+                message.toString().contains('already'));
+      }
+
+      if (alreadyMember) {
+        if (mounted) _enterRoom(room);
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Lỗi khi tham gia phòng: $e'),
+              content: Text('Lỗi khi tham gia phòng: ${e is DioException ? (e.response?.data?['message'] ?? e.message) : e}'),
               backgroundColor: Colors.red.shade600,
             ),
           );
@@ -307,11 +323,9 @@ class _RoomListScreenState extends State<RoomListScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Tính năng thoại / video nhóm đang được phát triển.'),
-                  ),
-                );
+                final roomId = room['id'].toString();
+                final roomName = room['name'].toString();
+                context.push('/rooms/$roomId', extra: {'roomId': roomId, 'roomName': roomName});
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,

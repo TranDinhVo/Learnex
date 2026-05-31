@@ -45,7 +45,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
+        backgroundColor: const Color(0xCCF8FAFC), // slate-50/80
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
@@ -53,18 +53,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
           icon: Icon(Icons.menu, color: theme.colorScheme.primary),
           onPressed: () {},
         ),
-        title: Text(
+        title: const Text(
           'Tin nhắn',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            color: Color(0xFF312E81), // indigo-900
+            letterSpacing: -0.5,
           ),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.edit_square, color: theme.colorScheme.primary),
+            icon: Icon(Icons.edit_square, color: theme.colorScheme.primary, size: 22),
             onPressed: () {},
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
@@ -144,7 +147,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           if (friendId != null) {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (_) => UserProfileScreen(userId: friendId),
+                                                builder: (_) => ChatDetailScreen(
+                                                  conversationId: friendId,
+                                                  partnerName: name,
+                                                ),
                                               ),
                                             );
                                           }
@@ -249,26 +255,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ],
             ),
-      ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: 3,
-        onHomeTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const FeedScreen()),
-          );
-        },
-        onFolderTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
-          );
-        },
-        onAddTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-          );
-        },
-        onChatTap: () {},
-        onMeetingTap: () => _goRooms(context),
       ),
     );
   }
