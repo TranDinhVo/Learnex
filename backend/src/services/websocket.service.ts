@@ -167,6 +167,16 @@ export class WebSocketService {
         break;
       }
 
+      case 'private_join_call': {
+        const { roomId, targetId } = data;
+        // Gửi user_joined_call đến Caller để Caller khởi tạo Offer WebRTC
+        this.sendToUser(targetId, {
+          type: 'user_joined_call',
+          data: { senderId, roomId }
+        });
+        break;
+      }
+
       case 'leave_call': {
         const { roomId } = data;
         const members = await roomService.getMembers(roomId);
@@ -178,6 +188,42 @@ export class WebSocketService {
              });
           }
         }
+        break;
+      }
+
+      case 'private_call_invite': {
+        const { targetId, callType, roomId, callerName } = data;
+        this.sendToUser(targetId, {
+          type: 'private_call_invite',
+          data: { callerId: senderId, callerName, callType, roomId }
+        });
+        break;
+      }
+
+      case 'private_call_accept': {
+        const { callerId, roomId } = data;
+        this.sendToUser(callerId, {
+          type: 'private_call_accept',
+          data: { acceptedBy: senderId, roomId }
+        });
+        break;
+      }
+
+      case 'private_call_reject': {
+        const { callerId } = data;
+        this.sendToUser(callerId, {
+          type: 'private_call_reject',
+          data: { rejectedBy: senderId }
+        });
+        break;
+      }
+
+      case 'private_call_end': {
+        const { targetId } = data;
+        this.sendToUser(targetId, {
+          type: 'private_call_end',
+          data: { endedBy: senderId }
+        });
         break;
       }
 

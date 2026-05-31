@@ -76,6 +76,31 @@ class WebRTCService {
     });
   }
 
+  /// 1.5. Tham gia cuộc gọi riêng tư (1-1)
+  Future<void> joinPrivateCall({required String roomId, required String partnerId, required bool isCaller}) async {
+    _currentRoomId = roomId;
+    
+    // Lấy luồng local Camera/Mic
+    final Map<String, dynamic> mediaConstraints = {
+      'audio': true,
+      'video': {
+        'facingMode': 'user',
+      }
+    };
+
+    _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    localRenderer.srcObject = _localStream;
+    _onMediaStateChanged.add(null);
+
+    // Chỉ Receiver mới nhắn `private_join_call` để kích hoạt Caller tạo Offer
+    if (!isCaller) {
+      _wsService.send({
+        'type': 'private_join_call',
+        'data': {'roomId': roomId, 'targetId': partnerId}
+      });
+    }
+  }
+
   /// 2. Khi có user khác join call, mình là người cũ tạo Offer kết nối
   Future<void> _handleUserJoinedCall(String remoteUserId) async {
     final pc = await _createPeerConnection(remoteUserId);
@@ -223,9 +248,10 @@ class WebRTCService {
     remoteRenderers.forEach((key, renderer) => renderer.dispose());
     remoteRenderers.clear();
 
+    localRenderer.srcObject = null;
     _localStream?.getTracks().forEach((track) => track.stop());
     _localStream?.dispose();
-    localRenderer.srcObject = null;
+    _localStream = null;
     
     _currentRoomId = null;
     _onMediaStateChanged.add(null);

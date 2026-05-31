@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learnex/shared/utils/date_formatter.dart';
+import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_bubble.dart';
+import 'chat_list_screen.dart';
+import '../../../../app/di.dart';
+import '../../../../core/services/websocket_service.dart';
+import '../../../../core/services/webrtc_service.dart';
+import 'p2p_call_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -65,6 +71,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _startCall(String callType) {
+    final authState = context.read<AuthBloc>().state;
+    String senderId = '';
+    String senderName = '';
+    if (authState is Authenticated) {
+      senderId = authState.user.id;
+      senderName = authState.user.fullName ?? 'Người dùng';
+    }
+
+    final roomId = 'call_${senderId}_${widget.conversationId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // 1. Gửi lời mời gọi
+    getIt<WebSocketService>().send({
+      'type': 'private_call_invite',
+      'data': {
+        'targetId': widget.conversationId,
+        'callType': callType,
+        'roomId': roomId,
+        'callerName': senderName,
+      }
+    });
+
+    // 2. Mở màn hình cuộc gọi ngay
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => P2PCallScreen(
+          webrtcService: getIt<WebRTCService>(),
+          roomId: roomId,
+          partnerName: widget.partnerName,
+          partnerId: widget.conversationId,
+          isAudioOnly: callType == 'voice',
+          isCaller: true,
+        ),
+      ),
+    );
   }
 
   void _sendMessage() {
@@ -211,18 +254,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     }
 
                       final hasFile = fileUrl != null && fileUrl.isNotEmpty;
+                      // Parse call history
+                      final isCallHistory = !hasFile && content != null && content.startsWith('[CALL_HISTORY]:');
+                      String? callHistoryType;
+                      if (isCallHistory) {
+                        final parts = content!.split(':');
+                        callHistoryType = parts.length > 1 ? parts[1] : 'VOICE';
+                      }
+
                       final bubble = ChatBubble(
                         isMe: isMe,
                         message: content,
                         time: timeStr,
                         isRead: msg['is_read'] == true,
                         isFile: hasFile,
-                        fileName: hasFile ? fileUrl.split('/').last : null,
+                        fileName: hasFile ? fileUrl!.split('/').last : null,
                         fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
                         isTop: isTop,
                         isBottom: isBottom,
                         showAvatar: !isMe && isBottom,
                         avatarInitials: initials,
+                        onCallPressed: isCallHistory
+                            ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
+                            : null,
                       );
 
                       if (index == messages.length - 1) {
@@ -272,7 +326,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       titleSpacing: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF464555), size: 20),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () {
+          // Reload danh sách hội thoại trước khi quay lại
+          context.read<ChatBloc>().add(LoadConversationsEvent());
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            context.go('/chat');
+          }
+        },
       ),
       title: Row(
         children: [
@@ -340,11 +402,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.call, color: Color(0xFF777587)),
-          onPressed: () {},
+          onPressed: () => _startCall('voice'),
         ),
         IconButton(
           icon: const Icon(Icons.videocam, color: Color(0xFF777587)),
-          onPressed: () {},
+          onPressed: () => _startCall('video'),
         ),
         IconButton(
           icon: const Icon(Icons.more_vert, color: Color(0xFF777587)),

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../widgets/online_friend_avatar.dart';
 import '../widgets/chat_tile.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
+import 'package:learnex/shared/utils/date_formatter.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -70,9 +71,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 120),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Search Bar
@@ -221,15 +224,38 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           final otherUser = c['other_user'] ?? {};
                           final name = otherUser['full_name'] ?? 'Người dùng';
                           final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
-                          final lastMsg = c['last_message']?['content'] ?? 'Tệp tin đính kèm';
+                          final lastMsgData = c['last_message'] as Map<String, dynamic>?;
+                          String lastMsg = lastMsgData?['content'] ?? 'Tệp tin đính kèm';
+                          
+                          if (lastMsg.startsWith('[CALL_HISTORY]:')) {
+                            final parts = lastMsg.split(':');
+                            final type = parts.length > 1 ? parts[1] : 'VOICE';
+                            final isVideo = type == 'VIDEO';
+                            lastMsg = isVideo ? '📞 Cuộc gọi video' : '📞 Cuộc gọi thoại';
+                          }
+
+                          final String? createdAt = lastMsgData?['created_at']?.toString();
                           final unreadCount = c['unread_count'] ?? 0;
+
+                          String displayTime = 'Vừa xong';
+                          if (createdAt != null) {
+                            try {
+                              final dateTime = DateTime.parse(createdAt).toLocal();
+                              final min = dateTime.minute.toString().padLeft(2, '0');
+                              final period = dateTime.hour >= 12 ? 'CH' : 'SA';
+                              final displayHour = dateTime.hour > 12 
+                                  ? dateTime.hour - 12 
+                                  : (dateTime.hour == 0 ? 12 : dateTime.hour);
+                              displayTime = '$displayHour:$min $period';
+                            } catch (_) {}
+                          }
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4.0),
                             child: ChatTile(
                               name: name,
                               initials: initials,
-                              time: 'Vừa xong',
+                              time: displayTime,
                               lastMessage: lastMsg,
                               isUnread: unreadCount > 0,
                               unreadCount: unreadCount,
@@ -255,6 +281,37 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ],
             ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 24,
+            child: AppBottomNavBar(
+              currentIndex: 3,
+              onHomeTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const FeedScreen()),
+                );
+              },
+              onFolderTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
+                );
+              },
+              onAddTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                );
+              },
+              onChatTap: () {},
+              onMeetingTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const RoomListScreen()),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

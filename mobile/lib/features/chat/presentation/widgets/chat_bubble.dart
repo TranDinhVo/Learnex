@@ -12,6 +12,7 @@ class ChatBubble extends StatelessWidget {
   final bool isBottom;
   final bool showAvatar;
   final String? avatarInitials;
+  final VoidCallback? onCallPressed;
 
   const ChatBubble({
     super.key,
@@ -26,6 +27,7 @@ class ChatBubble extends StatelessWidget {
     this.isBottom = true,
     this.showAvatar = false,
     this.avatarInitials,
+    this.onCallPressed,
   });
 
   @override
@@ -39,6 +41,7 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildMyBubble(ThemeData theme) {
+    final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -124,16 +127,18 @@ class ChatBubble extends StatelessWidget {
               ],
             ),
             constraints: const BoxConstraints(maxWidth: 280),
-            child: Text(
-              message ?? '',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
+            child: isCallHistory 
+                ? _buildCallHistoryCard(theme)
+                : Text(
+                    message ?? '',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
           ),
-        if (isBottom) ...[
+        if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -159,6 +164,7 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildOtherBubble(ThemeData theme) {
+    final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,18 +210,20 @@ class ChatBubble extends StatelessWidget {
                 ],
               ),
               constraints: const BoxConstraints(maxWidth: 280),
-              child: Text(
-                message ?? '',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
+              child: isCallHistory 
+                  ? _buildCallHistoryCard(theme)
+                  : Text(
+                      message ?? '',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
             ),
           ],
         ),
-        if (isBottom) ...[
+        if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Padding(
             padding: const EdgeInsets.only(left: 36.0),
@@ -228,6 +236,89 @@ class ChatBubble extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildCallHistoryCard(ThemeData theme) {
+    List<String> parts = message!.split(':');
+    final type = parts.length > 1 ? parts[1] : 'VOICE';
+    final status = parts.length > 2 ? parts[2] : 'MISSED';
+
+    final isMissed = status == 'MISSED' || status == 'REJECTED';
+    final isVideo = type == 'VIDEO';
+
+    String statusText = '';
+    if (isMissed) {
+      statusText = isVideo ? 'Cuộc gọi video nhỡ' : 'Cuộc gọi nhỡ';
+    } else {
+      final seconds = int.tryParse(status) ?? 0;
+      final m = (seconds / 60).floor().toString().padLeft(2, '0');
+      final s = (seconds % 60).toString().padLeft(2, '0');
+      statusText = isVideo ? 'Cuộc gọi video - $m:$s' : 'Cuộc gọi thoại - $m:$s';
+    }
+
+    final color = isMissed ? Colors.red.shade400 : const Color(0xFF4F46E5);
+    final icon = isMissed 
+        ? (isVideo ? Icons.missed_video_call : Icons.phone_missed) 
+        : (isVideo ? Icons.videocam : Icons.call);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  statusText,
+                  style: TextStyle(
+                    color: isMe 
+                        ? (isMissed ? Colors.red.shade100 : Colors.white)
+                        : (isMissed ? Colors.red.shade700 : theme.colorScheme.onSurface),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  time,
+                  style: TextStyle(
+                    color: isMe ? Colors.white70 : theme.colorScheme.outline, 
+                    fontSize: 12
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onCallPressed,
+            icon: Icon(isVideo ? Icons.videocam : Icons.call, size: 16),
+            label: const Text('Gọi lại', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isMe ? Colors.white24 : color.withValues(alpha: 0.1),
+              foregroundColor: isMe ? Colors.white : color,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
       ],
     );
   }
