@@ -45,4 +45,13 @@ export const notificationController = {
       next(error);
     }
   },
+
+  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await notificationService.delete(req.params.id as string, req.user!.userId);
+      sendResponse(res, 200, null, 'Notification deleted');
+    } catch (error) {
+      next(error);
+    }
+  },
 };

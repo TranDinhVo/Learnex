@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/webrtc_service.dart';
-import '../../../../app/di.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../../shared/widgets/custom_avatar.dart';
+import '../bloc/room_detail_bloc.dart';
+import '../bloc/room_detail_state.dart';
+import '../../data/models/room_model.dart';
 
 class CallScreen extends StatefulWidget {
   final WebRTCService webrtcService;
@@ -25,17 +29,31 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
   bool _isMuted = false;
   bool _isCameraOff = false;
   bool _isInitializing = true;
-  Offset _localVideoPosition = const Offset(16, 16);
+  int _secondsElapsed = 0;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _initCall();
     
-    // Lắng nghe thay đổi kết nối hoặc Media state
     widget.webrtcService.onMediaStateChanged.listen((_) {
       if (mounted) setState(() {});
     });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _secondsElapsed++;
+        });
+      }
+    });
+  }
+
+  String get _formattedTime {
+    final m = (_secondsElapsed ~/ 60).toString().padLeft(2, '0');
+    final s = (_secondsElapsed % 60).toString().padLeft(2, '0');
+    return "$m:$s";
   }
 
   Future<void> _initCall() async {
@@ -57,6 +75,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _timer?.cancel();
     widget.webrtcService.leaveCall();
     super.dispose();
   }
@@ -107,68 +126,11 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
               ),
             ),
             
-            // Lưới Video những người tham gia
-            if (_isInitializing || remoteRenderers.isEmpty)
+            // Lưới Video tất cả người tham gia (Meet Style)
+            if (_isInitializing)
               _buildWaitingScreen()
             else
-              _buildRemoteGrid(remoteRenderers),
-
-            // Video Camera Của Bạn (Floating Draggable)
-            if (!_isCameraOff && !_isInitializing)
-              Positioned(
-                right: _localVideoPosition.dx,
-                bottom: _localVideoPosition.dy + 120, // Tránh đè lên toolbar
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _localVideoPosition = Offset(
-                        (_localVideoPosition.dx - details.delta.dx).clamp(16.0, screenSize.width - 136),
-                        (_localVideoPosition.dy - details.delta.dy).clamp(16.0, screenSize.height - 290),
-                      );
-                    });
-                  },
-                  child: Container(
-                    width: 120,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        RTCVideoView(
-                          widget.webrtcService.localRenderer,
-                          mirror: true,
-                          objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                        ),
-                        if (_isMuted)
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.mic_off, color: Colors.redAccent, size: 14),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              _buildMeetGrid(widget.webrtcService.remoteRenderers.entries.toList()),
 
             // Header - Nút Back và Tiêu đề Call
             Positioned(
@@ -180,6 +142,24 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                   _buildGlassButton(
                     icon: Icons.keyboard_arrow_down,
                     onTap: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          "${remoteRenderers.length + 1}",
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                   const Spacer(),
                   Container(
@@ -200,9 +180,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
-                          "00:00", // Để đẹp, sau có thể gắn Timer thật
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                        Text(
+                          _formattedTime,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
                         ),
                       ],
                     ),
@@ -211,17 +191,17 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
               ),
             ),
 
-            // Toolbar điều khiển (Mute, Video, End Call) - Glassmorphism
+            // Toolbar điều khiển 5 nút
             Positioned(
               bottom: 30,
-              left: 30,
-              right: 30,
+              left: 20,
+              right: 20,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(40),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(40),
@@ -231,18 +211,36 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         _buildToolButton(
-                          icon: _isMuted ? Icons.mic_off : Icons.mic_none,
-                          isActive: _isMuted,
-                          activeColor: Colors.redAccent,
-                          onTap: _toggleMute,
+                          icon: Icons.chat_bubble_outline,
+                          isActive: false,
+                          activeColor: Colors.white,
+                          onTap: () {
+                            // pop to chat
+                            Navigator.of(context).pop();
+                          },
                         ),
-                        _buildCallEndButton(onTap: _endCall),
                         _buildToolButton(
                           icon: _isCameraOff ? Icons.videocam_off : Icons.videocam_outlined,
                           isActive: _isCameraOff,
                           activeColor: Colors.redAccent,
                           onTap: _toggleCamera,
                         ),
+                        _buildToolButton(
+                          icon: _isMuted ? Icons.mic_off : Icons.mic_none,
+                          isActive: _isMuted,
+                          activeColor: Colors.redAccent,
+                          onTap: _toggleMute,
+                        ),
+                        _buildToolButton(
+                          icon: Icons.screen_share_outlined,
+                          isActive: false,
+                          activeColor: Colors.white,
+                          onTap: () {
+                            // Screen share logic (placeholder)
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng chia sẻ màn hình đang phát triển')));
+                          },
+                        ),
+                        _buildCallEndButton(onTap: _endCall),
                       ],
                     ),
                   ),
@@ -284,45 +282,142 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     );
   }
 
-  // Render lưới camera xịn xò
-  Widget _buildRemoteGrid(List<RTCVideoRenderer> renderers) {
-    final count = renderers.length;
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: count == 1 ? 1 : 2,
-        childAspectRatio: count == 1 ? 0.6 : 0.8,
-        crossAxisSpacing: 2,
-        mainAxisSpacing: 2,
-      ),
-      itemCount: count,
-      itemBuilder: (context, index) {
-        return Container(
-          color: Colors.black,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              RTCVideoView(
-                renderers[index],
-                objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-              ),
-              Positioned(
-                bottom: 16,
-                left: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "Thành viên ${index + 1}",
-                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
+  // Render lưới camera xịn xò (Meet Style)
+  Widget _buildMeetGrid(List<MapEntry<String, RTCVideoRenderer>> remoteEntries) {
+    // remoteEntries: userId -> renderer
+    final count = remoteEntries.length + 1; // +1 cho local
+    final size = MediaQuery.of(context).size;
+    
+    int crossAxisCount = 1;
+    double aspectRatio = 1.0;
+    
+    if (count == 1) {
+      crossAxisCount = 1;
+      aspectRatio = size.width / size.height;
+    } else if (count == 2) {
+      crossAxisCount = 1;
+      aspectRatio = size.width / (size.height / 2);
+    } else if (count <= 4) {
+      crossAxisCount = 2;
+      aspectRatio = (size.width / 2) / (size.height / 2.5);
+    } else {
+      crossAxisCount = 3;
+      aspectRatio = (size.width / 3) / (size.width / 3);
+    }
+
+    return BlocBuilder<RoomDetailBloc, RoomDetailState>(
+      buildWhen: (p, c) => c is MembersLoaded || c is RoomDetailLoaded,
+      builder: (context, state) {
+        final members = context.read<RoomDetailBloc>().currentMembers;
+
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: aspectRatio,
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
           ),
+          itemCount: count,
+          itemBuilder: (context, index) {
+            final isLocal = index == 0;
+            RTCVideoRenderer renderer;
+            String? userId;
+            String displayName = "Người dùng";
+            String? avatarUrl;
+            bool isVideoOn = true;
+
+            if (isLocal) {
+              renderer = widget.webrtcService.localRenderer;
+              final authState = context.read<AuthBloc>().state;
+              if (authState is Authenticated) {
+                userId = authState.user.id;
+                displayName = authState.user.fullName ?? authState.user.username;
+                avatarUrl = authState.user.avatarUrl;
+              }
+              isVideoOn = !_isCameraOff;
+              displayName = "Bạn ($displayName)";
+            } else {
+              final entry = remoteEntries[index - 1];
+              userId = entry.key;
+              renderer = entry.value;
+              
+              final member = members.where((m) => m.userId == userId).firstOrNull;
+              if (member != null) {
+                displayName = member.fullName ?? member.username ?? "Thành viên";
+                avatarUrl = member.avatarUrl;
+              } else {
+                displayName = "Thành viên $index";
+              }
+              
+              // Check nếu video tắt (không có track hoặc track bị disabled/muted)
+              final videoTracks = renderer.srcObject?.getVideoTracks() ?? [];
+              if (videoTracks.isEmpty) {
+                isVideoOn = false;
+              } else {
+                // WebRTC có thể thay đổi trạng thái track
+                isVideoOn = videoTracks.first.enabled && !(videoTracks.first.muted ?? false);
+              }
+            }
+
+            return Container(
+              color: const Color(0xFF1E293B), // Nền xám đậm khi tắt cam
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (isVideoOn)
+                    RTCVideoView(
+                      renderer,
+                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                      mirror: isLocal,
+                    )
+                  else
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CustomAvatar(
+                            imageUrl: avatarUrl,
+                            name: displayName,
+                            radius: 40,
+                            backgroundColor: Colors.indigo.shade400,
+                            textColor: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Positioned(
+                    bottom: 16,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        displayName,
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  if (isLocal && _isMuted)
+                    Positioned(
+                      top: 16,
+                      right: 16,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.mic_off, color: Colors.redAccent, size: 16),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );

@@ -98,7 +98,16 @@ export interface Room {
   owner_id: string;
   name: string;
   description: string | null;
-  is_private: boolean;
+  avatar_url: string | null;
+  privacy_mode: 'public' | 'private' | 'approval';
+  created_at: Date;
+}
+
+export interface RoomJoinRequest {
+  id: string;
+  room_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
   created_at: Date;
 }
 
@@ -117,6 +126,13 @@ export interface RoomMessage {
   content: string | null;
   file_url: string | null;
   created_at: Date;
+}
+
+export interface RoomMessageRead {
+  id: string;
+  message_id: string;
+  user_id: string;
+  read_at: Date;
 }
 
 export interface Notification {

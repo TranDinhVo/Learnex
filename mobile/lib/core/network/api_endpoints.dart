@@ -64,9 +64,13 @@ class ApiEndpoints {
   static const String rooms = '/rooms';
   static String roomById(String id) => '/rooms/$id';
   static String roomMembers(String id) => '/rooms/$id/members';
+  static String roomMemberRole(String roomId, String userId) => '/rooms/$roomId/members/$userId/role';
   static String joinRoom(String id) => '/rooms/$id/join';
   static String leaveRoom(String id) => '/rooms/$id/leave';
   static String roomMessages(String id) => '/rooms/$id/messages';
+  static String roomAvatar(String id) => '/rooms/$id/avatar';
+  static String markRoomMessagesRead(String id) => '/rooms/$id/messages/read';
+  static String getRoomReadReceipts(String id) => '/rooms/$id/messages/read-receipts';
 
   // ── Notifications ───────────────────────────────────────────────
   static const String notifications = '/notifications';  

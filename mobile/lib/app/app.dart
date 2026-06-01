@@ -12,6 +12,7 @@ import '../core/services/websocket_service.dart';
 import '../core/services/webrtc_service.dart';
 import '../features/chat/presentation/widgets/incoming_call_overlay.dart';
 import '../features/chat/presentation/screens/p2p_call_screen.dart';
+import '../features/room/presentation/screens/call_screen.dart';
 import 'dart:async';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
@@ -114,11 +115,63 @@ class _GlobalCallListenerState extends State<GlobalCallListener> {
             },
           );
         }
+      } else if (message['type'] == 'room_call_invite') {
+        final data = message['data'];
+        final String callerName = data['callerName'] ?? 'Thành viên';
+        final String callType = data['callType'] ?? 'video';
+        final String roomId = data['roomId'];
+
+        if (globalNavigatorKey.currentState?.overlay != null) {
+          OverlayHelper.showIncomingCall(
+            overlayState: globalNavigatorKey.currentState!.overlay!,
+            callerName: callerName,
+            callType: callType,
+            onAccept: () {
+              globalNavigatorKey.currentState!.push(
+                MaterialPageRoute(
+                  builder: (_) => CallScreen(
+                    webrtcService: getIt<WebRTCService>(),
+                    roomId: roomId,
+                  ),
+                ),
+              );
+            },
+            onDecline: () {
+              // Only hide overlay, no need to send reject to others in a group call
+            },
+          );
+        }
       } else if (message['type'] == 'private_call_accept') {
         // Có thể bắt thêm nếu muốn mở trực tiếp bên người gọi
         // Tuy nhiên người gọi đã nằm sẵn ở p2p_call_screen.dart chờ rồi (nếu làm đúng logic)
       } else if (message['type'] == 'private_call_reject' || message['type'] == 'user_left_call' || message['type'] == 'private_call_end') {
          OverlayHelper.hideIncomingCall();
+      } else if (message['type'] == 'new_notification') {
+        final notif = message['data'];
+        if (notif['type'] == 'room_join_request') {
+          if (globalNavigatorKey.currentContext != null) {
+            ScaffoldMessenger.of(globalNavigatorKey.currentContext!).showSnackBar(
+              SnackBar(
+                content: Text(notif['body'] ?? 'Có yêu cầu tham gia phòng mới'),
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Xem',
+                  textColor: Colors.yellow,
+                  onPressed: () {
+                    // Cần push tới RoomRequestsScreen
+                    // Do roomId được lưu trong ref_id
+                    final roomId = notif['ref_id'];
+                    if (roomId != null) {
+                      // Navigate to RoomDetailScreen where user can see it
+                      // Wait, we don't have RoomDetailBloc globally available to push directly to Requests,
+                      // but we can push to RoomDetailScreen and let them open it.
+                    }
+                  },
+                ),
+              ),
+            );
+          }
+        }
       }
     });
   }
