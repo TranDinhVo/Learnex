@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_endpoints.dart';
 
@@ -120,5 +121,23 @@ class FeedRemoteDatasource {
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId) async {
     await _dio.delete(ApiEndpoints.deleteComment(postId, commentId));
+  }
+
+  /// Upload nhiều ảnh lên Cloudinary qua backend, trả về list URL
+  Future<List<String>> uploadImages(List<File> files) async {
+    final List<String> urls = [];
+    for (final file in files) {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(
+          file.path,
+          filename: file.path.split('/').last,
+        ),
+      });
+      final response = await _dio.post(ApiEndpoints.uploadFile, data: formData);
+      final url = response.data['data']['secure_url'] as String?
+               ?? response.data['data']['url'] as String?;
+      if (url != null) urls.add(url);
+    }
+    return urls;
   }
 }

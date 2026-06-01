@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Abstract repository cho Feed feature.
 /// Định nghĩa contract giữa domain và data layer.
 abstract class FeedRepository {
@@ -37,4 +39,7 @@ abstract class FeedRepository {
 
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId);
+
+  /// Upload ảnh
+  Future<List<String>> uploadImages(List<File> files);
 }

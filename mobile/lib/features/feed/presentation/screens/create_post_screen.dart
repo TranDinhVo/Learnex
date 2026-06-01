@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../folder/presentation/screens/add_document_screen.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -14,6 +18,52 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController _contentController = TextEditingController();
+  final List<XFile> _selectedImages = [];
+  bool _isSubmitting = false;
+
+  Future<void> _pickImages() async {
+    if (_selectedImages.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
+      );
+      return;
+    }
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        _selectedImages.addAll(pickedFiles);
+        if (_selectedImages.length > 5) {
+          _selectedImages.removeRange(5, _selectedImages.length);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã giới hạn tối đa 5 ảnh')),
+          );
+        }
+      });
+    }
+  }
+
+  void _submit() {
+    final content = _contentController.text.trim();
+    if (content.isEmpty && _selectedImages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng thêm nội dung hoặc ảnh trước khi đăng')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    if (_selectedImages.isNotEmpty) {
+      context.read<FeedBloc>().add(
+        UploadImagesEvent(files: _selectedImages.map((e) => File(e.path)).toList()),
+      );
+    } else {
+      context.read<FeedBloc>().add(
+        CreatePostEvent(content: content.isEmpty ? null : content),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -24,18 +74,40 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState is Authenticated ? authState.user : null;
+    final displayName = currentUser?.fullName ?? 'Bạn';
+    final initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+    final avatarUrl = currentUser?.avatarUrl;
     
     return BlocListener<FeedBloc, FeedState>(
       listener: (context, state) {
         if (state is PostCreated) {
+          setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('🎉 Đăng bài thành công!'), backgroundColor: Colors.green),
           );
           Navigator.of(context).pop();
         } else if (state is PostCreateError) {
+          setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
           );
+        } else if (state is ImagesUploaded) {
+          final content = _contentController.text.trim();
+          context.read<FeedBloc>().add(
+            CreatePostEvent(
+              content: content.isEmpty ? null : content,
+              imageUrls: state.urls,
+            ),
+          );
+        } else if (state is ImagesUploadError) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi tải ảnh: ${state.message}'), backgroundColor: Colors.red),
+          );
+        } else if (state is PostCreating || state is ImagesUploading) {
+          if (!_isSubmitting) setState(() => _isSubmitting = true);
         }
       },
       child: Scaffold(
@@ -67,17 +139,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton(
-                onPressed: () {
-                  final content = _contentController.text.trim();
-                  if (content.isNotEmpty) {
-                    context.read<FeedBloc>().add(
-                      CreatePostEvent(content: content),
-                    );
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                },
+              child: _isSubmitting
+                ? const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SizedBox(
+                      width: 20, 
+                      height: 20, 
+                      child: CircularProgressIndicator(strokeWidth: 2)
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _submit,
                 style: TextButton.styleFrom(
                   backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -108,24 +180,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'B',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
+                    if (avatarUrl != null)
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: NetworkImage(avatarUrl),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -146,7 +224,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bạn',
+                      displayName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -202,6 +280,45 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 border: InputBorder.none,
               ),
             ),
+            
+            if (_selectedImages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _selectedImages.length,
+                  itemBuilder: (context, i) => Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(_selectedImages[i].path),
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedImages.removeAt(i)),
+                            child: const CircleAvatar(
+                              radius: 10,
+                              backgroundColor: Colors.red,
+                              child: Icon(Icons.close, size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
             
             const SizedBox(height: 16),
             
@@ -280,6 +397,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.image,
                   label: 'Ảnh',
                   color: theme.colorScheme.primary,
+                  onTap: _pickImages,
                 ),
                 _ActionBtn(
                   icon: Icons.description,

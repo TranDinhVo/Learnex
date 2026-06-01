@@ -1,3 +1,4 @@
+import 'dart:io';
 import '../../domain/repositories/feed_repository.dart';
 import '../datasources/feed_remote_datasource.dart';
 
@@ -60,4 +61,8 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Future<void> deleteComment(String postId, String commentId) =>
       _datasource.deleteComment(postId, commentId);
+
+  @override
+  Future<List<String>> uploadImages(List<File> files) =>
+      _datasource.uploadImages(files);
 }

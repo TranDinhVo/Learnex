@@ -22,6 +22,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<AddCommentEvent>(_onAddComment);
     on<DeleteCommentEvent>(_onDeleteComment);
     on<UpdatePostInListEvent>(_onUpdatePostInList);
+    on<UploadImagesEvent>(_onUploadImages);
   }
 
   Future<void> _onLoadFeed(
@@ -243,5 +244,18 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       }
     } catch (_) {}
     return e.message ?? 'Đã có lỗi xảy ra';
+  }
+
+  Future<void> _onUploadImages(
+    UploadImagesEvent event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(ImagesUploading());
+    try {
+      final urls = await _repository.uploadImages(event.files);
+      emit(ImagesUploaded(urls));
+    } catch (e) {
+      emit(ImagesUploadError('Không thể tải ảnh lên. Vui lòng thử lại.'));
+    }
   }
 }

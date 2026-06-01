@@ -70,3 +70,18 @@ class CommentsLoaded extends FeedState {
   final List<Map<String, dynamic>> comments;
   CommentsLoaded({required this.postId, required this.comments});
 }
+
+/// Đang tải ảnh lên
+class ImagesUploading extends FeedState {}
+
+/// Tải ảnh lên thành công
+class ImagesUploaded extends FeedState {
+  final List<String> urls;
+  ImagesUploaded(this.urls);
+}
+
+/// Lỗi tải ảnh
+class ImagesUploadError extends FeedState {
+  final String message;
+  ImagesUploadError(this.message);
+}

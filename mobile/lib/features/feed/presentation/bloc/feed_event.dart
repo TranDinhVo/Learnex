@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Events cho FeedBloc
 abstract class FeedEvent {}
 
@@ -60,4 +62,10 @@ class RefreshFeedEvent extends FeedEvent {}
 class UpdatePostInListEvent extends FeedEvent {
   final Map<String, dynamic> updatedPost;
   UpdatePostInListEvent({required this.updatedPost});
+}
+
+/// Tải ảnh lên
+class UploadImagesEvent extends FeedEvent {
+  final List<File> files;
+  UploadImagesEvent({required this.files});
 }
