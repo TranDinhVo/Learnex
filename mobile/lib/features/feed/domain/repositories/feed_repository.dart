@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 /// Abstract repository cho Feed feature.
 /// Định nghĩa contract giữa domain và data layer.
@@ -14,6 +15,7 @@ abstract class FeedRepository {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
   });
 
   /// Lấy chi tiết bài viết
@@ -41,5 +43,5 @@ abstract class FeedRepository {
   Future<void> deleteComment(String postId, String commentId);
 
   /// Upload ảnh
-  Future<List<String>> uploadImages(List<File> files);
+  Future<List<String>> uploadImages(List<XFile> files);
 }

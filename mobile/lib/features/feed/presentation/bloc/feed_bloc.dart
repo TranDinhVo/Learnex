@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/feed_repository_impl.dart';
+import '../../domain/enums/post_visibility.dart';
 import 'feed_event.dart';
 import 'feed_state.dart';
 
@@ -100,6 +101,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         content: event.content,
         imageUrls: event.imageUrls,
         documentId: event.documentId,
+        visibility: event.visibility.value,
       );
       final data = result['data'] ?? result;
       emit(PostCreated(data as Map<String, dynamic>));

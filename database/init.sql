@@ -60,6 +60,7 @@ CREATE TABLE posts (
   content     TEXT,
   image_urls  JSONB,
   document_id UUID        REFERENCES documents(id) ON DELETE SET NULL,  -- [FIX] có FK
+  visibility  VARCHAR(20) DEFAULT 'public',
   is_deleted  BOOLEAN     DEFAULT FALSE,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()

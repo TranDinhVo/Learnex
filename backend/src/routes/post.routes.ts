@@ -20,6 +20,7 @@ router.post(
     body('content').optional().isString(),
     body('image_urls').optional().isArray(),
     body('document_id').optional().isUUID(),
+    body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
   ]),
   postController.create
 );
@@ -32,6 +33,7 @@ router.put(
   validate([
     body('content').optional().isString(),
     body('image_urls').optional().isArray(),
+    body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
   ]),
   postController.update
 );

@@ -1,13 +1,17 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../folder/presentation/screens/add_document_screen.dart';
+import '../widgets/document_picker_bottom_sheet.dart';
+import '../widgets/attached_document_card.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../domain/enums/post_visibility.dart';
+import '../widgets/post_visibility_bottom_sheet.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -20,6 +24,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController _contentController = TextEditingController();
   final List<XFile> _selectedImages = [];
   bool _isSubmitting = false;
+  PostVisibility _selectedVisibility = PostVisibility.public;
+  Map<String, dynamic>? _attachedDocument;
 
   Future<void> _pickImages() async {
     if (_selectedImages.length >= 5) {
@@ -45,9 +51,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   void _submit() {
     final content = _contentController.text.trim();
-    if (content.isEmpty && _selectedImages.isEmpty) {
+    if (content.isEmpty && _selectedImages.isEmpty && _attachedDocument == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng thêm nội dung hoặc ảnh trước khi đăng')),
+        const SnackBar(content: Text('Vui lòng thêm nội dung, ảnh hoặc tài liệu trước khi đăng')),
       );
       return;
     }
@@ -56,11 +62,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     if (_selectedImages.isNotEmpty) {
       context.read<FeedBloc>().add(
-        UploadImagesEvent(files: _selectedImages.map((e) => File(e.path)).toList()),
+        UploadImagesEvent(files: _selectedImages),
       );
     } else {
       context.read<FeedBloc>().add(
-        CreatePostEvent(content: content.isEmpty ? null : content),
+        CreatePostEvent(
+          content: content.isEmpty ? null : content,
+          documentId: _attachedDocument?['id']?.toString(),
+          visibility: _selectedVisibility,
+        ),
       );
     }
   }
@@ -99,6 +109,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             CreatePostEvent(
               content: content.isEmpty ? null : content,
               imageUrls: state.urls,
+              documentId: _attachedDocument?['id']?.toString(),
+              visibility: _selectedVisibility,
             ),
           );
         } else if (state is ImagesUploadError) {
@@ -232,27 +244,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.public, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Công khai',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                    InkWell(
+                      onTap: () async {
+                        final result = await showModalBottomSheet<PostVisibility>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => PostVisibilityBottomSheet(
+                            currentVisibility: _selectedVisibility,
                           ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.expand_more, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                        ],
+                        );
+                        if (result != null) {
+                          setState(() => _selectedVisibility = result);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_selectedVisibility.icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedVisibility.label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.expand_more, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -294,12 +322,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            File(_selectedImages[i].path),
-                            width: 90,
-                            height: 90,
-                            fit: BoxFit.cover,
-                          ),
+                          child: kIsWeb
+                              ? Image.network(
+                                  _selectedImages[i].path,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                )
+                              : Image.file(
+                                  File(_selectedImages[i].path),
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                ),
                         ),
                         Positioned(
                           top: 4,
@@ -322,55 +357,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             
             const SizedBox(height: 16),
             
-            // Upload Zone (navigates to AddDocumentScreen)
-            InkWell(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
+            if (_attachedDocument != null) ...[
+              const SizedBox(height: 16),
+              AttachedDocumentCard(
+                document: _attachedDocument!,
+                onRemove: () => setState(() => _attachedDocument = null),
               ),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant,
-                    width: 2,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.cloud_upload, size: 32, color: theme.colorScheme.primary),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Thêm tài liệu PDF',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'PDF, DOCX... Max 50MB',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            ],
             
             const SizedBox(height: 32),
             
@@ -403,9 +396,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.description,
                   label: 'Tài liệu',
                   color: theme.colorScheme.tertiary,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
-                  ),
+                  onTap: () async {
+                    if (_attachedDocument != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Chỉ được đính kèm 1 tài liệu')),
+                      );
+                      return;
+                    }
+                    final doc = await showModalBottomSheet<Map<String, dynamic>>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const DocumentPickerBottomSheet(),
+                    );
+                    if (doc != null) {
+                      setState(() => _attachedDocument = doc);
+                    }
+                  },
                 ),
                 _ActionBtn(
                   icon: Icons.person_add,

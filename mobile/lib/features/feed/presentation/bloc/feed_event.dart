@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../domain/enums/post_visibility.dart';
 
 /// Events cho FeedBloc
 abstract class FeedEvent {}
@@ -14,7 +16,14 @@ class CreatePostEvent extends FeedEvent {
   final String? content;
   final List<String>? imageUrls;
   final String? documentId;
-  CreatePostEvent({this.content, this.imageUrls, this.documentId});
+  final PostVisibility visibility;
+
+  CreatePostEvent({
+    this.content, 
+    this.imageUrls, 
+    this.documentId,
+    this.visibility = PostVisibility.public,
+  });
 }
 
 /// Like / Unlike bài viết
@@ -66,6 +75,6 @@ class UpdatePostInListEvent extends FeedEvent {
 
 /// Tải ảnh lên
 class UploadImagesEvent extends FeedEvent {
-  final List<File> files;
+  final List<XFile> files;
   UploadImagesEvent({required this.files});
 }

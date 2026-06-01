@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/api_endpoints.dart';
 
 /// Remote datasource gọi API feed/posts qua Dio.
@@ -42,6 +43,7 @@ class FeedRemoteDatasource {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
   }) async {
     final response = await _dio.post(
       ApiEndpoints.createPost,
@@ -49,6 +51,7 @@ class FeedRemoteDatasource {
         if (content != null) 'content': content,
         if (imageUrls != null) 'image_urls': imageUrls,
         if (documentId != null) 'document_id': documentId,
+        'visibility': visibility,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -124,20 +127,38 @@ class FeedRemoteDatasource {
   }
 
   /// Upload nhiều ảnh lên Cloudinary qua backend, trả về list URL
-  Future<List<String>> uploadImages(List<File> files) async {
-    final List<String> urls = [];
-    for (final file in files) {
+  Future<List<String>> uploadImages(List<XFile> files) async {
+    try {
+      final List<MultipartFile> multipartFiles = [];
+      for (var i = 0; i < files.length; i++) {
+        final file = files[i];
+        final bytes = await file.readAsBytes();
+        final name = file.name;
+        final extension = name.contains('.') ? name.split('.').last.toLowerCase() : 'png';
+        
+        multipartFiles.add(
+          MultipartFile.fromBytes(
+            bytes,
+            filename: name.isEmpty ? 'image_$i.$extension' : name,
+          ),
+        );
+      }
+      
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          file.path,
-          filename: file.path.split('/').last,
-        ),
+        'images': multipartFiles,
       });
-      final response = await _dio.post(ApiEndpoints.uploadFile, data: formData);
-      final url = response.data['data']['secure_url'] as String?
-               ?? response.data['data']['url'] as String?;
-      if (url != null) urls.add(url);
+
+      final response = await _dio.post('/upload/images', data: formData);
+      final data = response.data as Map<String, dynamic>;
+      
+      final urls = data['data']?['urls'] as List<dynamic>?;
+      if (urls != null) {
+        return urls.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Upload images error: $e');
+      throw Exception('Không thể tải ảnh: $e');
     }
-    return urls;
   }
 }

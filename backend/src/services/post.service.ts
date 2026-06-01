@@ -5,13 +5,14 @@ import { PaginationParams } from '../utils/pagination';
 import { notificationService } from './notification.service';
 
 export const postService = {
-  async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string }): Promise<Post> {
+  async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string }): Promise<Post> {
     const [post] = await db('posts')
       .insert({
         user_id: userId,
         content: data.content || null,
         image_urls: data.image_urls ? JSON.stringify(data.image_urls) : null,
         document_id: data.document_id || null,
+        visibility: data.visibility || 'public',
       })
       .returning('*');
     return post;
@@ -46,7 +47,7 @@ export const postService = {
     return post;
   },
 
-  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[] }): Promise<Post> {
+  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string }): Promise<Post> {
     const post = await db('posts').where({ id: postId, user_id: userId, is_deleted: false }).first();
     if (!post) {
       throw new AppError('Post not found or you are not the author.', 404);
@@ -55,6 +56,7 @@ export const postService = {
     const updateData: Record<string, any> = {};
     if (data.content !== undefined) updateData.content = data.content;
     if (data.image_urls !== undefined) updateData.image_urls = JSON.stringify(data.image_urls);
+    if (data.visibility !== undefined) updateData.visibility = data.visibility;
 
     const [updated] = await db('posts')
       .where({ id: postId })
@@ -79,9 +81,33 @@ export const postService = {
     targetUserId?: string
   ): Promise<{ data: any[]; total: number }> {
     const baseQuery = db('posts').where('is_deleted', false);
-    if (targetUserId) {
-      baseQuery.where('user_id', targetUserId);
+    
+    // Áp dụng bộ lọc visibility
+    if (currentUserId) {
+      if (targetUserId) {
+        // Đang xem tường nhà người khác
+        baseQuery.where('user_id', targetUserId);
+        if (targetUserId !== currentUserId) {
+          // TODO: Thêm check bạn bè thật sự ở đây nếu có (hiện tại giả sử bạn bè)
+          // Tạm thời cho phép public và friends
+          baseQuery.whereIn('visibility', ['public', 'friends']);
+        }
+      } else {
+        // Đang xem feed của mình: 
+        // Thấy bài của mình (tất cả visibility), HOẶC bài của người khác (public/friends)
+        baseQuery.where(function() {
+          this.where('user_id', currentUserId)
+              .orWhereIn('visibility', ['public', 'friends']);
+        });
+      }
+    } else {
+      // Khách chưa login
+      baseQuery.where('visibility', 'public');
+      if (targetUserId) {
+        baseQuery.where('user_id', targetUserId);
+      }
     }
+
     const [{ count }] = await baseQuery.clone().count('* as count');
     const total = parseInt(count as string, 10);
 
@@ -100,8 +126,24 @@ export const postService = {
       .limit(pagination.limit)
       .offset((pagination.page - 1) * pagination.limit);
 
-    if (targetUserId) {
-      postsQuery.where('p.user_id', targetUserId);
+    // Áp dụng bộ lọc visibility cho Query thật
+    if (currentUserId) {
+      if (targetUserId) {
+        postsQuery.where('p.user_id', targetUserId);
+        if (targetUserId !== currentUserId) {
+          postsQuery.whereIn('p.visibility', ['public', 'friends']);
+        }
+      } else {
+        postsQuery.where(function() {
+          this.where('p.user_id', currentUserId)
+              .orWhereIn('p.visibility', ['public', 'friends']);
+        });
+      }
+    } else {
+      postsQuery.where('p.visibility', 'public');
+      if (targetUserId) {
+        postsQuery.where('p.user_id', targetUserId);
+      }
     }
 
     const posts = await postsQuery;

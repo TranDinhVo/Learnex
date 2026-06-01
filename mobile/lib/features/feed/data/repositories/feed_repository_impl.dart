@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import '../../domain/repositories/feed_repository.dart';
 import '../datasources/feed_remote_datasource.dart';
 
@@ -22,11 +23,13 @@ class FeedRepositoryImpl implements FeedRepository {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
   }) =>
       _datasource.createPost(
         content: content,
         imageUrls: imageUrls,
         documentId: documentId,
+        visibility: visibility,
       );
 
   @override
@@ -63,6 +66,6 @@ class FeedRepositoryImpl implements FeedRepository {
       _datasource.deleteComment(postId, commentId);
 
   @override
-  Future<List<String>> uploadImages(List<File> files) =>
+  Future<List<String>> uploadImages(List<XFile> files) =>
       _datasource.uploadImages(files);
 }
