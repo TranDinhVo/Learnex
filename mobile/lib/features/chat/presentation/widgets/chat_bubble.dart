@@ -6,6 +6,7 @@ class ChatBubble extends StatelessWidget {
   final String time;
   final bool isRead;
   final bool isFile;
+  final String? fileUrl;
   final String? fileName;
   final String? fileSizeAndType;
   final bool isTop;
@@ -21,6 +22,7 @@ class ChatBubble extends StatelessWidget {
     required this.time,
     this.isRead = false,
     this.isFile = false,
+    this.fileUrl,
     this.fileName,
     this.fileSizeAndType,
     this.isTop = true,
@@ -42,6 +44,8 @@ class ChatBubble extends StatelessWidget {
 
   Widget _buildMyBubble(ThemeData theme) {
     final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
+    final isImage = isFile && fileUrl != null && _isImageUrl(fileUrl!);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -106,6 +110,35 @@ class ChatBubble extends StatelessWidget {
               ],
             ),
           )
+        else if (isImage)
+          ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: Radius.circular(isTop ? 16 : 4),
+              bottomLeft: const Radius.circular(16),
+              bottomRight: const Radius.circular(4),
+            ),
+            child: Image.network(
+              fileUrl!,
+              width: 240,
+              fit: BoxFit.cover,
+              loadingBuilder: (ctx, child, progress) => progress == null
+                  ? child
+                  : Container(
+                      width: 240,
+                      height: 180,
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+              errorBuilder: (ctx, _, __) => Container(
+                width: 240,
+                height: 180,
+                color: Colors.grey.shade200,
+                child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+              ),
+            ),
+          )
         else
           Container(
             padding: const EdgeInsets.all(12),
@@ -165,6 +198,8 @@ class ChatBubble extends StatelessWidget {
 
   Widget _buildOtherBubble(ThemeData theme) {
     final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
+    final isImage = isFile && fileUrl != null && _isImageUrl(fileUrl!);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -212,14 +247,14 @@ class ChatBubble extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 280),
               child: isCallHistory 
                   ? _buildCallHistoryCard(theme)
-                  : Text(
+                  : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Text(
                       message ?? '',
                       style: TextStyle(
                         color: theme.colorScheme.onSurface,
                         fontSize: 14,
                         height: 1.4,
                       ),
-                    ),
+                    ))),
             ),
           ],
         ),
@@ -321,5 +356,81 @@ class ChatBubble extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildOtherFileBubble(ThemeData theme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF3730A3).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.picture_as_pdf, color: Color(0xFF3730A3), size: 24),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                fileName ?? '',
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                fileSizeAndType ?? '',
+                style: TextStyle(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOtherImageBubble(ThemeData theme) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(4), // Container đã có radius
+      child: Image.network(
+        fileUrl!,
+        width: 220,
+        fit: BoxFit.cover,
+        loadingBuilder: (ctx, child, progress) => progress == null
+            ? child
+            : Container(
+                width: 220,
+                height: 160,
+                color: Colors.grey.shade200,
+                child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+        errorBuilder: (ctx, _, __) => Container(
+          width: 220,
+          height: 160,
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+        ),
+      ),
+    );
+  }
+
+  bool _isImageUrl(String url) {
+    final lower = url.toLowerCase().split('?').first;
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') || lower.endsWith('.gif') ||
+        lower.endsWith('.webp');
   }
 }

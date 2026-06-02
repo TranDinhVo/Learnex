@@ -66,12 +66,8 @@ class _P2PCallScreenState extends State<P2PCallScreen>
     _wsSubscription =
         getIt<WebSocketService>().messages.listen((message) {
       if (!mounted) return;
-      if (message['type'] == 'private_call_reject') {
-        _endCall(isCaller: false, notify: false);
-      } else if (message['type'] == 'private_call_end' ||
-          message['type'] == 'user_left_call') {
-        _endCall(isCaller: false, notify: false);
-      }
+      // Tín hiệu kết thúc / từ chối cuộc gọi giờ đã được xử lý toàn cục ở app.dart
+      // Nên P2PCallScreen không cần gọi _endCall nữa để tránh conflict / double pop.
     });
 
     _mediaSubscription =
