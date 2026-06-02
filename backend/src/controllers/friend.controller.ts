@@ -78,4 +78,14 @@ export const friendController = {
       next(error);
     }
   },
+
+  async getSuggestions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
+      const { data, total } = await friendService.getSuggestions(req.user!.userId, pagination);
+      res.status(200).json({ success: true, data, pagination: buildPaginationInfo(total, pagination) });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

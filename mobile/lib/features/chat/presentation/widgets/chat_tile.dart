@@ -34,7 +34,7 @@ class ChatTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isUnread ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : Colors.transparent,
+          color: isUnread ? const Color(0xFFEEF2FF) : Colors.white,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(

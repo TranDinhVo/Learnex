@@ -487,16 +487,16 @@ class _LearnexAiSheet extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        _AiSection(
+                        const _AiSection(
                           icon: Icons.forum_outlined,
                           title: 'Hỏi đáp về tài liệu',
                           child: Column(
                             children: [
-                              const _UserMessageBubble(
+                              _UserMessageBubble(
                                 text: 'Giải thích phương pháp tích phân từng phần?',
                                 timeLabel: 'Bạn • 10:42 AM',
                               ),
-                              const SizedBox(height: 14),
+                              SizedBox(height: 14),
                               _AiMessageBubble(
                                 text: 'Tích phân từng phần dùng công thức ∫u dv = uv - ∫v du. Khi chọn u và dv, hãy ưu tiên Log - Đa - Lượng - Mũ để rút gọn biểu thức hiệu quả hơn.',
                                 timeLabel: 'Learnex AI • Vừa xong',

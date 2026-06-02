@@ -58,4 +58,14 @@ export const notificationService = {
       .count('* as count');
     return parseInt(count as string, 10);
   },
+
+  async delete(notificationId: string, userId: string): Promise<void> {
+    const result = await db('notifications')
+      .where({ id: notificationId, user_id: userId })
+      .del();
+      
+    if (!result) {
+      throw new AppError('Notification not found.', 404);
+    }
+  }
 };

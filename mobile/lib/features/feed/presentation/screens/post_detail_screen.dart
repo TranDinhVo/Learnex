@@ -64,6 +64,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         final currentCount = _post['comment_count'] as int? ?? 0;
         _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gửi bình luận thất bại. Vui lòng thử lại.')),
       );

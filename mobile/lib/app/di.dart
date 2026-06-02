@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/network/dio_client.dart';
 import '../core/services/websocket_service.dart';
+import '../core/services/webrtc_service.dart';
 
 // Auth
 import '../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -30,6 +31,12 @@ import '../features/chat/data/datasources/chat_remote_datasource.dart';
 import '../features/chat/data/repositories/chat_repository_impl.dart';
 import '../features/chat/presentation/bloc/chat_bloc.dart';
 
+// Room
+import '../features/room/data/datasources/room_remote_datasource.dart';
+import '../features/room/data/repositories/room_repository_impl.dart';
+import '../features/room/presentation/bloc/room_bloc.dart';
+import '../features/room/presentation/bloc/room_detail_bloc.dart';
+
 final getIt = GetIt.instance;
 
 void setupDependencies() {
@@ -46,6 +53,10 @@ void setupDependencies() {
 
   getIt.registerSingleton<WebSocketService>(
     WebSocketService(storage: getIt<FlutterSecureStorage>()),
+  );
+
+  getIt.registerSingleton<WebRTCService>(
+    WebRTCService(getIt<WebSocketService>()),
   );
 
   // ── Data Sources ──
@@ -98,9 +109,30 @@ void setupDependencies() {
   getIt.registerFactory<FriendBloc>(
     () => FriendBloc(repository: getIt<FriendRepositoryImpl>()),
   );
+  // ── Chat ──
   getIt.registerFactory<ChatBloc>(
     () => ChatBloc(
       repository: getIt<ChatRepositoryImpl>(),
+      wsService: getIt<WebSocketService>(),
+    ),
+  );
+
+  // ── Room ──
+  getIt.registerLazySingleton<RoomRemoteDatasource>(
+    () => RoomRemoteDatasource(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<RoomRepositoryImpl>(
+    () => RoomRepositoryImpl(datasource: getIt<RoomRemoteDatasource>()),
+  );
+  getIt.registerFactory<RoomBloc>(
+    () => RoomBloc(
+      repository: getIt<RoomRepositoryImpl>(),
+      wsService: getIt<WebSocketService>(),
+    ),
+  );
+  getIt.registerFactory<RoomDetailBloc>(
+    () => RoomDetailBloc(
+      repository: getIt<RoomRepositoryImpl>(),
       wsService: getIt<WebSocketService>(),
     ),
   );

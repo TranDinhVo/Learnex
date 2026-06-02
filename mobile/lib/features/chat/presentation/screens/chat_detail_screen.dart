@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:learnex/shared/utils/date_formatter.dart';
+import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_bubble.dart';
+import '../../../../app/di.dart';
+import '../../../../core/services/websocket_service.dart';
+import '../../../../core/services/webrtc_service.dart';
+import 'p2p_call_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String conversationId;
@@ -25,16 +29,33 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
     super.initState();
-    // Load conversations messages
-    context.read<ChatBloc>().add(LoadMessagesEvent(conversationId: widget.conversationId));
+    context.read<ChatBloc>().add(
+          LoadMessagesEvent(conversationId: widget.conversationId),
+        );
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      final state = context.read<ChatBloc>().state;
+      if (state is MessagesLoaded && state.hasMore && !_isLoadingMore) {
+        setState(() => _isLoadingMore = true);
+        context.read<ChatBloc>().add(
+              LoadMoreMessagesEvent(conversationId: widget.conversationId),
+            );
+      }
+    }
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -48,6 +69,43 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _startCall(String callType) {
+    final authState = context.read<AuthBloc>().state;
+    String senderId = '';
+    String senderName = '';
+    if (authState is Authenticated) {
+      senderId = authState.user.id;
+      senderName = authState.user.fullName.isNotEmpty ? authState.user.fullName : 'Người dùng';
+    }
+
+    final roomId = 'call_${senderId}_${widget.conversationId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // 1. Gửi lời mời gọi
+    getIt<WebSocketService>().send({
+      'type': 'private_call_invite',
+      'data': {
+        'targetId': widget.conversationId,
+        'callType': callType,
+        'roomId': roomId,
+        'callerName': senderName,
+      }
+    });
+
+    // 2. Mở màn hình cuộc gọi ngay
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => P2PCallScreen(
+          webrtcService: getIt<WebRTCService>(),
+          roomId: roomId,
+          partnerName: widget.partnerName,
+          partnerId: widget.conversationId,
+          isAudioOnly: callType == 'voice',
+          isCaller: true,
+        ),
+      ),
+    );
   }
 
   void _sendMessage() {
@@ -80,7 +138,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           Expanded(
             child: BlocConsumer<ChatBloc, ChatState>(
               listener: (context, state) {
-                if (state is MessagesLoaded || state is MessageSent) {
+                if (state is MessagesLoaded) {
+                  setState(() => _isLoadingMore = false);
+                }
+                // Chỉ tự động cuộn xuống đáy nếu đang ở trang 1 
+                // (VD: vừa mới gửi tin nhắn hoặc vừa load xong lần đầu)
+                if (state is MessagesLoaded && state.currentPage == 1) {
                   Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
                 }
               },
@@ -110,8 +173,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 }
 
                 List<dynamic> messages = [];
+                bool hasMore = false;
                 if (state is MessagesLoaded) {
                   messages = state.messages;
+                  hasMore = state.hasMore;
                 }
 
                 if (messages.isEmpty) {
@@ -139,14 +204,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   controller: _scrollController,
                   reverse: true, // Display latest messages at the bottom
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  itemCount: messages.length,
+                  itemCount: messages.length + (hasMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24.0),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24, height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+
                     final msg = messages[index] as Map<String, dynamic>;
-                    final isMe = msg['sender_id']?.toString() == currentUserId;
+                    final senderId = msg['sender_id']?.toString() ?? '';
+                    final isMe = senderId == currentUserId;
                     final content = msg['content']?.toString();
                     final fileUrl = msg['file_url']?.toString();
                     final createdAt = msg['created_at']?.toString();
                     
+                    bool isTop = true;
+                    if (index + 1 < messages.length) {
+                      final nextMsg = messages[index + 1] as Map<String, dynamic>;
+                      if (nextMsg['sender_id']?.toString() == senderId) isTop = false;
+                    }
+
+                    bool isBottom = true;
+                    if (index - 1 >= 0) {
+                      final prevMsg = messages[index - 1] as Map<String, dynamic>;
+                      if (prevMsg['sender_id']?.toString() == senderId) isBottom = false;
+                    }
+
                     // Parse date formatted time
                     String timeStr = 'Vừa xong';
                     if (createdAt != null) {
@@ -161,15 +251,57 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       } catch (_) {}
                     }
 
-                    return ChatBubble(
-                      isMe: isMe,
-                      message: content,
-                      time: timeStr,
-                      isRead: msg['is_read'] == true,
-                      isFile: fileUrl != null,
-                      fileName: fileUrl != null ? fileUrl.split('/').last : null,
-                      fileSizeAndType: fileUrl != null ? 'Tập tin đính kèm' : null,
-                    );
+                      final hasFile = fileUrl != null && fileUrl.isNotEmpty;
+                      // Parse call history
+                      final isCallHistory = !hasFile && content != null && content.startsWith('[CALL_HISTORY]:');
+                      String? callHistoryType;
+                      if (isCallHistory) {
+                        final parts = content.split(':');
+                        callHistoryType = parts.length > 1 ? parts[1] : 'VOICE';
+                      }
+
+                      final bubble = ChatBubble(
+                        isMe: isMe,
+                        message: content,
+                        time: timeStr,
+                        isRead: msg['is_read'] == true,
+                        isFile: hasFile,
+                        fileName: hasFile ? fileUrl.split('/').last : null,
+                        fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
+                        isTop: isTop,
+                        isBottom: isBottom,
+                        showAvatar: !isMe && isBottom,
+                        avatarInitials: initials,
+                        onCallPressed: isCallHistory
+                            ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
+                            : null,
+                      );
+
+                      if (index == messages.length - 1) {
+                        return Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE7E8E9), // surface-container-high
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Hôm nay',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF464555), // on-surface-variant
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            bubble,
+                          ],
+                        );
+                      }
+                      return bubble;
                   },
                 );
               },
@@ -185,13 +317,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context, ThemeData theme, String initials) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xCCF8FAFC), // slate-50/80
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       leadingWidth: 48,
+      titleSpacing: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF4F46E5), size: 20),
-        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF464555), size: 20),
+        onPressed: () {
+          // Reload danh sách hội thoại trước khi quay lại
+          context.read<ChatBloc>().add(LoadConversationsEvent());
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            context.go('/chat');
+          }
+        },
       ),
       title: Row(
         children: [
@@ -202,7 +343,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEDEEFF),
+                  color: const Color(0xFFB6B4FF),
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),
@@ -210,7 +351,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 child: Text(
                   initials,
                   style: const TextStyle(
-                    color: Color(0xFF3123CC),
+                    color: Color(0xFF140F54),
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -244,11 +385,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ),
                 Text(
-                  'Đang hoạt động',
+                  'Đang online',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: Colors.green.shade500,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.normal,
                   ),
                 ),
               ],
@@ -259,11 +400,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       actions: [
         IconButton(
           icon: const Icon(Icons.call, color: Color(0xFF777587)),
-          onPressed: () {},
+          onPressed: () => _startCall('voice'),
         ),
         IconButton(
           icon: const Icon(Icons.videocam, color: Color(0xFF777587)),
-          onPressed: () {},
+          onPressed: () => _startCall('video'),
         ),
         IconButton(
           icon: const Icon(Icons.more_vert, color: Color(0xFF777587)),
@@ -294,7 +435,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5), size: 26),
+            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF464555), size: 26),
             onPressed: () {},
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
