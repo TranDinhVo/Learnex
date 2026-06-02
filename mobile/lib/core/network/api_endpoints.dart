@@ -80,4 +80,8 @@ class ApiEndpoints {
 
   // ── WebSocket ───────────────────────────────────────────────────
   static const String websocket = '/ws';
+
+  // ── Upload ───────────────────────────────────────────────
+  static const String uploadImage = '/upload/image';
+  static const String uploadDocument = '/upload/document';
 }

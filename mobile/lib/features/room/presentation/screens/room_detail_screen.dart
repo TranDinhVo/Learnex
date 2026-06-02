@@ -3,7 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/services/webrtc_service.dart';
+import '../../../../core/services/media_upload_service.dart';
 import '../../../../shared/widgets/custom_avatar.dart';
+import '../../../../shared/widgets/media_picker_sheet.dart';
+import 'package:image_picker/image_picker.dart'; // XFile - works on Web & Mobile
 import '../screens/call_screen.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -38,6 +41,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
   String? _ownerId;
   String _privacyMode = 'public';
   List<String> _activeCallUsers = [];
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -75,6 +79,44 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
       _bloc.add(SendMessageEvent(roomId: widget.roomId, content: text));
       _messageController.clear();
       _scrollToBottom();
+    }
+  }
+
+  void _openMediaPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => MediaPickerSheet(
+        onImagePicked: (file) => _uploadAndSend(file, isImage: true),
+        onFilePicked: (file) => _uploadAndSend(file, isImage: false),
+      ),
+    );
+  }
+
+  Future<void> _uploadAndSend(XFile file, {required bool isImage}) async {
+    setState(() => _isUploading = true);
+    try {
+      final service = getIt<MediaUploadService>();
+      final fileUrl = isImage
+          ? await service.uploadImage(file)
+          : (await service.uploadDocument(file))['url'];
+
+      if (!mounted) return;
+      _bloc.add(SendMessageEvent(
+        roomId: widget.roomId,
+        fileUrl: fileUrl,
+      ));
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload thất bại: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -434,55 +476,61 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
             ),
             
             // Input Bar
-            Container(
-              padding: EdgeInsets.only(
-                left: 12,
-                right: 12,
-                top: 8,
-                bottom: 8 + MediaQuery.of(context).padding.bottom,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5)),
-                    onPressed: () {},
+            Column(
+              children: [
+                if (_isUploading)
+                  const LinearProgressIndicator(minHeight: 2),
+                Container(
+                  padding: EdgeInsets.only(
+                    left: 12,
+                    right: 12,
+                    top: 8,
+                    bottom: 8 + MediaQuery.of(context).padding.bottom,
                   ),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F5),
-                        borderRadius: BorderRadius.circular(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5)),
+                        onPressed: _isUploading ? null : _openMediaPicker,
                       ),
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: const InputDecoration(
-                          hintText: 'Nhắn tin trong phòng...',
-                          border: InputBorder.none,
-                          suffixIcon: Icon(Icons.sentiment_satisfied_alt, color: Colors.grey),
-                          suffixIconConstraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: TextField(
+                            controller: _messageController,
+                            onSubmitted: _isUploading ? null : (_) => _sendMessage(),
+                            decoration: const InputDecoration(
+                              hintText: 'Nhắn tin trong phòng...',
+                              border: InputBorder.none,
+                              suffixIcon: Icon(Icons.sentiment_satisfied_alt, color: Colors.grey),
+                              suffixIconConstraints: BoxConstraints(minWidth: 32, minHeight: 32),
+                            ),
+                          ),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: _isUploading ? Colors.grey : const Color(0xFF4F46E5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                          onPressed: _isUploading ? null : _sendMessage,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF4F46E5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                      onPressed: _sendMessage,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),

@@ -120,6 +120,34 @@ class RoomMessageBubble extends StatelessWidget {
 
   Widget _buildFileCard(BuildContext context, String fileUrl) {
     final theme = Theme.of(context);
+    final isImage = _isImageUrl(fileUrl);
+
+    if (isImage) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          fileUrl,
+          width: 220,
+          fit: BoxFit.cover,
+          loadingBuilder: (ctx, child, progress) => progress == null
+              ? child
+              : Container(
+                  width: 220,
+                  height: 160,
+                  color: Colors.grey.shade200,
+                  child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+          errorBuilder: (ctx, _, __) => Container(
+            width: 220,
+            height: 160,
+            color: Colors.grey.shade200,
+            child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
     final fileName = Uri.parse(fileUrl).pathSegments.last;
     
     return Container(
@@ -156,6 +184,13 @@ class RoomMessageBubble extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  bool _isImageUrl(String url) {
+    final lower = url.toLowerCase().split('?').first;
+    return lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') || lower.endsWith('.gif') ||
+        lower.endsWith('.webp');
   }
 
   Widget _buildSystemMessage(BuildContext context, String text, DateTime? createdAt) {

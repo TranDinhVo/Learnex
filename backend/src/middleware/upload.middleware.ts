@@ -24,6 +24,10 @@ const documentFileFilter = (req: any, file: Express.Multer.File, cb: multer.File
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'text/plain',
     'application/zip',
+    'video/mp4',
+    'video/quicktime',
+    'video/x-msvideo',
+    'video/x-matroska',
   ];
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
@@ -41,5 +45,5 @@ export const uploadImage = multer({
 export const uploadDocument = multer({
   storage: documentStorage,
   fileFilter: documentFileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB (to support video)
 });

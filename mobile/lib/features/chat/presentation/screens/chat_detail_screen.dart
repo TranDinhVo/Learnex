@@ -10,6 +10,9 @@ import '../widgets/chat_bubble.dart';
 import '../../../../app/di.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/services/webrtc_service.dart';
+import '../../../../core/services/media_upload_service.dart';
+import '../../../../shared/widgets/media_picker_sheet.dart';
+import 'package:image_picker/image_picker.dart'; // XFile - works on Web & Mobile
 import 'p2p_call_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -30,6 +33,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -119,6 +123,44 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     _messageController.clear();
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+  }
+
+  void _openMediaPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => MediaPickerSheet(
+        onImagePicked: (file) => _uploadAndSend(file, isImage: true),
+        onFilePicked: (file) => _uploadAndSend(file, isImage: false),
+      ),
+    );
+  }
+
+  Future<void> _uploadAndSend(XFile file, {required bool isImage}) async {
+    setState(() => _isUploading = true);
+    try {
+      final service = getIt<MediaUploadService>();
+      final fileUrl = isImage
+          ? await service.uploadImage(file)
+          : (await service.uploadDocument(file))['url'];
+
+      if (!mounted) return;
+      context.read<ChatBloc>().add(SendMessageEvent(
+        conversationId: widget.conversationId,
+        fileUrl: fileUrl,
+      ));
+      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload thất bại: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   @override
@@ -266,6 +308,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         time: timeStr,
                         isRead: msg['is_read'] == true,
                         isFile: hasFile,
+                        fileUrl: fileUrl,
                         fileName: hasFile ? fileUrl.split('/').last : null,
                         fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
                         isTop: isTop,
@@ -415,67 +458,77 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
 
   Widget _buildInputBar(ThemeData theme) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 12,
-        bottom: 12 + MediaQuery.of(context).padding.bottom,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
+    return Column(
+      children: [
+        if (_isUploading)
+          LinearProgressIndicator(
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            color: theme.colorScheme.primary,
+            minHeight: 2,
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Color(0xFF464555), size: 26),
-            onPressed: () {},
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+        Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 12 + MediaQuery.of(context).padding.bottom,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 40,
-              child: TextField(
-                controller: _messageController,
-                onSubmitted: (_) => _sendMessage(),
-                decoration: InputDecoration(
-                  hintText: 'Nhập tin nhắn...',
-                  hintStyle: const TextStyle(color: Color(0xFF777587), fontSize: 13),
-                  filled: true,
-                  fillColor: const Color(0xFFF3F4F5),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, -4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: Color(0xFF464555), size: 26),
+                onPressed: _isUploading ? null : _openMediaPicker,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: TextField(
+                    controller: _messageController,
+                    onSubmitted: _isUploading ? null : (_) => _sendMessage(),
+                    decoration: InputDecoration(
+                      hintText: 'Nhập tin nhắn...',
+                      hintStyle: const TextStyle(color: Color(0xFF777587), fontSize: 13),
+                      filled: true,
+                      fillColor: const Color(0xFFF3F4F5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    ),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _isUploading ? Colors.grey : const Color(0xFF4F46E5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                  onPressed: _isUploading ? null : _sendMessage,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Color(0xFF4F46E5),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white, size: 18),
-              onPressed: _sendMessage,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
