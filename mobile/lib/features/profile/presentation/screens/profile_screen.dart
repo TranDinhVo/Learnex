@@ -5,6 +5,7 @@ import 'edit_profile_screen.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
+import '../../../feed/presentation/screens/edit_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
@@ -33,6 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<dynamic> _myPosts = [];
   bool _postsLoading = false;
   String? _postsError;
+  int? _localPostCount;
 
   @override
   void initState() {
@@ -53,6 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _myPosts = res['data'] as List<dynamic>? ?? [];
           _postsLoading = false;
+          _localPostCount = authState.user.postsCount;
         });
       } catch (e) {
         setState(() {
@@ -109,6 +112,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       setState(() {
         _myPosts = _myPosts.where((post) => post['id'].toString() != postId).toList();
+        if (_localPostCount != null && _localPostCount! > 0) {
+          _localPostCount = _localPostCount! - 1;
+        }
       });
       await getIt<FeedRepositoryImpl>().deletePost(postId);
     } catch (_) {}
@@ -142,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
       friendCount = user.friendsCount.toString();
       docCount = user.documentsCount.toString();
-      postCount = user.postsCount.toString();
+      postCount = _localPostCount != null ? _localPostCount.toString() : user.postsCount.toString();
     }
 
     return BlocListener<AuthBloc, AuthState>(
@@ -414,6 +420,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onLikeTap: () => _toggleLikePost(post['id'].toString()),
                                 onSaveTap: () => _toggleSavePost(post['id'].toString()),
                                 onDeleteTap: () => _deletePost(post['id'].toString()),
+                                onEditTap: () async {
+                                  final updated = await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EditPostScreen(post: post),
+                                    ),
+                                  );
+                                  if (updated != null && mounted) {
+                                    setState(() {
+                                      _myPosts = _myPosts.map((p) {
+                                        if (p['id'].toString() == updated['id'].toString()) {
+                                          return updated;
+                                        }
+                                        return p;
+                                      }).toList();
+                                    });
+                                  }
+                                },
                                 onCommentTap: () async {
                                   final updated = await Navigator.of(context).push(
                                     MaterialPageRoute(
