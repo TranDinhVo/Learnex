@@ -143,9 +143,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
   List<_NotificationItemData> get _newNotifications =>
       _notifications.where((item) => item.isUnread).toList();
 
-  List<_NotificationItemData> get _olderNotifications =>
-      _notifications.where((item) => !item.isUnread).toList();
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

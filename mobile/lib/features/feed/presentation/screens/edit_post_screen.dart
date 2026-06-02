@@ -27,7 +27,6 @@ class EditPostScreen extends StatefulWidget {
 
 class _EditPostScreenState extends State<EditPostScreen> {
   final TextEditingController _contentController = TextEditingController();
-  final List<XFile> _selectedImages = [];
   bool _isSubmitting = false;
   PostVisibility _selectedVisibility = PostVisibility.public;
   Map<String, dynamic>? _attachedDocument;

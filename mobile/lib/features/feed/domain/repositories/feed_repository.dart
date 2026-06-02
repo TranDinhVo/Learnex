@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 /// Abstract repository cho Feed feature.
@@ -36,6 +35,8 @@ abstract class FeedRepository {
   Future<void> deletePost(String id);
 
   /// Like / Unlike bài viết
+  Future<Map<String, dynamic>> toggleLike(String postId);
+
   /// Save / Unsave bài viết
   Future<Map<String, dynamic>> toggleSave(String postId);
 

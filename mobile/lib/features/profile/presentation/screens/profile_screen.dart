@@ -129,7 +129,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final authState = context.watch<AuthBloc>().state;
     String name = 'Học viên Learnex';
     String username = 'student';
-    String email = '';
     String bio = 'Chào mừng bạn đến với Learnex!';
     String school = 'Trường học của tôi';
     String major = 'Ngành học của tôi';
@@ -142,7 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final user = authState.user;
       name = user.fullName;
       username = user.username;
-      email = user.email;
       bio = user.bio ?? 'Học tập cùng cộng đồng!';
       school = user.school ?? 'Chưa cập nhật trường';
       major = user.major ?? 'Chưa cập nhật ngành';

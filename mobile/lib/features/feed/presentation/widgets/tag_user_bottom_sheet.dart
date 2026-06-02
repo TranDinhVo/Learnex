@@ -82,7 +82,6 @@ class _TagUserBottomSheetState extends State<TagUserBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final selectedCount = _selectedUsersMap.length;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
