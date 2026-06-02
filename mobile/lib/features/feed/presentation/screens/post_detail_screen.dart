@@ -8,7 +8,12 @@ import '../widgets/post_card.dart';
 import '../widgets/comment_item.dart';
 import '../widgets/comment_input_bar.dart';
 import '../../../../shared/utils/date_formatter.dart';
-
+import '../../../../shared/utils/image_parser.dart';
+import 'edit_post_screen.dart';
+import '../bloc/feed_bloc.dart';
+import '../bloc/feed_event.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../profile/presentation/screens/user_profile_screen.dart';
 class PostDetailScreen extends StatefulWidget {
   final Map<String, dynamic> post;
 
@@ -24,6 +29,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   bool _commentsLoading = true;
   String? _commentsError;
 
+  final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
+  String? _editingCommentId;
+  String? _replyingToCommentId;
+  String? _replyingToName;
+  String? _actualReplyToCommentId;
+
   @override
   void initState() {
     super.initState();
@@ -31,12 +43,36 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _loadComments();
   }
 
+  @override
+  void dispose() {
+    _commentController.dispose();
+    _commentFocusNode.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadComments() async {
     try {
       final res = await getIt<FeedRepositoryImpl>().getComments(_post['id'].toString());
       final data = res['data'] as List<dynamic>? ?? [];
+      final flattened = <dynamic>[];
+      for (final comment in data) {
+        flattened.add({...comment, 'is_reply': false, 'depth': 0});
+        if (comment['replies'] != null) {
+          final depthMap = <String, int>{};
+          depthMap[comment['id'].toString()] = 0;
+          for (final reply in comment['replies']) {
+            final replyId = reply['id'].toString();
+            final targetId = reply['reply_to_comment_id']?.toString() ?? comment['id'].toString();
+            final parentDepth = depthMap[targetId] ?? 0;
+            // Cap depth at 3 to prevent excessive indentation on mobile
+            final depth = (parentDepth + 1 > 3) ? 3 : parentDepth + 1;
+            depthMap[replyId] = depth;
+            flattened.add({...reply, 'is_reply': true, 'depth': depth});
+          }
+        }
+      }
       setState(() {
-        _comments = data;
+        _comments = flattened;
         _commentsLoading = false;
         _commentsError = null;
       });
@@ -48,28 +84,213 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  Future<void> _addComment(String content) async {
+  Future<void> _submitComment(String content) async {
+    if (_editingCommentId != null) {
+      await _updateComment(_editingCommentId!, content);
+    } else {
+      await _addComment(content, parentId: _replyingToCommentId, replyToCommentId: _actualReplyToCommentId);
+    }
+  }
+
+  Future<void> _updateComment(String commentId, String content) async {
+    final previousComments = List.from(_comments);
+    setState(() {
+      final index = _comments.indexWhere((c) => c['id'].toString() == commentId);
+      if (index != -1) {
+        _comments[index] = {
+          ..._comments[index],
+          'content': content,
+          'is_edited': true,
+        };
+      }
+      _editingCommentId = null;
+      _commentController.clear();
+      _commentFocusNode.unfocus();
+    });
+
+    try {
+      await getIt<FeedRepositoryImpl>().updateComment(_post['id'].toString(), commentId, content);
+    } catch (_) {
+      setState(() {
+        _comments = previousComments;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cập nhật bình luận thất bại.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _addComment(String content, {String? parentId, String? replyToCommentId}) async {
     // Optimistically update comment count
     setState(() {
       final currentCount = _post['comment_count'] as int? ?? 0;
       _post['comment_count'] = currentCount + 1;
+      _commentController.clear();
+      _replyingToCommentId = null;
+      _replyingToName = null;
+      _actualReplyToCommentId = null;
     });
 
     try {
-      await getIt<FeedRepositoryImpl>().addComment(_post['id'].toString(), content);
+      await getIt<FeedRepositoryImpl>().addComment(_post['id'].toString(), content, parentId: parentId, replyToCommentId: replyToCommentId);
       _loadComments();
     } catch (_) {
       // Revert if error
+      if (mounted) {
+        setState(() {
+          final currentCount = _post['comment_count'] as int? ?? 0;
+          _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gửi bình luận thất bại. Vui lòng thử lại.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteComment(String commentId) async {
+    // Optimistically update comment count and remove from list
+    final previousComments = List.from(_comments);
+    setState(() {
+      final currentCount = _post['comment_count'] as int? ?? 0;
+      _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
+      _comments.removeWhere((c) => c['id'].toString() == commentId);
+    });
+
+    try {
+      await getIt<FeedRepositoryImpl>().deleteComment(_post['id'].toString(), commentId);
+    } catch (_) {
+      // Revert if error
       setState(() {
-        final currentCount = _post['comment_count'] as int? ?? 0;
-        _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
+        _post['comment_count'] = previousComments.length;
+        _comments = previousComments;
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gửi bình luận thất bại. Vui lòng thử lại.')),
+        const SnackBar(content: Text('Xóa bình luận thất bại.')),
       );
     }
   }
+
+  Future<void> _toggleCommentLike(String commentId, int index) async {
+    final comment = _comments[index];
+    final isLiked = comment['is_liked'] == true;
+    final currentLikes = comment['like_count'] as int? ?? 0;
+    
+    setState(() {
+      _comments[index] = {
+        ...comment,
+        'is_liked': !isLiked,
+        'like_count': isLiked ? currentLikes - 1 : currentLikes + 1,
+      };
+    });
+    
+    try {
+      await getIt<FeedRepositoryImpl>().toggleCommentLike(_post['id'].toString(), commentId);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _comments[index] = {
+            ...comment,
+            'is_liked': isLiked,
+            'like_count': currentLikes,
+          };
+        });
+      }
+    }
+  }
+
+  void _showLikersBottomSheet(BuildContext context, String postId) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Lượt thích',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: getIt<FeedRepositoryImpl>().getLikers(postId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Đã có lỗi xảy ra'));
+                  }
+                  final likers = snapshot.data ?? [];
+                  if (likers.isEmpty) {
+                    return const Center(child: Text('Chưa có lượt thích nào.'));
+                  }
+                  return ListView.builder(
+                    itemCount: likers.length,
+                    itemBuilder: (context, index) {
+                      final liker = likers[index];
+                      final name = liker['full_name'] ?? 'U';
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: liker['avatar_url'] != null
+                              ? NetworkImage(liker['avatar_url'])
+                              : null,
+                          child: liker['avatar_url'] == null
+                              ? Text(name[0].toUpperCase())
+                              : null,
+                        ),
+                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('@${liker['username']}'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          final likerId = liker['id']?.toString();
+                          if (likerId != null) {
+                            final authState = context.read<AuthBloc>().state;
+                            final currentUserId = authState is Authenticated ? authState.user.id : '';
+                            if (likerId == currentUserId) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                              );
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => UserProfileScreen(userId: likerId)),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Future<void> _toggleLike() async {
     final postId = _post['id'].toString();
@@ -104,10 +325,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     // User initials from AuthBloc
     final authState = context.read<AuthBloc>().state;
     String userInitials = 'U';
+    String currentUserId = '';
     if (authState is Authenticated) {
       final name = authState.user.fullName;
       userInitials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+      currentUserId = authState.user.id;
     }
+    
+    final isOwner = _post['user_id']?.toString() == currentUserId;
 
     final authorName = _post['author_name'] ?? 'Học viên Learnex';
     final authorHandle = _post['author_username'] != null 
@@ -115,17 +340,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         : '@student';
     final postContent = _post['content'] ?? '';
 
-    String? imageUrl;
-    final imageList = _post['image_urls'];
-    if (imageList is List && imageList.isNotEmpty) {
-      imageUrl = imageList.first as String?;
-    } else if (imageList is String && imageList.isNotEmpty) {
-      if (imageList.startsWith('[')) {
-        imageUrl = imageList.replaceAll(RegExp('[\\[\\]"\' ]'), '');
-      } else {
-        imageUrl = imageList;
-      }
-    }
+    final imageUrls = ImageParser.parseImageUrls(_post['image_urls']);
 
     return PopScope(
       canPop: false,
@@ -150,6 +365,45 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               color: theme.colorScheme.onSurface,
             ),
           ),
+          actions: [
+            if (isOwner)
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: const Text(
+                        'Xóa bài viết?',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      content: const Text('Bạn có chắc chắn muốn xóa bài viết này không? Hành động này không thể hoàn tác.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Hủy', style: TextStyle(color: Color(0xFF6B7280))),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog
+                            context.read<FeedBloc>().add(DeletePostEvent(postId: _post['id'].toString()));
+                            Navigator.of(context).pop(); // Return to previous screen, returning null
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Đã xóa bài viết')),
+                            );
+                          },
+                          child: const Text('Xóa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
         ),
       body: Column(
         children: [
@@ -165,23 +419,69 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     authorHandle: authorHandle,
                     timeAgo: formatTimeAgo(_post['created_at']?.toString()),
                     authorInitials: authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U',
+                    authorAvatarUrl: _post['author_avatar'] as String?,
                     avatarColor: Colors.indigo.shade100,
                     avatarTextColor: Colors.indigo.shade700,
                     content: postContent,
-                    postType: imageUrl != null
+                    postType: imageUrls.isNotEmpty
                         ? PostType.image
                         : (_post['document_id'] != null ? PostType.document : PostType.text),
-                    imageUrl: imageUrl,
-                    documentName: _post['document_title'] ?? 'Tài liệu.pdf',
+                    imageUrls: imageUrls,
+                    documentName: _post['document_title'] as String? ?? 'Tài liệu',
                     documentSize: _post['document_size'] != null
-                        ? '${(_post['document_size'] / 1024).toStringAsFixed(0)} KB'
-                        : '1.2 MB',
+                        ? '${((_post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
+                        : null,
+                    documentUrl: _post['document_url'] as String?,
+                    taggedUsers: _post['tagged_users'] as List<dynamic>?,
+                    visibility: _post['visibility']?.toString(),
                     likes: _post['like_count'] ?? 0,
                     comments: _post['comment_count'] ?? 0,
                     isLiked: _post['is_liked'] == true,
                     isSaved: _post['is_saved'] == true,
                     onLikeTap: _toggleLike,
                     onSaveTap: _toggleSave,
+                    onLikersTap: () => _showLikersBottomSheet(context, _post['id'].toString()),
+                    onEditTap: isOwner ? () async {
+                      try {
+                        final updated = await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => EditPostScreen(post: _post),
+                          ),
+                        );
+                        if (updated != null && mounted) {
+                          setState(() {
+                            _post = updated as Map<String, dynamic>;
+                          });
+                          context.read<FeedBloc>().add(UpdatePostInListEvent(updatedPost: updated));
+                        }
+                      } catch (e, stackTrace) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Lỗi: $e')),
+                        );
+                        print('Lỗi EditPostScreen: $e\n$stackTrace');
+                      }
+                    } : null,
+                    onAuthorTap: () {
+                      final postUserId = _post['user_id']?.toString();
+                      if (postUserId != null) {
+                        final authState = context.read<AuthBloc>().state;
+                        final currentUserId = authState is Authenticated ? authState.user.id : '';
+                        if (postUserId == currentUserId) {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                        } else {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => UserProfileScreen(userId: postUserId)));
+                        }
+                      }
+                    },
+                    onTaggedUserTap: (taggedUserId) {
+                      final authState = context.read<AuthBloc>().state;
+                      final currentUserId = authState is Authenticated ? authState.user.id : '';
+                      if (taggedUserId == currentUserId) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                      } else {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => UserProfileScreen(userId: taggedUserId)));
+                      }
+                    },
                   ),
                   
                   // Comment Section Header
@@ -235,6 +535,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         final cName = comment['author_name'] ?? 'Học viên';
                         final cInitials = cName.isNotEmpty ? cName[0].toUpperCase() : 'U';
                         final cContent = comment['content'] ?? '';
+                        final isCommentOwner = comment['user_id']?.toString() == currentUserId;
                         
                         return CommentItem(
                           authorName: cName,
@@ -243,6 +544,50 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           content: cContent,
                           avatarColor: theme.colorScheme.primaryContainer,
                           avatarTextColor: theme.colorScheme.onPrimaryContainer,
+                          authorAvatarUrl: comment['author_avatar'] as String?,
+                          isEdited: comment['is_edited'] == true,
+                          isReply: comment['is_reply'] == true,
+                          depth: comment['depth'] as int? ?? (comment['is_reply'] == true ? 1 : 0),
+                          isLiked: comment['is_liked'] == true,
+                          likeCount: comment['like_count'] as int? ?? 0,
+                          onAuthorTap: () {
+                            final commentUserId = comment['user_id']?.toString();
+                            if (commentUserId != null) {
+                              final authState = context.read<AuthBloc>().state;
+                              final currentUserId = authState is Authenticated ? authState.user.id : '';
+                              if (commentUserId == currentUserId) {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                                );
+                              } else {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => UserProfileScreen(userId: commentUserId)),
+                                );
+                              }
+                            }
+                          },
+                          onLikeTap: () => _toggleCommentLike(comment['id'].toString(), index),
+                          onReplyTap: () {
+                            setState(() {
+                              // If it's already a reply, reply to the parent instead of nesting deeper
+                              _replyingToCommentId = (comment['parent_id'] ?? comment['id']).toString();
+                              _actualReplyToCommentId = comment['id'].toString();
+                              _replyingToName = cName;
+                              _commentController.text = '@$cName ';
+                            });
+                            _commentController.selection = TextSelection.fromPosition(TextPosition(offset: _commentController.text.length));
+                            _commentFocusNode.requestFocus();
+                          },
+                          onEditTap: isCommentOwner ? () {
+                            setState(() {
+                              _editingCommentId = comment['id'].toString();
+                              _commentController.text = cContent;
+                            });
+                            _commentFocusNode.requestFocus();
+                          } : null,
+                          onDeleteTap: isCommentOwner || _post['user_id']?.toString() == currentUserId ? () {
+                            _deleteComment(comment['id'].toString());
+                          } : null,
                         );
                       },
                     ),
@@ -254,7 +599,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           // Bottom Dynamic Input Bar
           CommentInputBar(
             userInitials: userInitials,
-            onSend: _addComment,
+            onSend: _submitComment,
+            controller: _commentController,
+            focusNode: _commentFocusNode,
+            isEditing: _editingCommentId != null,
+            replyingToName: _replyingToName,
+            onCancelEdit: () {
+              setState(() {
+                _editingCommentId = null;
+              });
+            },
+            onCancelReply: () {
+              setState(() {
+                _replyingToCommentId = null;
+                _replyingToName = null;
+                _actualReplyToCommentId = null;
+              });
+            },
           ),
         ],
       ),

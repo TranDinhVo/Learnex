@@ -42,6 +42,10 @@ class ApiEndpoints {
   static String downloadDocument(String id) => '/documents/$id/download';
   static String viewDocument(String id) => '/documents/$id/view';
 
+  // ── Upload ───────────────────────────────────────────────────────
+  static const String uploadFile = '/upload';
+
+
   // ── Friends ──────────────────────────────────────────────────────
   static const String friends = '/friends';
   static const String friendRequests = '/friends/requests';

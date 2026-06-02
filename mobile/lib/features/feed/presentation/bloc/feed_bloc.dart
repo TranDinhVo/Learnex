@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repositories/feed_repository_impl.dart';
+import '../../domain/enums/post_visibility.dart';
 import 'feed_event.dart';
 import 'feed_state.dart';
 
@@ -15,6 +16,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<LoadMoreFeedEvent>(_onLoadMore);
     on<RefreshFeedEvent>(_onRefresh);
     on<CreatePostEvent>(_onCreatePost);
+    on<EditPostEvent>(_onEditPost);
     on<LikePostEvent>(_onLikePost);
     on<SavePostEvent>(_onSavePost);
     on<DeletePostEvent>(_onDeletePost);
@@ -22,6 +24,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<AddCommentEvent>(_onAddComment);
     on<DeleteCommentEvent>(_onDeleteComment);
     on<UpdatePostInListEvent>(_onUpdatePostInList);
+    on<UploadImagesEvent>(_onUploadImages);
   }
 
   Future<void> _onLoadFeed(
@@ -95,10 +98,13 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   ) async {
     emit(PostCreating());
     try {
+      await Future.delayed(const Duration(milliseconds: 800)); // Hiệu ứng delay giả lập mạng
       final result = await _repository.createPost(
         content: event.content,
         imageUrls: event.imageUrls,
         documentId: event.documentId,
+        visibility: event.visibility.value,
+        taggedUserIds: event.taggedUserIds,
       );
       final data = result['data'] ?? result;
       emit(PostCreated(data as Map<String, dynamic>));
@@ -109,6 +115,32 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       emit(PostCreateError(_extractError(e)));
     } catch (e) {
       emit(PostCreateError('Không thể tạo bài viết.'));
+    }
+  }
+
+  Future<void> _onEditPost(
+    EditPostEvent event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(PostEditing());
+    try {
+      final result = await _repository.updatePost(
+        event.postId,
+        content: event.content,
+        imageUrls: event.imageUrls,
+        documentId: event.documentId,
+        visibility: event.visibility.value,
+        taggedUserIds: event.taggedUserIds,
+      );
+      final data = result['data'] ?? result;
+      emit(PostEdited(data as Map<String, dynamic>));
+
+      // Cập nhật lại post trong danh sách nếu FeedLoaded
+      add(UpdatePostInListEvent(updatedPost: data));
+    } on DioException catch (e) {
+      emit(PostEditError(_extractError(e)));
+    } catch (e) {
+      emit(PostEditError('Không thể sửa bài viết.'));
     }
   }
 
@@ -168,11 +200,26 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     DeletePostEvent event,
     Emitter<FeedState> emit,
   ) async {
+    final currentState = state;
+    List<Map<String, dynamic>> previousPosts = [];
+
+    if (currentState is FeedLoaded) {
+      previousPosts = List<Map<String, dynamic>>.from(currentState.posts);
+      final updatedPosts = currentState.posts.where((post) => post['id'].toString() != event.postId).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    }
+
     try {
       await _repository.deletePost(event.postId);
-      // Reload feed
-      add(LoadFeedEvent());
-    } catch (_) {}
+      // We don't need to reload feed entirely if we optimistically removed it
+      // But reloading can ensure data consistency.
+      // add(LoadFeedEvent()); 
+    } catch (_) {
+      // Revert if error
+      if (currentState is FeedLoaded) {
+        emit(currentState.copyWith(posts: previousPosts));
+      }
+    }
   }
 
   Future<void> _onLoadComments(
@@ -243,5 +290,19 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       }
     } catch (_) {}
     return e.message ?? 'Đã có lỗi xảy ra';
+  }
+
+  Future<void> _onUploadImages(
+    UploadImagesEvent event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(ImagesUploading());
+    try {
+      await Future.delayed(const Duration(milliseconds: 1500)); // Hiệu ứng delay giả lập upload mạng
+      final urls = await _repository.uploadImages(event.files);
+      emit(ImagesUploaded(urls));
+    } catch (e) {
+      emit(ImagesUploadError('Không thể tải ảnh lên. Vui lòng thử lại.'));
+    }
   }
 }

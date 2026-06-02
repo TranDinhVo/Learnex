@@ -1,3 +1,4 @@
+import 'package:image_picker/image_picker.dart';
 import '../../domain/repositories/feed_repository.dart';
 import '../datasources/feed_remote_datasource.dart';
 
@@ -21,11 +22,15 @@ class FeedRepositoryImpl implements FeedRepository {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
+    List<String>? taggedUserIds,
   }) =>
       _datasource.createPost(
         content: content,
         imageUrls: imageUrls,
         documentId: documentId,
+        visibility: visibility,
+        taggedUserIds: taggedUserIds,
       );
 
   @override
@@ -33,9 +38,22 @@ class FeedRepositoryImpl implements FeedRepository {
       _datasource.getPostById(id);
 
   @override
-  Future<Map<String, dynamic>> updatePost(String id,
-          {String? content, List<String>? imageUrls}) =>
-      _datasource.updatePost(id, content: content, imageUrls: imageUrls);
+  Future<Map<String, dynamic>> updatePost(
+    String id, {
+    String? content,
+    List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
+  }) =>
+      _datasource.updatePost(
+        id,
+        content: content,
+        imageUrls: imageUrls,
+        documentId: documentId,
+        visibility: visibility,
+        taggedUserIds: taggedUserIds,
+      );
 
   @override
   Future<void> deletePost(String id) => _datasource.deletePost(id);
@@ -54,10 +72,27 @@ class FeedRepositoryImpl implements FeedRepository {
       _datasource.getComments(postId, page: page, limit: limit);
 
   @override
-  Future<Map<String, dynamic>> addComment(String postId, String content) =>
-      _datasource.addComment(postId, content);
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId}) async {
+    return await _datasource.addComment(postId, content, parentId: parentId, replyToCommentId: replyToCommentId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content) =>
+      _datasource.updateComment(postId, commentId, content);
 
   @override
   Future<void> deleteComment(String postId, String commentId) =>
       _datasource.deleteComment(postId, commentId);
+
+  @override
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId) =>
+      _datasource.toggleCommentLike(postId, commentId);
+
+  @override
+  Future<List<dynamic>> getLikers(String postId) =>
+      _datasource.getLikers(postId);
+
+  @override
+  Future<List<String>> uploadImages(List<XFile> files) =>
+      _datasource.uploadImages(files);
 }
