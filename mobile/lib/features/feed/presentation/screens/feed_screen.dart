@@ -311,12 +311,13 @@ class _FeedScreenState extends State<FeedScreen> {
                 );
               },
               onAddTap: () async {
+                final feedBloc = context.read<FeedBloc>();
                 await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
                 // Reload feed
                 if (mounted) {
-                  context.read<FeedBloc>().add(LoadFeedEvent());
+                  feedBloc.add(LoadFeedEvent());
                 }
               },
               onChatTap: () {
