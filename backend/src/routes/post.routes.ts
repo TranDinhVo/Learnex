@@ -21,6 +21,8 @@ router.post(
     body('image_urls').optional().isArray(),
     body('document_id').optional().isUUID(),
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
+    body('tagged_user_ids').optional().isArray(),
+    body('tagged_user_ids.*').optional().isUUID(),
   ]),
   postController.create
 );
@@ -34,6 +36,8 @@ router.put(
     body('content').optional().isString(),
     body('image_urls').optional().isArray(),
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
+    body('tagged_user_ids').optional().isArray(),
+    body('tagged_user_ids.*').optional().isUUID(),
   ]),
   postController.update
 );

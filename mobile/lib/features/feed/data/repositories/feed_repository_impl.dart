@@ -24,12 +24,14 @@ class FeedRepositoryImpl implements FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    List<String>? taggedUserIds,
   }) =>
       _datasource.createPost(
         content: content,
         imageUrls: imageUrls,
         documentId: documentId,
         visibility: visibility,
+        taggedUserIds: taggedUserIds,
       );
 
   @override

@@ -12,6 +12,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../domain/enums/post_visibility.dart';
 import '../widgets/post_visibility_bottom_sheet.dart';
+import '../widgets/tag_user_bottom_sheet.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -26,6 +27,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _isSubmitting = false;
   PostVisibility _selectedVisibility = PostVisibility.public;
   Map<String, dynamic>? _attachedDocument;
+  List<Map<String, dynamic>> _taggedUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController.addListener(() {
+      setState(() {}); // Rebuild để cập nhật character count & button state
+    });
+  }
+
+  bool get _canSubmit {
+    final content = _contentController.text.trim();
+    final hasContent = content.isNotEmpty || _selectedImages.isNotEmpty || _attachedDocument != null;
+    final isUnderLimit = content.length <= 2000;
+    return hasContent && isUnderLimit && !_isSubmitting;
+  }
 
   Future<void> _pickImages() async {
     if (_selectedImages.length >= 5) {
@@ -37,15 +54,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final picker = ImagePicker();
     final pickedFiles = await picker.pickMultiImage();
     if (pickedFiles.isNotEmpty) {
-      setState(() {
-        _selectedImages.addAll(pickedFiles);
-        if (_selectedImages.length > 5) {
-          _selectedImages.removeRange(5, _selectedImages.length);
+      for (final xFile in pickedFiles) {
+        if (_selectedImages.length >= 5) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã giới hạn tối đa 5 ảnh')),
+            const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
           );
+          break;
         }
-      });
+        
+        final sizeBytes = await xFile.length();
+        final sizeMB = sizeBytes / (1024 * 1024);
+        if (sizeMB > 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ảnh ${xFile.name} vượt quá 10MB và đã bị bỏ qua')),
+          );
+          continue;
+        }
+        
+        setState(() {
+          _selectedImages.add(xFile);
+        });
+      }
     }
   }
 
@@ -70,6 +99,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           content: content.isEmpty ? null : content,
           documentId: _attachedDocument?['id']?.toString(),
           visibility: _selectedVisibility,
+          taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
         ),
       );
     }
@@ -111,6 +141,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               imageUrls: state.urls,
               documentId: _attachedDocument?['id']?.toString(),
               visibility: _selectedVisibility,
+              taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
             ),
           );
         } else if (state is ImagesUploadError) {
@@ -152,18 +183,46 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: _isSubmitting
-                ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                      width: 20, 
-                      height: 20, 
-                      child: CircularProgressIndicator(strokeWidth: 2)
-                    ),
+                ? BlocBuilder<FeedBloc, FeedState>(
+                    builder: (context, state) {
+                      String loadingText = 'Đang đăng...';
+                      if (state is ImagesUploading) {
+                        loadingText = 'Đang up ảnh...';
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 14, 
+                              height: 14, 
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              loadingText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   )
                 : TextButton(
-                    onPressed: _submit,
+                    onPressed: _canSubmit ? _submit : null,
                 style: TextButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  backgroundColor: _canSubmit 
+                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                      : theme.colorScheme.surfaceContainerHighest,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   minimumSize: Size.zero,
                   shape: RoundedRectangleBorder(
@@ -173,7 +232,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 child: Text(
                   'Đăng',
                   style: TextStyle(
-                    color: theme.colorScheme.primary,
+                    color: _canSubmit ? theme.colorScheme.primary : theme.colorScheme.outline,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -288,20 +347,42 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ],
             ),
             
-            const SizedBox(height: 24),
+            if (_taggedUsers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text('— cùng với', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                  ..._taggedUsers.map((user) => Chip(
+                    label: Text(user['full_name'] ?? user['username'] ?? 'User', style: const TextStyle(fontSize: 12)),
+                    onDeleted: () => setState(() => _taggedUsers.remove(user)),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                  )),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 16),
             
             // Text Input
             TextField(
               controller: _contentController,
               maxLines: null,
               minLines: 5,
+              maxLength: 2000,
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null, // Ẩn counter mặc định
               style: TextStyle(
                 fontSize: 18,
                 color: theme.colorScheme.onSurface,
                 height: 1.5,
               ),
               decoration: InputDecoration(
-                hintText: 'Bạn đang nghĩ gì?',
+                hintText: _selectedImages.isEmpty && _attachedDocument == null 
+                    ? 'Bạn đang nghĩ gì?' 
+                    : 'Thêm mô tả...',
                 hintStyle: TextStyle(
                   color: theme.colorScheme.outline,
                 ),
@@ -309,50 +390,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             
-            if (_selectedImages.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _selectedImages.length,
-                  itemBuilder: (context, i) => Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: kIsWeb
-                              ? Image.network(
-                                  _selectedImages[i].path,
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                )
-                              : Image.file(
-                                  File(_selectedImages[i].path),
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
-                                ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedImages.removeAt(i)),
-                            child: const CircleAvatar(
-                              radius: 10,
-                              backgroundColor: Colors.red,
-                              child: Icon(Icons.close, size: 12, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            // Character counter custom
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${_contentController.text.length}/2000',
+                style: TextStyle(
+                  color: _contentController.text.length > 1800 
+                      ? theme.colorScheme.error 
+                      : theme.colorScheme.outline,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
+            ),
+            
+            if (_selectedImages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildImageGrid(),
             ],
             
             const SizedBox(height: 16),
@@ -417,6 +472,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.person_add,
                   label: 'Tag',
                   color: theme.colorScheme.secondary,
+                  onTap: () async {
+                    final result = await showModalBottomSheet<List<Map<String, dynamic>>>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const TagUserBottomSheet(),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        // Tránh trùng lặp
+                        for (var user in result) {
+                          if (!_taggedUsers.any((e) => e['id'] == user['id'])) {
+                            _taggedUsers.add(user);
+                          }
+                        }
+                      });
+                    }
+                  },
                 ),
                 _ActionBtn(
                   icon: Icons.location_on,
@@ -432,6 +505,153 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     ),
   );
 }
+
+  Widget _buildImageGrid() {
+    if (_selectedImages.isEmpty) return const SizedBox();
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
+        children: [
+          _buildGridContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridContent() {
+    final count = _selectedImages.length;
+    final h = 300.0; // Fixed height for grid
+
+    if (count == 1) {
+      return SizedBox(
+        height: h,
+        width: double.infinity,
+        child: _buildImageItem(0),
+      );
+    } else if (count == 2) {
+      return SizedBox(
+        height: h,
+        child: Row(
+          children: [
+            Expanded(child: _buildImageItem(0)),
+            const SizedBox(width: 2),
+            Expanded(child: _buildImageItem(1)),
+          ],
+        ),
+      );
+    } else if (count == 3) {
+      return SizedBox(
+        height: h,
+        child: Row(
+          children: [
+            Expanded(flex: 2, child: _buildImageItem(0)),
+            const SizedBox(width: 2),
+            Expanded(
+              flex: 1,
+              child: Column(
+                children: [
+                  Expanded(child: _buildImageItem(1)),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildImageItem(2)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (count == 4) {
+      return SizedBox(
+        height: h,
+        child: Column(
+          children: [
+            Expanded(flex: 2, child: _buildImageItem(0)),
+            const SizedBox(height: 2),
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(1)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(2)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(3)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 5 images
+      return SizedBox(
+        height: h,
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(0)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(1)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 2),
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(2)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(3)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(4)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildImageItem(int index) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        kIsWeb
+            ? Image.network(
+                _selectedImages[index].path,
+                fit: BoxFit.cover,
+              )
+            : Image.file(
+                File(_selectedImages[index].path),
+                fit: BoxFit.cover,
+              ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedImages.removeAt(index)),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ActionBtn extends StatelessWidget {

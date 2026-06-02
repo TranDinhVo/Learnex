@@ -16,6 +16,7 @@ abstract class FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    List<String>? taggedUserIds,
   });
 
   /// Lấy chi tiết bài viết

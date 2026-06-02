@@ -17,12 +17,14 @@ class CreatePostEvent extends FeedEvent {
   final List<String>? imageUrls;
   final String? documentId;
   final PostVisibility visibility;
+  final List<String>? taggedUserIds;
 
   CreatePostEvent({
     this.content, 
     this.imageUrls, 
     this.documentId,
     this.visibility = PostVisibility.public,
+    this.taggedUserIds,
   });
 }
 

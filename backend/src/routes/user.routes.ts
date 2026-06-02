@@ -19,7 +19,7 @@ router.put('/me/avatar', uploadImage.single('avatar'), userController.uploadAvat
 router.get(
   '/search',
   validate([
-    query('q').notEmpty().withMessage('Search query is required'),
+    query('q').optional().isString(),
   ]),
   userController.searchUsers
 );

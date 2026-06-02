@@ -97,11 +97,13 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   ) async {
     emit(PostCreating());
     try {
+      await Future.delayed(const Duration(milliseconds: 800)); // Hiệu ứng delay giả lập mạng
       final result = await _repository.createPost(
         content: event.content,
         imageUrls: event.imageUrls,
         documentId: event.documentId,
         visibility: event.visibility.value,
+        taggedUserIds: event.taggedUserIds,
       );
       final data = result['data'] ?? result;
       emit(PostCreated(data as Map<String, dynamic>));
@@ -254,6 +256,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
   ) async {
     emit(ImagesUploading());
     try {
+      await Future.delayed(const Duration(milliseconds: 1500)); // Hiệu ứng delay giả lập upload mạng
       final urls = await _repository.uploadImages(event.files);
       emit(ImagesUploaded(urls));
     } catch (e) {

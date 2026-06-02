@@ -239,6 +239,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                         ? PostType.document
                                         : PostType.text),
                               imageUrl: imageUrl,
+                              taggedUsers: post['tagged_users'] as List<dynamic>?,
                               documentName:
                                   post['document_title'] ?? 'Tài liệu.pdf',
                               documentSize: post['document_size'] != null

@@ -175,6 +175,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     documentSize: _post['document_size'] != null
                         ? '${(_post['document_size'] / 1024).toStringAsFixed(0)} KB'
                         : '1.2 MB',
+                    taggedUsers: _post['tagged_users'] as List<dynamic>?,
                     likes: _post['like_count'] ?? 0,
                     comments: _post['comment_count'] ?? 0,
                     isLiked: _post['is_liked'] == true,

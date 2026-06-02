@@ -5,7 +5,7 @@ import { PaginationParams } from '../utils/pagination';
 import { notificationService } from './notification.service';
 
 export const postService = {
-  async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string }): Promise<Post> {
+  async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
     const [post] = await db('posts')
       .insert({
         user_id: userId,
@@ -13,8 +13,25 @@ export const postService = {
         image_urls: data.image_urls ? JSON.stringify(data.image_urls) : null,
         document_id: data.document_id || null,
         visibility: data.visibility || 'public',
+        tagged_user_ids: data.tagged_user_ids ? JSON.stringify(data.tagged_user_ids) : null,
       })
       .returning('*');
+
+    if (data.tagged_user_ids && data.tagged_user_ids.length > 0) {
+      const author = await db('users').where({ id: userId }).first();
+      for (const taggedId of data.tagged_user_ids) {
+        if (taggedId !== userId) {
+          await notificationService.create({
+            user_id: taggedId,
+            type: 'tag',
+            title: `${author.full_name || author.username} đã gắn thẻ bạn trong một bài viết.`,
+            ref_type: 'post',
+            ref_id: post.id,
+          });
+        }
+      }
+    }
+
     return post;
   },
 
@@ -27,6 +44,15 @@ export const postService = {
         'u.avatar_url as author_avatar',
         db.raw('(SELECT COUNT(*) FROM likes WHERE post_id = p.id)::int as like_count'),
         db.raw('(SELECT COUNT(*) FROM comments WHERE post_id = p.id)::int as comment_count'),
+        db.raw(`
+          (
+            SELECT COALESCE(json_agg(json_build_object('id', tu.id, 'full_name', tu.full_name, 'avatar_url', tu.avatar_url)), '[]'::json)
+            FROM users tu
+            WHERE p.tagged_user_ids IS NOT NULL 
+              AND p.tagged_user_ids != 'null'::jsonb 
+              AND tu.id::text IN (SELECT jsonb_array_elements_text(p.tagged_user_ids))
+          ) as tagged_users
+        `)
       )
       .leftJoin('users as u', 'p.user_id', 'u.id')
       .where('p.id', postId)
@@ -47,7 +73,7 @@ export const postService = {
     return post;
   },
 
-  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string }): Promise<Post> {
+  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
     const post = await db('posts').where({ id: postId, user_id: userId, is_deleted: false }).first();
     if (!post) {
       throw new AppError('Post not found or you are not the author.', 404);
@@ -57,6 +83,7 @@ export const postService = {
     if (data.content !== undefined) updateData.content = data.content;
     if (data.image_urls !== undefined) updateData.image_urls = JSON.stringify(data.image_urls);
     if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (data.tagged_user_ids !== undefined) updateData.tagged_user_ids = JSON.stringify(data.tagged_user_ids);
 
     const [updated] = await db('posts')
       .where({ id: postId })
@@ -88,16 +115,36 @@ export const postService = {
         // Đang xem tường nhà người khác
         baseQuery.where('user_id', targetUserId);
         if (targetUserId !== currentUserId) {
-          // TODO: Thêm check bạn bè thật sự ở đây nếu có (hiện tại giả sử bạn bè)
-          // Tạm thời cho phép public và friends
-          baseQuery.whereIn('visibility', ['public', 'friends']);
+          // Kiểm tra xem có phải bạn bè không (bằng subquery)
+          baseQuery.where((builder) => {
+            builder.where('visibility', 'public')
+                .orWhere((orBuilder) => {
+                  orBuilder.where('visibility', 'friends')
+                      .whereExists(
+                        db.select('*')
+                          .from('friendships')
+                          .where('status', 'accepted')
+                          .andWhere((subBuilder) => {
+                            subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
+                                .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
+                          })
+                      );
+                });
+          });
         }
       } else {
-        // Đang xem feed của mình: 
-        // Thấy bài của mình (tất cả visibility), HOẶC bài của người khác (public/friends)
-        baseQuery.where(function() {
-          this.where('user_id', currentUserId)
-              .orWhereIn('visibility', ['public', 'friends']);
+        // Đang xem feed chung
+        baseQuery.where((builder) => {
+          builder.where('user_id', currentUserId) // Bài của mình
+              .orWhere('visibility', 'public') // Bài public
+              .orWhere((orBuilder) => {
+                // Bài friends của những người là bạn bè
+                orBuilder.where('visibility', 'friends')
+                    .andWhere((subBuilder) => {
+                      subBuilder.whereIn('user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
+                          .orWhereIn('user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                    });
+              });
         });
       }
     } else {
@@ -119,6 +166,15 @@ export const postService = {
         'u.avatar_url as author_avatar',
         db.raw('(SELECT COUNT(*) FROM likes WHERE post_id = p.id)::int as like_count'),
         db.raw('(SELECT COUNT(*) FROM comments WHERE post_id = p.id)::int as comment_count'),
+        db.raw(`
+          (
+            SELECT COALESCE(json_agg(json_build_object('id', tu.id, 'full_name', tu.full_name, 'avatar_url', tu.avatar_url)), '[]'::json)
+            FROM users tu
+            WHERE p.tagged_user_ids IS NOT NULL 
+              AND p.tagged_user_ids != 'null'::jsonb 
+              AND tu.id::text IN (SELECT jsonb_array_elements_text(p.tagged_user_ids))
+          ) as tagged_users
+        `)
       )
       .leftJoin('users as u', 'p.user_id', 'u.id')
       .where('p.is_deleted', false)
@@ -131,12 +187,33 @@ export const postService = {
       if (targetUserId) {
         postsQuery.where('p.user_id', targetUserId);
         if (targetUserId !== currentUserId) {
-          postsQuery.whereIn('p.visibility', ['public', 'friends']);
+          postsQuery.where((builder) => {
+            builder.where('p.visibility', 'public')
+                .orWhere((orBuilder) => {
+                  orBuilder.where('p.visibility', 'friends')
+                      .whereExists(
+                        db.select('*')
+                          .from('friendships')
+                          .where('status', 'accepted')
+                          .andWhere((subBuilder) => {
+                            subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
+                                .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
+                          })
+                      );
+                });
+          });
         }
       } else {
-        postsQuery.where(function() {
-          this.where('p.user_id', currentUserId)
-              .orWhereIn('p.visibility', ['public', 'friends']);
+        postsQuery.where((builder) => {
+          builder.where('p.user_id', currentUserId)
+              .orWhere('p.visibility', 'public')
+              .orWhere((orBuilder) => {
+                orBuilder.where('p.visibility', 'friends')
+                    .andWhere((subBuilder) => {
+                      subBuilder.whereIn('p.user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
+                          .orWhereIn('p.user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                    });
+              });
         });
       }
     } else {

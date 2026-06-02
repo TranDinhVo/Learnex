@@ -35,24 +35,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
       setState(() {
         _notifications = list.map((json) {
           final bodyText = json['body']?.toString() ?? '';
+          final titleText = json['title']?.toString() ?? '';
+          final textToParse = bodyText.isNotEmpty ? bodyText : titleText;
           
-          // Parse name and Vietnamese message from body text
+          // Parse name and Vietnamese message from text
           String parsedName = 'Học viên';
-          String parsedMessage = bodyText;
-          if (bodyText.contains(' liked your post.')) {
-            parsedName = bodyText.split(' liked your post.').first;
+          String parsedMessage = textToParse;
+          if (textToParse.contains(' liked your post.')) {
+            parsedName = textToParse.split(' liked your post.').first;
             parsedMessage = 'đã thích bài đăng của bạn';
-          } else if (bodyText.contains(' commented on your post.')) {
-            parsedName = bodyText.split(' commented on your post.').first;
+          } else if (textToParse.contains(' commented on your post.')) {
+            parsedName = textToParse.split(' commented on your post.').first;
             parsedMessage = 'đã bình luận vào bài đăng của bạn';
-          } else if (bodyText.contains(' sent you a friend request.')) {
-            parsedName = bodyText.split(' sent you a friend request.').first;
+          } else if (textToParse.contains(' sent you a friend request.')) {
+            parsedName = textToParse.split(' sent you a friend request.').first;
             parsedMessage = 'đã gửi lời mời kết bạn cho bạn';
-          } else if (bodyText.contains(' accepted your friend request.')) {
-            parsedName = bodyText.split(' accepted your friend request.').first;
+          } else if (textToParse.contains(' accepted your friend request.')) {
+            parsedName = textToParse.split(' accepted your friend request.').first;
             parsedMessage = 'đã đồng ý kết bạn';
+          } else if (textToParse.contains(' đã gắn thẻ bạn trong một bài viết.')) {
+            parsedName = textToParse.split(' đã gắn thẻ bạn trong một bài viết.').first;
+            parsedMessage = 'đã gắn thẻ bạn trong một bài viết.';
           } else {
-            final words = bodyText.split(' ');
+            final words = textToParse.split(' ');
             if (words.length > 2) {
               parsedName = words.take(2).join(' ');
               parsedMessage = words.skip(2).join(' ');
@@ -78,6 +83,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
           } else if (type == 'message') {
             iconData = Icons.chat;
             iconBg = const Color(0xFF4F46E5);
+          } else if (type == 'tag') {
+            iconData = Icons.sell;
+            iconBg = const Color(0xFFF59E0B);
           }
 
           return _NotificationItemData(
@@ -206,51 +214,28 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     delegate: SliverChildListDelegate(
                       [
                         _NotificationSection(
-                          title: 'Mới',
+                          title: 'Tất cả thông báo',
                           child: Column(
                             children: [
-                              if (_newNotifications.isEmpty)
+                              if (_notifications.isEmpty)
                                 const _EmptyStateCard(
                                   icon: Icons.notifications_off_outlined,
-                                  title: 'Không còn thông báo mới',
+                                  title: 'Không có thông báo nào',
                                   subtitle: 'Những cập nhật mới sẽ xuất hiện ở đây.',
                                 )
                               else
-                                ..._newNotifications.map(
+                                ..._notifications.map(
                                   (item) => Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: _NotificationTile(
                                       item: item,
-                                      unread: true,
+                                      unread: item.isUnread,
                                       onTap: () {
-                                        _markAsRead(item.id);
+                                        if (item.isUnread) {
+                                          _markAsRead(item.id);
+                                        }
                                         _handleNotificationTap(item);
                                       },
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _NotificationSection(
-                          title: 'Trước đó',
-                          child: Column(
-                            children: [
-                              if (_olderNotifications.isEmpty)
-                                const _EmptyStateCard(
-                                  icon: Icons.history,
-                                  title: 'Chưa có thông báo cũ',
-                                  subtitle: 'Thông báo đã đọc sẽ hiển thị tại đây.',
-                                )
-                              else
-                                ..._olderNotifications.map(
-                                  (item) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: _NotificationTile(
-                                      item: item,
-                                      unread: false,
-                                      onTap: () => _handleNotificationTap(item),
                                     ),
                                   ),
                                 ),

@@ -44,6 +44,7 @@ class FeedRemoteDatasource {
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    List<String>? taggedUserIds,
   }) async {
     final response = await _dio.post(
       ApiEndpoints.createPost,
@@ -52,6 +53,7 @@ class FeedRemoteDatasource {
         if (imageUrls != null) 'image_urls': imageUrls,
         if (documentId != null) 'document_id': documentId,
         'visibility': visibility,
+        if (taggedUserIds != null && taggedUserIds.isNotEmpty) 'tagged_user_ids': taggedUserIds,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -160,5 +162,18 @@ class FeedRemoteDatasource {
       print('Upload images error: $e');
       throw Exception('Không thể tải ảnh: $e');
     }
+  }
+
+  /// Tìm kiếm người dùng theo tên
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    final response = await _dio.get(
+      '/users/search',
+      queryParameters: {'q': query},
+    );
+    final data = response.data['data'];
+    if (data is List) {
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    return [];
   }
 }

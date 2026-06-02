@@ -15,6 +15,7 @@ class PostCard extends StatelessWidget {
   final String? documentName;
   final String? documentSize;
   final String? imageUrl;
+  final List<dynamic>? taggedUsers;
   final int likes;
   final int comments;
   final VoidCallback? onAuthorTap;
@@ -41,6 +42,7 @@ class PostCard extends StatelessWidget {
     this.documentName,
     this.documentSize,
     this.imageUrl,
+    this.taggedUsers,
     required this.likes,
     required this.comments,
     this.onAuthorTap,
@@ -141,11 +143,35 @@ class PostCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    authorName,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+                  RichText(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: authorName,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        if (taggedUsers != null && taggedUsers!.isNotEmpty) ...[
+                          TextSpan(
+                            text: ' cùng với ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          TextSpan(
+                            text: _buildTaggedText(taggedUsers!),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   Text(
@@ -168,6 +194,19 @@ class PostCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _buildTaggedText(List<dynamic> users) {
+    if (users.length == 1) {
+      return users.first['full_name'] ?? users.first['username'] ?? 'User';
+    } else if (users.length == 2) {
+      final name1 = users[0]['full_name'] ?? users[0]['username'] ?? 'User';
+      final name2 = users[1]['full_name'] ?? users[1]['username'] ?? 'User';
+      return '$name1 và $name2';
+    } else {
+      final name1 = users.first['full_name'] ?? users.first['username'] ?? 'User';
+      return '$name1 và ${users.length - 1} người khác';
+    }
   }
 
   Widget _buildDocumentAttachment(ThemeData theme) {

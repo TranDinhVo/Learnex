@@ -7,14 +7,14 @@ const db = knex({
 
 async function migrate() {
   try {
-    const hasColumn = await db.schema.hasColumn('posts', 'visibility');
+    const hasColumn = await db.schema.hasColumn('posts', 'tagged_user_ids');
     if (!hasColumn) {
       await db.schema.alterTable('posts', (table) => {
-        table.string('visibility', 20).defaultTo('public');
+        table.jsonb('tagged_user_ids');
       });
-      console.log('✅ Column visibility added!');
+      console.log('✅ Column tagged_user_ids added!');
     } else {
-      console.log('Column visibility already exists');
+      console.log('Column tagged_user_ids already exists');
     }
   } catch (error) {
     console.error('Migration failed:', error);

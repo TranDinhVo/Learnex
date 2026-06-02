@@ -58,9 +58,10 @@ CREATE TABLE posts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content     TEXT,
-  image_urls  JSONB,
-  document_id UUID        REFERENCES documents(id) ON DELETE SET NULL,  -- [FIX] có FK
-  visibility  VARCHAR(20) DEFAULT 'public',
+  image_urls      JSONB,
+  document_id     UUID        REFERENCES documents(id) ON DELETE SET NULL,
+  visibility      VARCHAR(20) DEFAULT 'public',
+  tagged_user_ids JSONB,
   is_deleted  BOOLEAN     DEFAULT FALSE,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
