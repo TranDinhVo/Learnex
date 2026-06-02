@@ -15,6 +15,7 @@ import '../features/chat/presentation/screens/p2p_call_screen.dart';
 import '../features/room/presentation/screens/call_screen.dart';
 import '../features/room/presentation/bloc/room_detail_bloc.dart';
 import '../features/room/presentation/bloc/room_detail_event.dart';
+import '../core/services/call_manager.dart';
 import 'dart:async';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
@@ -151,6 +152,19 @@ class _GlobalCallListenerState extends State<GlobalCallListener> {
         // Tuy nhiên người gọi đã nằm sẵn ở p2p_call_screen.dart chờ rồi (nếu làm đúng logic)
       } else if (message['type'] == 'private_call_reject' || message['type'] == 'user_left_call' || message['type'] == 'private_call_end') {
          OverlayHelper.hideIncomingCall();
+         
+         // Xử lý buộc kết thúc cuộc gọi 1-1 từ xa
+         final callInfo = CallManager.instance.activeCall;
+         if (callInfo != null && !callInfo.isRoomCall) {
+            getIt<WebRTCService>().leaveCall();
+            
+            // Nếu màn hình Call đang bật (không thu nhỏ), tự động tắt nó
+            if (!CallManager.instance.isMinimized && globalNavigatorKey.currentState != null) {
+                globalNavigatorKey.currentState!.pop();
+            }
+            
+            CallManager.instance.endCall();
+         }
       } else if (message['type'] == 'new_notification') {
         final notif = message['data'];
         if (notif['type'] == 'room_join_request') {

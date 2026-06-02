@@ -17,6 +17,10 @@ class WebRTCService {
   final StreamController<void> _onMediaStateChanged = StreamController.broadcast();
   Stream<void> get onMediaStateChanged => _onMediaStateChanged.stream;
 
+  // Stream thông báo khi cuộc gọi kết thúc (từ xa)
+  final StreamController<void> _onCallEnded = StreamController.broadcast();
+  Stream<void> get onCallEnded => _onCallEnded.stream;
+
   String? _currentRoomId;
 
   StreamSubscription? _wsSubscription;
@@ -43,6 +47,10 @@ class WebRTCService {
           break;
         case 'user_left_call':
           _handleUserLeftCall(data['senderId']);
+          break;
+        case 'private_call_end':
+        case 'private_call_reject':
+          _onCallEnded.add(null);
           break;
         case 'webrtc_offer':
           _handleOffer(data['senderId'], data['sdp']);
@@ -292,5 +300,6 @@ class WebRTCService {
     await localRenderer.dispose();
     await _wsSubscription?.cancel();
     _onMediaStateChanged.close();
+    _onCallEnded.close();
   }
 }
