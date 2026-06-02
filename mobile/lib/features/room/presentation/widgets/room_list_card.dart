@@ -11,6 +11,7 @@ class RoomListCard extends StatelessWidget {
   final String actionText;
   final bool actionIsPrimary;
   final VoidCallback? onAction;
+  final VoidCallback? onOptions;
 
   const RoomListCard({
     super.key,
@@ -24,6 +25,7 @@ class RoomListCard extends StatelessWidget {
     required this.actionText,
     this.actionIsPrimary = true,
     this.onAction,
+    this.onOptions,
   });
 
   @override
@@ -189,6 +191,20 @@ class RoomListCard extends StatelessWidget {
               ),
             ),
           ),
+          if (onOptions != null) ...[
+            const SizedBox(width: 4),
+            Align(
+              alignment: Alignment.center,
+              child: InkWell(
+                onTap: onOptions,
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(Icons.more_vert, size: 20, color: theme.colorScheme.outline),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

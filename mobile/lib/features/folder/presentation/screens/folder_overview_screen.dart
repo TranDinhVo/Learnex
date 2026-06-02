@@ -135,19 +135,17 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                           Icons.cloud_upload_rounded,
                           color: Color(0xFF4F46E5),
                         ),
-                        onPressed: () => Navigator.of(context)
-                            .push(
-                              MaterialPageRoute(
-                                builder: (_) => const AddDocumentScreen(),
-                              ),
-                            )
-                            .then((_) {
-                              if (mounted) {
-                                context.read<DocumentBloc>().add(
-                                  LoadDocumentsEvent(),
-                                );
-                              }
-                            }),
+                        onPressed: () async {
+                          final docBloc = context.read<DocumentBloc>();
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AddDocumentScreen(),
+                            ),
+                          );
+                          if (mounted) {
+                            docBloc.add(LoadDocumentsEvent());
+                          }
+                        },
                       ),
                       const SizedBox(width: 8),
                     ],

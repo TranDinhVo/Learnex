@@ -33,10 +33,12 @@ class DioClient {
       BaseOptions(
         baseUrl: baseUrl ?? _defaultBaseUrl,
         connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 120), // upload cần thời gian dài hơn
+        sendTimeout: const Duration(seconds: 120),    // upload cần thời gian dài hơn
+        // QUAN TRỌNG: Không đặt Content-Type cứng ở đây!
+        // Khi gửi FormData (multipart), Dio sẽ tự động set 'multipart/form-data; boundary=...'
+        // Nếu set cứng 'application/json' thì server không parse được file.
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       ),

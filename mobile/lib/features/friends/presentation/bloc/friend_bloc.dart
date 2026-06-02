@@ -4,7 +4,7 @@ import '../../data/repositories/friend_repository_impl.dart';
 import 'friend_event.dart';
 import 'friend_state.dart';
 
-/// BLoC quản lý bạn bè: danh sách, lời mời, kết bạn, huỷ kết bạn, tìm kiếm.
+/// BLoC quản lý bạn bè: danh sách, lời mời, gợi ý, kết bạn, huỷ kết bạn, tìm kiếm.
 class FriendBloc extends Bloc<FriendEvent, FriendState> {
   final FriendRepositoryImpl _repository;
 
@@ -13,7 +13,9 @@ class FriendBloc extends Bloc<FriendEvent, FriendState> {
         super(FriendInitial()) {
     on<LoadFriendsEvent>(_onLoadFriends);
     on<LoadFriendRequestsEvent>(_onLoadRequests);
+    on<LoadSuggestionsEvent>(_onLoadSuggestions);
     on<SendFriendRequestEvent>(_onSendRequest);
+    on<CancelFriendRequestEvent>(_onCancelRequest);
     on<AcceptFriendRequestEvent>(_onAcceptRequest);
     on<RejectFriendRequestEvent>(_onRejectRequest);
     on<UnfriendEvent>(_onUnfriend);
@@ -24,11 +26,10 @@ class FriendBloc extends Bloc<FriendEvent, FriendState> {
     emit(FriendLoading());
     try {
       final result = await _repository.getFriends();
-      final friends = _extractList(result);
-      emit(FriendsLoaded(friends));
+      emit(FriendsLoaded(_extractList(result)));
     } on DioException catch (e) {
       emit(FriendError(_extractError(e)));
-    } catch (e) {
+    } catch (_) {
       emit(FriendError('Không thể tải danh sách bạn bè.'));
     }
   }
@@ -37,46 +38,82 @@ class FriendBloc extends Bloc<FriendEvent, FriendState> {
     emit(FriendLoading());
     try {
       final result = await _repository.getRequests();
-      final requests = _extractList(result);
-      emit(FriendRequestsLoaded(requests));
-    } catch (e) {
+      emit(FriendRequestsLoaded(_extractList(result)));
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
       emit(FriendError('Không thể tải lời mời kết bạn.'));
+    }
+  }
+
+  Future<void> _onLoadSuggestions(LoadSuggestionsEvent event, Emitter<FriendState> emit) async {
+    emit(FriendLoading());
+    try {
+      final result = await _repository.getSuggestions();
+      emit(FriendSuggestionsLoaded(_extractList(result)));
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
+      emit(FriendError('Không thể tải gợi ý kết bạn.'));
     }
   }
 
   Future<void> _onSendRequest(SendFriendRequestEvent event, Emitter<FriendState> emit) async {
     try {
       await _repository.sendRequest(event.userId);
-      emit(FriendRequestSent());
+      emit(FriendActionSuccess('Đã gửi lời mời kết bạn!'));
     } on DioException catch (e) {
       emit(FriendError(_extractError(e)));
-    } catch (e) {
+    } catch (_) {
       emit(FriendError('Gửi lời mời thất bại.'));
+    }
+  }
+
+  Future<void> _onCancelRequest(CancelFriendRequestEvent event, Emitter<FriendState> emit) async {
+    try {
+      await _repository.unfriend(event.userId);
+      emit(FriendActionSuccess('Đã huỷ lời mời kết bạn.'));
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
+      emit(FriendError('Huỷ lời mời thất bại.'));
     }
   }
 
   Future<void> _onAcceptRequest(AcceptFriendRequestEvent event, Emitter<FriendState> emit) async {
     try {
       await _repository.acceptRequest(event.requestId);
-      emit(FriendRequestAccepted());
-      add(LoadFriendsEvent());
-    } catch (_) {}
+      emit(FriendActionSuccess('Đã chấp nhận lời mời kết bạn!'));
+      add(LoadFriendRequestsEvent());
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
+      emit(FriendError('Chấp nhận lời mời thất bại.'));
+    }
   }
 
   Future<void> _onRejectRequest(RejectFriendRequestEvent event, Emitter<FriendState> emit) async {
     try {
       await _repository.rejectRequest(event.requestId);
-      emit(FriendRequestRejected());
+      emit(FriendActionSuccess('Đã từ chối lời mời.'));
       add(LoadFriendRequestsEvent());
-    } catch (_) {}
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
+      emit(FriendError('Từ chối lời mời thất bại.'));
+    }
   }
 
   Future<void> _onUnfriend(UnfriendEvent event, Emitter<FriendState> emit) async {
     try {
       await _repository.unfriend(event.userId);
-      emit(Unfriended());
+      emit(FriendActionSuccess('Đã huỷ kết bạn.'));
       add(LoadFriendsEvent());
-    } catch (_) {}
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
+      emit(FriendError('Huỷ kết bạn thất bại.'));
+    }
   }
 
   Future<void> _onSearchUsers(SearchUsersEvent event, Emitter<FriendState> emit) async {
@@ -85,7 +122,9 @@ class FriendBloc extends Bloc<FriendEvent, FriendState> {
       final result = await _repository.searchUsers(event.query);
       final users = _extractList(result);
       emit(UserSearchResults(users));
-    } catch (e) {
+    } on DioException catch (e) {
+      emit(FriendError(_extractError(e)));
+    } catch (_) {
       emit(FriendError('Tìm kiếm thất bại.'));
     }
   }

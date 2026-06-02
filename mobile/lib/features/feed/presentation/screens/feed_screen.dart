@@ -25,6 +25,7 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 
 import '../../../friends/presentation/bloc/friend_bloc.dart';
 import '../../../friends/presentation/bloc/friend_event.dart';
+import '../../../friends/presentation/screens/friends_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -186,10 +187,16 @@ class _FeedScreenState extends State<FeedScreen> {
                     ),
                     actions: [
                       IconButton(
-                        icon: Icon(
-                          Icons.search,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        icon: Icon(Icons.people_outline, color: theme.colorScheme.onSurfaceVariant),
+                        tooltip: 'Bạn bè',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const FriendsScreen()),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
                         onPressed: () {},
                       ),
                       Stack(
@@ -200,8 +207,8 @@ class _FeedScreenState extends State<FeedScreen> {
                               Icons.notifications_none,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
-                            onPressed: () async {
-                              await Navigator.of(context).push(
+                            onPressed: () {
+                              Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => const NotificationScreen(),
                                 ),
@@ -210,30 +217,22 @@ class _FeedScreenState extends State<FeedScreen> {
                               _loadUnreadNotificationsCount();
                             },
                           ),
-                          if (_unreadNotificationsCount > 0)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.error,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Text(
-                                  _unreadNotificationsCount > 9 ? '9+' : _unreadNotificationsCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.error,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
                                 ),
                               ),
                             ),
+                          ),
                         ],
                       ),
                       const SizedBox(width: 8),
@@ -451,12 +450,13 @@ class _FeedScreenState extends State<FeedScreen> {
                 );
               },
               onAddTap: () async {
+                final feedBloc = context.read<FeedBloc>();
                 await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
                 // Reload feed
                 if (mounted) {
-                  context.read<FeedBloc>().add(LoadFeedEvent());
+                  feedBloc.add(LoadFeedEvent());
                 }
               },
               onChatTap: () {

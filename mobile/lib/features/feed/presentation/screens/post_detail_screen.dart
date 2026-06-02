@@ -167,6 +167,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         _post['comment_count'] = previousComments.length;
         _comments = previousComments;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Xóa bình luận thất bại.')),
       );

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../app/di.dart';
+import '../../../../core/services/websocket_service.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -32,6 +34,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final hasToken = await _repository.hasStoredToken();
       if (hasToken) {
         final user = await _repository.getMe();
+        getIt<WebSocketService>().connect();
         emit(Authenticated(user));
       } else {
         emit(Unauthenticated());
@@ -51,6 +54,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
+      getIt<WebSocketService>().connect();
       emit(Authenticated(user));
     } on DioException catch (e) {
       emit(AuthError(_extractErrorMessage(e)));
@@ -71,6 +75,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         fullName: event.fullName,
         username: event.username,
       );
+      getIt<WebSocketService>().connect();
       emit(Authenticated(user));
     } on DioException catch (e) {
       emit(AuthError(_extractErrorMessage(e)));
@@ -84,6 +89,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(AuthLoading());
+    getIt<WebSocketService>().disconnect();
     await _repository.logout();
     emit(Unauthenticated());
   }

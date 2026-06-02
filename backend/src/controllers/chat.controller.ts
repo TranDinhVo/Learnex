@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { messageService } from '../services/message.service';
 import { sendResponse } from '../utils/response';
 import { getPaginationParams, buildPaginationInfo } from '../utils/pagination';
+import { webSocketService } from '../services/websocket.service';
 
 export const chatController = {
   async getConversations(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -63,6 +64,19 @@ export const chatController = {
         req.params.conversationId as string,
         { content, file_url }
       );
+
+      // Phát realtime
+      webSocketService.sendToUser(req.params.conversationId as string, {
+        type: 'chat_message',
+        data: message,
+      });
+
+      // Echo lại cho sender nếu họ có các thiết bị khác đang online
+      webSocketService.sendToUser(req.user!.userId, {
+        type: 'chat_message',
+        data: message,
+      });
+
       sendResponse(res, 201, message, 'Message sent');
     } catch (error) {
       next(error);

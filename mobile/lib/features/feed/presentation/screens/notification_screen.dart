@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../app/di.dart';
 import '../../../../shared/utils/date_formatter.dart';
 import 'post_detail_screen.dart';
+import '../../../room/presentation/screens/room_detail_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -56,6 +57,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
           } else if (textToParse.contains(' đã gắn thẻ bạn trong một bài viết.')) {
             parsedName = textToParse.split(' đã gắn thẻ bạn trong một bài viết.').first;
             parsedMessage = 'đã gắn thẻ bạn trong một bài viết.';
+          } else if (bodyText.contains(' invited you to join ')) {
+            final parts = bodyText.split(' invited you to join ');
+            parsedName = parts.first;
+            final roomName = parts.last.replaceAll('"', '');
+            parsedMessage = 'đã mời bạn vào phòng $roomName';
           } else {
             final words = textToParse.split(' ');
             if (words.length > 2) {
@@ -85,6 +91,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
             iconBg = const Color(0xFF4F46E5);
           } else if (type == 'tag') {
             iconData = Icons.sell;
+          } else if (type == 'room_invite') {
+            iconData = Icons.meeting_room;
             iconBg = const Color(0xFFF59E0B);
           }
 
@@ -98,6 +106,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             avatarUrl: '', // Will fallback to initials in UI
             avatarBackground: const Color(0xFFEDEEFF),
             isUnread: json['is_read'] != true,
+            type: type,
             refType: json['ref_type']?.toString(),
             refId: json['ref_id']?.toString(),
           );
@@ -263,7 +272,54 @@ class _NotificationScreenState extends State<NotificationScreen> {
           );
         }
       } catch (_) {}
+    } else if (item.type == 'room_invite' && item.refId != null) {
+      _showRoomInviteDialog(item);
     }
+  }
+
+  void _showRoomInviteDialog(_NotificationItemData item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lời mời vào phòng'),
+        content: Text('${item.name} ${item.message}. Bạn có muốn tham gia không?'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // Delete notification
+                await getIt<Dio>().delete('/notifications/${item.id}');
+                _loadNotifications();
+              } catch (_) {}
+            },
+            child: const Text('Từ chối', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // Call join API
+                await getIt<Dio>().post('/rooms/${item.refId}/join');
+                if (mounted) {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => RoomDetailScreen(roomId: item.refId!),
+                  ));
+                }
+                _loadNotifications();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Không thể tham gia phòng hoặc đã hết hạn.'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Tham gia', style: TextStyle(color: Color(0xFF4F46E5), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -571,6 +627,7 @@ class _NotificationItemData {
     required this.avatarUrl,
     required this.avatarBackground,
     required this.isUnread,
+    required this.type,
     this.avatarGrayscale = false,
     this.refType,
     this.refId,
@@ -585,6 +642,7 @@ class _NotificationItemData {
   final String avatarUrl;
   final Color avatarBackground;
   final bool isUnread;
+  final String type;
   final bool avatarGrayscale;
   final String? refType;
   final String? refId;
@@ -600,6 +658,7 @@ class _NotificationItemData {
       avatarUrl: avatarUrl,
       avatarBackground: avatarBackground,
       isUnread: isUnread ?? this.isUnread,
+      type: type,
       avatarGrayscale: avatarGrayscale,
       refType: refType,
       refId: refId,
