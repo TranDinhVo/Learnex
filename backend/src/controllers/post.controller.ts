@@ -56,6 +56,15 @@ export const postController = {
     }
   },
 
+  async getLikers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const likers = await postService.getLikers(req.params.id as string);
+      sendResponse(res, 200, likers, 'Post likers retrieved');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async toggleLike(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await postService.toggleLike(req.params.id as string, req.user!.userId);
@@ -91,7 +100,7 @@ export const postController = {
 
   async addComment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const comment = await postService.addComment(req.params.id as string, req.user!.userId, req.body.content);
+      const comment = await postService.addComment(req.params.id as string, req.user!.userId, req.body.content, req.body.parent_id, req.body.reply_to_comment_id);
       sendResponse(res, 201, comment, 'Comment added successfully');
     } catch (error) {
       next(error);
@@ -101,13 +110,22 @@ export const postController = {
   async getComments(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
-      const { data, total } = await postService.getComments(req.params.id as string, pagination);
+      const { data, total } = await postService.getComments(req.params.id as string, pagination, req.user?.userId);
 
       res.status(200).json({
         success: true,
         data,
         pagination: buildPaginationInfo(total, pagination),
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async toggleCommentLike(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await postService.toggleCommentLike(req.params.commentId as string, req.user!.userId);
+      sendResponse(res, 200, result, result.liked ? 'Comment liked' : 'Comment unliked');
     } catch (error) {
       next(error);
     }

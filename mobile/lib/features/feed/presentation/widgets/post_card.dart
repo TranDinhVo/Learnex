@@ -34,6 +34,7 @@ class PostCard extends StatelessWidget {
   final VoidCallback? onEditTap;
   final String? visibility;
   final Function(String)? onTaggedUserTap;
+  final VoidCallback? onLikersTap;
 
   const PostCard({
     super.key,
@@ -65,6 +66,7 @@ class PostCard extends StatelessWidget {
     this.onDeleteTap,
     this.onEditTap,
     this.onTaggedUserTap,
+    this.onLikersTap,
   });
 
   @override
@@ -152,12 +154,13 @@ class PostCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RichText(
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RichText(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      text: TextSpan(
                       children: [
                         TextSpan(
                           text: authorName,
@@ -211,12 +214,12 @@ class PostCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        ),
-        IconButton(
-          icon: Icon(Icons.more_horiz, color: theme.colorScheme.onSurfaceVariant),
+      ),
+      IconButton(
+        icon: Icon(Icons.more_horiz, color: theme.colorScheme.onSurfaceVariant),
           onPressed: onMoreTap ?? () => _showMoreBottomSheet(context),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
@@ -553,13 +556,23 @@ class PostCard extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '$likes lượt thích · $comments bình luận',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$likes lượt thích',
+                    recognizer: TapGestureRecognizer()..onTap = () {
+                      if (likes > 0 && onLikersTap != null) onLikersTap!();
+                    },
+                  ),
+                  TextSpan(text: ' · $comments bình luận'),
+                ]
+              )
             ),
           ],
         ),

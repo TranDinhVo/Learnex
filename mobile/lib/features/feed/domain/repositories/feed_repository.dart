@@ -36,8 +36,6 @@ abstract class FeedRepository {
   Future<void> deletePost(String id);
 
   /// Like / Unlike bài viết
-  Future<Map<String, dynamic>> toggleLike(String postId);
-
   /// Save / Unsave bài viết
   Future<Map<String, dynamic>> toggleSave(String postId);
 
@@ -45,11 +43,17 @@ abstract class FeedRepository {
   Future<Map<String, dynamic>> getComments(String postId, {int page = 1, int limit = 20});
 
   /// Thêm bình luận
-  Future<Map<String, dynamic>> addComment(String postId, String content);
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId});
   Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content);
 
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId);
+
+  /// Toggle like bình luận
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId);
+
+  /// Lấy danh sách người đã like
+  Future<List<dynamic>> getLikers(String postId);
 
   /// Upload ảnh
   Future<List<String>> uploadImages(List<XFile> files);

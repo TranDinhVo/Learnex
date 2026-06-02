@@ -87,7 +87,20 @@ CREATE TABLE comments (
   user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content    TEXT        NOT NULL,
   is_edited  BOOLEAN     DEFAULT FALSE,
+  parent_id  UUID        REFERENCES comments(id) ON DELETE CASCADE,
+  reply_to_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 6.5. COMMENT LIKES
+-- ============================================================
+CREATE TABLE comment_likes (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  comment_id UUID        NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(comment_id, user_id)
 );
 
 -- ============================================================
@@ -212,6 +225,8 @@ CREATE INDEX idx_documents_created   ON documents(created_at DESC);
 -- Likes & Comments & Saved
 CREATE INDEX idx_likes_post_id       ON likes(post_id);
 CREATE INDEX idx_comments_post_id    ON comments(post_id);
+CREATE INDEX idx_comments_parent_id  ON comments(parent_id);
+CREATE INDEX idx_comment_likes_cid   ON comment_likes(comment_id);
 CREATE INDEX idx_saved_posts_user    ON saved_posts(user_id);
 
 -- Friendships

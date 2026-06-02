@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../../../../app/di.dart';
+import '../../data/repositories/feed_repository_impl.dart';
 import '../widgets/story_strip.dart';
 import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
@@ -53,6 +54,95 @@ class _FeedScreenState extends State<FeedScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  void _showLikersBottomSheet(BuildContext context, String postId) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Lượt thích',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: getIt<FeedRepositoryImpl>().getLikers(postId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Đã có lỗi xảy ra'));
+                  }
+                  final likers = snapshot.data ?? [];
+                  if (likers.isEmpty) {
+                    return const Center(child: Text('Chưa có lượt thích nào.'));
+                  }
+                  return ListView.builder(
+                    itemCount: likers.length,
+                    itemBuilder: (context, index) {
+                      final liker = likers[index];
+                      final name = liker['full_name'] ?? 'U';
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: liker['avatar_url'] != null
+                              ? NetworkImage(liker['avatar_url'])
+                              : null,
+                          child: liker['avatar_url'] == null
+                              ? Text(name[0].toUpperCase())
+                              : null,
+                        ),
+                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('@${liker['username']}'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          final likerId = liker['id']?.toString();
+                          if (likerId != null) {
+                            final authState = context.read<AuthBloc>().state;
+                            final currentUserId = authState is Authenticated ? authState.user.id : '';
+                            if (likerId == currentUserId) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                              );
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => UserProfileScreen(userId: likerId)),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -287,6 +377,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               onSaveTap: () {
                                 context.read<FeedBloc>().add(SavePostEvent(postId: id));
                               },
+                              onLikersTap: () => _showLikersBottomSheet(context, id),
                               onCommentTap: () async {
                                 final updated = await Navigator.of(context).push(
                                   MaterialPageRoute(

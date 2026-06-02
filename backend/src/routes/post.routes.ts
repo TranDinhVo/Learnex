@@ -67,6 +67,7 @@ router.put(
 router.delete('/:id', requireAuth, postController.delete);
 
 // Like & Save
+router.get('/:id/likers', optionalAuth, postController.getLikers);
 router.post('/:id/like', requireAuth, postController.toggleLike);
 router.post('/:id/save', requireAuth, postController.toggleSave);
 
@@ -77,9 +78,12 @@ router.post(
   requireAuth,
   validate([
     body('content').notEmpty().withMessage('Comment content is required'),
+    body('parent_id').optional().isUUID().withMessage('Invalid parent comment ID'),
+    body('reply_to_comment_id').optional().isUUID().withMessage('Invalid reply comment ID'),
   ]),
   postController.addComment
 );
+router.post('/:id/comments/:commentId/like', requireAuth, postController.toggleCommentLike);
 router.put(
   '/:id/comments/:commentId',
   requireAuth,

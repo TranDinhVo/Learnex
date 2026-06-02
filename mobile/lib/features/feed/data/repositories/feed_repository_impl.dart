@@ -73,8 +73,9 @@ class FeedRepositoryImpl implements FeedRepository {
       _datasource.getComments(postId, page: page, limit: limit);
 
   @override
-  Future<Map<String, dynamic>> addComment(String postId, String content) =>
-      _datasource.addComment(postId, content);
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId}) async {
+    return await _datasource.addComment(postId, content, parentId: parentId, replyToCommentId: replyToCommentId);
+  }
 
   @override
   Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content) =>
@@ -83,6 +84,14 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Future<void> deleteComment(String postId, String commentId) =>
       _datasource.deleteComment(postId, commentId);
+
+  @override
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId) =>
+      _datasource.toggleCommentLike(postId, commentId);
+
+  @override
+  Future<List<dynamic>> getLikers(String postId) =>
+      _datasource.getLikers(postId);
 
   @override
   Future<List<String>> uploadImages(List<XFile> files) =>

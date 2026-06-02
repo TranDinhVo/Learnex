@@ -327,55 +327,172 @@ export const postService = {
     return { data: posts, total };
   },
 
-  async addComment(postId: string, userId: string, content: string): Promise<CommentType> {
+  async getLikers(postId: string): Promise<any[]> {
+    const post = await db('posts').where({ id: postId, is_deleted: false }).first();
+    if (!post) {
+      throw new AppError('Post not found.', 404);
+    }
+
+    const likers = await db('likes as l')
+      .select('u.id', 'u.full_name', 'u.username', 'u.avatar_url', 'l.created_at')
+      .innerJoin('users as u', 'l.user_id', 'u.id')
+      .where('l.post_id', postId)
+      .orderBy('l.created_at', 'desc');
+
+    return likers;
+  },
+
+  async addComment(postId: string, userId: string, content: string, parentId?: string, replyToCommentId?: string): Promise<any> {
     const post = await db('posts').where({ id: postId, is_deleted: false }).first();
     if (!post) {
       throw new AppError('Post not found.', 404);
     }
 
     const [comment] = await db('comments')
-      .insert({ post_id: postId, user_id: userId, content })
+      .insert({ post_id: postId, user_id: userId, content, parent_id: parentId || null, reply_to_comment_id: replyToCommentId || null })
       .returning('*');
 
-    // Notification for post owner
-    if (post.user_id !== userId) {
-      const commenter = await db('users').where({ id: userId }).select('full_name').first();
+    const commenter = await db('users').where({ id: userId }).select('full_name', 'username', 'avatar_url').first();
+    
+    // Notifications
+    const targetCommentId = replyToCommentId || parentId;
+    if (targetCommentId) {
+      const targetComment = await db('comments').where({ id: targetCommentId }).first();
+      if (targetComment && targetComment.user_id !== userId) {
+        await notificationService.create({
+          user_id: targetComment.user_id,
+          type: 'comment',
+          title: 'New Reply',
+          body: `${commenter?.full_name || 'Người dùng'} đã phản hồi bình luận của bạn.`,
+          ref_type: 'post',
+          ref_id: postId,
+        });
+      }
+    } else if (post.user_id !== userId) {
       await notificationService.create({
         user_id: post.user_id,
         type: 'comment',
         title: 'New Comment',
-        body: `${commenter?.full_name || 'Someone'} commented on your post.`,
+        body: `${commenter?.full_name || 'Người dùng'} đã bình luận bài viết của bạn.`,
         ref_type: 'post',
         ref_id: postId,
       });
     }
 
-    return comment;
+    return {
+      ...comment,
+      author_name: commenter.full_name,
+      author_username: commenter.username,
+      author_avatar: commenter.avatar_url,
+      like_count: 0,
+      is_liked: false,
+      replies: []
+    };
   },
 
   async getComments(
     postId: string,
-    pagination: PaginationParams
+    pagination: PaginationParams,
+    currentUserId?: string
   ): Promise<{ data: any[]; total: number }> {
+    // We fetch root comments with pagination
     const [{ count }] = await db('comments')
       .where({ post_id: postId })
+      .whereNull('parent_id')
       .count('* as count');
     const total = parseInt(count as string, 10);
 
-    const comments = await db('comments as c')
+    const rootComments = await db('comments as c')
       .select(
         'c.*',
         'u.full_name as author_name',
         'u.username as author_username',
         'u.avatar_url as author_avatar',
+        db.raw('(SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id)::int as like_count')
       )
       .leftJoin('users as u', 'c.user_id', 'u.id')
       .where('c.post_id', postId)
+      .whereNull('c.parent_id')
       .orderBy('c.created_at', 'asc')
       .limit(pagination.limit)
       .offset((pagination.page - 1) * pagination.limit);
 
-    return { data: comments, total };
+    if (rootComments.length === 0) {
+      return { data: [], total: 0 };
+    }
+
+    const rootCommentIds = rootComments.map(c => c.id);
+
+    // Fetch replies for these root comments
+    const replies = await db('comments as c')
+      .select(
+        'c.*',
+        'u.full_name as author_name',
+        'u.username as author_username',
+        'u.avatar_url as author_avatar',
+        db.raw('(SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id)::int as like_count')
+      )
+      .leftJoin('users as u', 'c.user_id', 'u.id')
+      .whereIn('c.parent_id', rootCommentIds)
+      .orderBy('c.created_at', 'asc');
+      
+    // Fetch user likes if authenticated
+    let userLikedCommentIds = new Set<string>();
+    if (currentUserId) {
+      const allCommentIds = [...rootCommentIds, ...replies.map(r => r.id)];
+      const likes = await db('comment_likes')
+        .where('user_id', currentUserId)
+        .whereIn('comment_id', allCommentIds)
+        .select('comment_id');
+      userLikedCommentIds = new Set(likes.map(l => l.comment_id));
+    }
+
+    // Nest replies into root comments
+    const repliesMap: Record<string, any[]> = {};
+    for (const reply of replies) {
+      reply.is_liked = userLikedCommentIds.has(reply.id);
+      if (!repliesMap[reply.parent_id]) {
+        repliesMap[reply.parent_id] = [];
+      }
+      repliesMap[reply.parent_id].push(reply);
+    }
+
+    for (const comment of rootComments) {
+      comment.is_liked = userLikedCommentIds.has(comment.id);
+      comment.replies = repliesMap[comment.id] || [];
+    }
+
+    return { data: rootComments, total };
+  },
+
+  async toggleCommentLike(commentId: string, userId: string): Promise<{ liked: boolean }> {
+    const comment = await db('comments').where({ id: commentId }).first();
+    if (!comment) {
+      throw new AppError('Comment not found.', 404);
+    }
+
+    const existingLike = await db('comment_likes').where({ comment_id: commentId, user_id: userId }).first();
+
+    if (existingLike) {
+      await db('comment_likes').where({ id: existingLike.id }).del();
+      return { liked: false };
+    } else {
+      await db('comment_likes').insert({ comment_id: commentId, user_id: userId });
+
+      if (comment.user_id !== userId) {
+        const liker = await db('users').where({ id: userId }).select('full_name').first();
+        await notificationService.create({
+          user_id: comment.user_id,
+          type: 'like',
+          title: 'Comment Liked',
+          body: `${liker?.full_name || 'Người dùng'} đã thích bình luận của bạn.`,
+          ref_type: 'post',
+          ref_id: comment.post_id,
+        });
+      }
+
+      return { liked: true };
+    }
   },
 
   async updateComment(postId: string, commentId: string, userId: string, content: string): Promise<any> {

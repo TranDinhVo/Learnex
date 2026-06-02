@@ -118,13 +118,19 @@ class FeedRemoteDatasource {
   }
 
   /// Thêm bình luận
-  Future<Map<String, dynamic>> addComment(
-    String postId,
-    String content,
-  ) async {
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId}) async {
+    final data = <String, dynamic>{
+      'content': content,
+    };
+    if (parentId != null) {
+      data['parent_id'] = parentId;
+    }
+    if (replyToCommentId != null) {
+      data['reply_to_comment_id'] = replyToCommentId;
+    }
     final response = await _dio.post(
       ApiEndpoints.postComments(postId),
-      data: {'content': content},
+      data: data,
     );
     return response.data as Map<String, dynamic>;
   }
@@ -145,6 +151,18 @@ class FeedRemoteDatasource {
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId) async {
     await _dio.delete(ApiEndpoints.deleteComment(postId, commentId));
+  }
+
+  /// Toggle like bình luận
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId) async {
+    final response = await _dio.post('${ApiEndpoints.postComments(postId)}/$commentId/like');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Lấy danh sách người đã like
+  Future<List<dynamic>> getLikers(String postId) async {
+    final response = await _dio.get('${ApiEndpoints.postById(postId)}/likers');
+    return response.data['data'] as List<dynamic>;
   }
 
   /// Upload nhiều ảnh lên Cloudinary qua backend, trả về list URL

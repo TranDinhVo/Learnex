@@ -11,6 +11,13 @@ class CommentItem extends StatelessWidget {
   final bool isEdited;
   final VoidCallback? onDeleteTap;
   final VoidCallback? onEditTap;
+  final bool isLiked;
+  final int likeCount;
+  final VoidCallback? onLikeTap;
+  final VoidCallback? onReplyTap;
+  final bool isReply;
+  final VoidCallback? onAuthorTap;
+  final int depth;
 
   const CommentItem({
     super.key,
@@ -24,43 +31,58 @@ class CommentItem extends StatelessWidget {
     this.isEdited = false,
     this.onDeleteTap,
     this.onEditTap,
+    this.isLiked = false,
+    this.likeCount = 0,
+    this.onLikeTap,
+    this.onReplyTap,
+    this.isReply = false,
+    this.onAuthorTap,
+    this.depth = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: theme.colorScheme.surface, width: 2),
-            image: authorAvatarUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(authorAvatarUrl!),
-                    fit: BoxFit.cover,
+    // Indent 40px for depth=1, 80px for depth=2, up to max depth 3.
+    final leftPadding = depth > 0 ? (depth * 32.0) : 0.0;
+    
+    return Padding(
+      padding: EdgeInsets.only(left: leftPadding),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: onAuthorTap,
+            child: Container(
+              width: isReply ? 28 : 36,
+              height: isReply ? 28 : 36,
+              decoration: BoxDecoration(
+                color: avatarColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: theme.colorScheme.surface, width: 2),
+                image: authorAvatarUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(authorAvatarUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+            ),
+            alignment: Alignment.center,
+            child: authorAvatarUrl == null
+                ? Text(
+                    authorInitials,
+                    style: TextStyle(
+                      fontSize: isReply ? 10 : 12,
+                      fontWeight: FontWeight.bold,
+                      color: avatarTextColor,
+                    ),
                   )
                 : null,
+            ),
           ),
-          alignment: Alignment.center,
-          child: authorAvatarUrl == null
-              ? Text(
-                  authorInitials,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: avatarTextColor,
-                  ),
-                )
-              : null,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
+          const SizedBox(width: 12),
+          Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -112,14 +134,17 @@ class CommentItem extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                          Expanded(
-                           child: Text(
-                             authorName,
-                             style: TextStyle(
-                               fontSize: 14,
-                               fontWeight: FontWeight.bold,
-                               color: theme.colorScheme.onSurface,
+                           child: GestureDetector(
+                             onTap: onAuthorTap,
+                             child: Text(
+                               authorName,
+                               style: TextStyle(
+                                 fontSize: 14,
+                                 fontWeight: FontWeight.bold,
+                                 color: theme.colorScheme.onSurface,
+                               ),
+                               overflow: TextOverflow.ellipsis,
                              ),
-                             overflow: TextOverflow.ellipsis,
                            ),
                          ),
                         Text(
@@ -149,24 +174,24 @@ class CommentItem extends StatelessWidget {
                 children: [
                   const SizedBox(width: 4),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: onLikeTap,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(0, 0),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Text(
-                      'Thích',
+                      likeCount > 0 ? 'Thích · $likeCount' : 'Thích',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurfaceVariant,
+                        fontWeight: isLiked ? FontWeight.bold : FontWeight.normal,
+                        color: isLiked ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: onReplyTap,
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(0, 0),
@@ -176,7 +201,7 @@ class CommentItem extends StatelessWidget {
                       'Phản hồi',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.normal,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -187,6 +212,6 @@ class CommentItem extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ));
   }
 }
