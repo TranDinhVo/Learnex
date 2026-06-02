@@ -4,7 +4,6 @@ import '../widgets/story_strip.dart';
 import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import 'package:learnex/shared/utils/date_formatter.dart';
-import '../../domain/entities/post.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';

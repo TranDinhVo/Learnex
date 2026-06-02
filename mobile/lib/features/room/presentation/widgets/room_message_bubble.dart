@@ -23,16 +23,16 @@ class RoomMessageBubble extends StatelessWidget {
       if (message.content!.startsWith('[SYSTEM]:user_joined:')) {
         final parts = message.content!.split(':');
         final name = parts.length > 3 ? parts[3] : 'Ai đó';
-        return _buildSystemMessage(context, '$name vừa tham gia nhóm.');
+        return _buildSystemMessage(context, '$name vừa tham gia nhóm.', message.createdAt);
       }
       if (message.content!.startsWith('[SYSTEM]:user_kicked:')) {
         final parts = message.content!.split(':');
         final targetName = parts.length > 3 ? parts[3] : 'Ai đó';
         final requesterName = parts.length > 5 ? parts[5] : 'Quản trị viên';
-        return _buildSystemMessage(context, '$requesterName đã xoá $targetName khỏi nhóm.');
+        return _buildSystemMessage(context, '$requesterName đã xoá $targetName khỏi nhóm.', message.createdAt);
       }
       if (message.content!.startsWith('[CALL_HISTORY]:')) {
-        return _buildCallHistory(context, message.content!);
+        return _buildCallHistory(context, message.content!, message.createdAt);
       }
     }
     
@@ -125,7 +125,7 @@ class RoomMessageBubble extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isMe ? theme.colorScheme.primaryContainer.withOpacity(0.3) : theme.colorScheme.surface,
+        color: isMe ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -158,26 +158,38 @@ class RoomMessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildSystemMessage(BuildContext context, String text) {
+  Widget _buildSystemMessage(BuildContext context, String text, DateTime? createdAt) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
-          ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                text,
+                style: const TextStyle(fontSize: 12, color: Colors.black54, fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (createdAt != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  _formatTime(createdAt),
+                  style: const TextStyle(fontSize: 10, color: Colors.black38),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCallHistory(BuildContext context, String content) {
+  Widget _buildCallHistory(BuildContext context, String content, DateTime? createdAt) {
     final parts = content.split(':');
     final isMissed = parts.length > 2 && parts[2] == 'MISSED';
     final duration = !isMissed && parts.length > 2 ? _formatDuration(int.tryParse(parts[2]) ?? 0) : '';
@@ -224,6 +236,14 @@ class RoomMessageBubble extends StatelessWidget {
                       'Thời gian: $duration',
                       style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
+                  if (createdAt != null)
+                    Text(
+                      _formatTime(createdAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isMissed ? Colors.red.shade300 : Colors.indigo.shade300,
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -238,5 +258,11 @@ class RoomMessageBubble extends StatelessWidget {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return s > 0 ? '$m phút $s giây' : '$m phút';
+  }
+
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final min = date.minute.toString().padLeft(2, '0');
+    return '$hour:$min';
   }
 }

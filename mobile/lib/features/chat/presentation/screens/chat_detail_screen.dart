@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:learnex/shared/utils/date_formatter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -8,7 +7,6 @@ import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_bubble.dart';
-import 'chat_list_screen.dart';
 import '../../../../app/di.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/services/webrtc_service.dart';
@@ -79,7 +77,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     String senderName = '';
     if (authState is Authenticated) {
       senderId = authState.user.id;
-      senderName = authState.user.fullName ?? 'Người dùng';
+      senderName = authState.user.fullName.isNotEmpty ? authState.user.fullName : 'Người dùng';
     }
 
     final roomId = 'call_${senderId}_${widget.conversationId}_${DateTime.now().millisecondsSinceEpoch}';
@@ -258,7 +256,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       final isCallHistory = !hasFile && content != null && content.startsWith('[CALL_HISTORY]:');
                       String? callHistoryType;
                       if (isCallHistory) {
-                        final parts = content!.split(':');
+                        final parts = content.split(':');
                         callHistoryType = parts.length > 1 ? parts[1] : 'VOICE';
                       }
 
@@ -268,7 +266,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         time: timeStr,
                         isRead: msg['is_read'] == true,
                         isFile: hasFile,
-                        fileName: hasFile ? fileUrl!.split('/').last : null,
+                        fileName: hasFile ? fileUrl.split('/').last : null,
                         fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
                         isTop: isTop,
                         isBottom: isBottom,

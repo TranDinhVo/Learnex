@@ -55,9 +55,10 @@ class FriendRemoteDatasource {
       ApiEndpoints.search,
       queryParameters: {'q': query, 'type': 'users'},
     );
-    // Backend trả về {users: [...], total: n} — chuẩn hoá thành {data: [...]}
+    // Backend trả về { success: true, data: { users: [...], total: n } }
     final raw = response.data as Map<String, dynamic>;
-    final users = raw['users'] as List<dynamic>? ?? [];
+    final dataObj = raw['data'] as Map<String, dynamic>? ?? {};
+    final users = dataObj['users'] as List<dynamic>? ?? [];
     return {'data': users};
   }
 

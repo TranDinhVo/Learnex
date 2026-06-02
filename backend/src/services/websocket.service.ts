@@ -227,30 +227,44 @@ export class WebSocketService {
         
         this.broadcastRoomActiveStatus(roomId);
 
-        const members = await roomService.getMembers(roomId);
-        // Notify other room members that this user is joining the call
-        for (const member of members) {
-          if (member.user_id !== senderId) {
-             this.sendToUser(member.user_id, {
-               type: 'user_joined_call',
-               data: { senderId, roomId }
-             });
+        // Notify OTHER ACTIVE participants that this user is joining the call
+        const activeParticipants = this.activeCallParticipants.get(roomId);
+        if (activeParticipants) {
+          for (const p of activeParticipants) {
+            if (p !== senderId) {
+              this.sendToUser(p, {
+                type: 'user_joined_call',
+                data: { senderId, roomId }
+              });
+            }
           }
         }
+        
         break;
       }
 
       case 'start_room_call': {
         const { roomId, callerName, callType } = data;
+        const activeParticipants = this.activeCallParticipants.get(roomId) || new Set();
         const members = await roomService.getMembers(roomId);
         for (const member of members) {
-          if (member.user_id !== senderId) {
+          if (member.user_id !== senderId && !activeParticipants.has(member.user_id)) {
             this.sendToUser(member.user_id, {
               type: 'room_call_invite',
               data: { callerId: senderId, callerName, callType, roomId }
             });
           }
         }
+        break;
+      }
+
+      case 'get_room_active_status': {
+        const { roomId } = data;
+        const participants = this.activeCallParticipants.get(roomId) || new Set();
+        this.sendToUser(senderId, {
+          type: 'room_active_status',
+          data: { roomId, activeUsers: Array.from(participants) }
+        });
         break;
       }
 
@@ -289,13 +303,15 @@ export class WebSocketService {
                callMessage = `[CALL_HISTORY]:VIDEO:${durationSec}`;
             }
             
-            // Create system message
-            db('room_messages').insert({
-              room_id: roomId,
-              sender_id: null,
-              content: callMessage,
-            }).returning('*').then(async (sysMsg) => {
+            // Create system message ONLY IF it's a real room (prevent private call crash)
+            try {
               const members = await roomService.getMembers(roomId);
+              const sysMsg = await db('room_messages').insert({
+                room_id: roomId,
+                sender_id: null,
+                content: callMessage,
+              }).returning('*');
+              
               for (const m of members) {
                 this.sendToUser(m.user_id, {
                   type: 'room_message',
@@ -307,19 +323,25 @@ export class WebSocketService {
                   }
                 });
               }
-            });
+            } catch (e) {
+              // It's a private call roomId, ignore db insert
+            }
           }
         }
-        this.broadcastRoomActiveStatus(roomId);
-
-        const members = await roomService.getMembers(roomId);
-        for (const member of members) {
-          if (member.user_id !== senderId) {
-             this.sendToUser(member.user_id, {
-               type: 'user_left_call',
-               data: { senderId, roomId }
-             });
+        
+        try {
+          this.broadcastRoomActiveStatus(roomId);
+          const members = await roomService.getMembers(roomId);
+          for (const member of members) {
+            if (member.user_id !== senderId) {
+               this.sendToUser(member.user_id, {
+                 type: 'user_left_call',
+                 data: { senderId, roomId }
+               });
+            }
           }
+        } catch(e) {
+          // If room doesn't exist (private call), we just skip room-specific broadcasts
         }
         break;
       }

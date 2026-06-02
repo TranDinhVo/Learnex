@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../app/di.dart';
-import '../../../../app/routes.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/room_bloc.dart';
@@ -115,7 +113,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: privacyMode,
+                    initialValue: privacyMode,
                     decoration: InputDecoration(
                       labelText: 'Chế độ phòng',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -260,48 +258,68 @@ class _RoomListScreenState extends State<RoomListScreen> {
         },
         child: Scaffold(
           backgroundColor: theme.colorScheme.surface,
-          appBar: AppBar(
-            backgroundColor: Colors.white.withValues(alpha: 0.9),
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            leading: IconButton(
-              icon: Icon(Icons.menu, color: theme.colorScheme.primary),
-              onPressed: () {},
-            ),
-            title: Text(
-              'Phòng học',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.add_circle_outline, color: theme.colorScheme.primary),
-                onPressed: _showCreateRoomDialog,
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: theme.colorScheme.primaryContainer, width: 2),
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                  child: const Icon(Icons.person, size: 20),
-                ),
-              ),
-            ],
-          ),
           body: Stack(
             children: [
               RefreshIndicator(
                 onRefresh: _refresh,
-                child: SingleChildScrollView(
+                child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 100),
+                  slivers: [
+                    SliverAppBar(
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                      elevation: 0,
+                      pinned: true,
+                      title: Row(
+                        children: [
+                          Icon(Icons.school, color: theme.colorScheme.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Learnex',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      actions: [
+                        IconButton(
+                          icon: Icon(Icons.add_circle_outline, color: theme.colorScheme.primary),
+                          tooltip: 'Tạo phòng học',
+                          onPressed: _showCreateRoomDialog,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: theme.colorScheme.primaryContainer, width: 2),
+                              color: theme.colorScheme.surfaceContainerHighest,
+                            ),
+                            child: const Icon(Icons.person, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0).copyWith(bottom: 0),
+                        child: const Text(
+                          'Phòng học',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
+                            color: Color(0xFF312E81), // indigo-900
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      sliver: SliverToBoxAdapter(
                   child: BlocBuilder<RoomBloc, RoomState>(
                     builder: (context, state) {
                       String? currentUserId;
@@ -436,7 +454,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
                                    children: [
                                      Icon(Icons.forum_outlined, size: 32, color: theme.colorScheme.primary),
                                      const SizedBox(height: 8),
-                                     Text(
+                                     const Text(
                                        'Bạn chưa sở hữu phòng học nào.',
                                        textAlign: TextAlign.center,
                                      ),
@@ -524,8 +542,11 @@ class _RoomListScreenState extends State<RoomListScreen> {
                       );
                     },
                   ),
+                  ),
                 ),
-              ),
+              ],
+            ),
+          ),
               Positioned(
                 bottom: 0, left: 0, right: 0,
                 child: AppBottomNavBar(

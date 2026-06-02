@@ -18,16 +18,20 @@ class WebRTCService {
   Stream<void> get onMediaStateChanged => _onMediaStateChanged.stream;
 
   String? _currentRoomId;
-  String? _myUserId; // Cần set khi đăng nhập
 
   StreamSubscription? _wsSubscription;
 
   WebRTCService(this._wsService);
 
-  Future<void> init(String myUserId) async {
-    _myUserId = myUserId;
+  bool _audioOnly = false;
+  bool _speakerOn = false;
+
+  Future<void> init(String myUserId, {bool audioOnly = false}) async {
+    _audioOnly = audioOnly;
     await localRenderer.initialize();
     
+    // Cancel existing subscription if any to prevent duplicates
+    await _wsSubscription?.cancel();
     // Lắng nghe signal từ WebSocket
     _wsSubscription = _wsService.messages.listen((message) {
       final type = message['type'];
@@ -58,15 +62,20 @@ class WebRTCService {
     _currentRoomId = roomId;
     
     // Lấy luồng local Camera/Mic
-    final Map<String, dynamic> mediaConstraints = {
-      'audio': true,
-      'video': {
-        'facingMode': 'user',
-      }
-    };
+    final Map<String, dynamic> mediaConstraints = _audioOnly
+        ? {'audio': true, 'video': false}
+        : {
+            'audio': true,
+            'video': {'facingMode': 'user'},
+          };
 
-    _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    localRenderer.srcObject = _localStream;
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      localRenderer.srcObject = _localStream;
+    } catch (e) {
+      _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': false});
+      localRenderer.srcObject = _localStream;
+    }
     _onMediaStateChanged.add(null);
 
     // Gửi thông báo cho room là tôi join call
@@ -80,16 +89,22 @@ class WebRTCService {
   Future<void> joinPrivateCall({required String roomId, required String partnerId, required bool isCaller}) async {
     _currentRoomId = roomId;
     
-    // Lấy luồng local Camera/Mic
-    final Map<String, dynamic> mediaConstraints = {
-      'audio': true,
-      'video': {
-        'facingMode': 'user',
-      }
-    };
+    // Lấy luồng local Camera/Mic (không dùng camera nếu audioOnly)
+    final Map<String, dynamic> mediaConstraints = _audioOnly
+        ? {'audio': true, 'video': false}
+        : {
+            'audio': true,
+            'video': {'facingMode': 'user'},
+          };
 
-    _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    localRenderer.srcObject = _localStream;
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+      localRenderer.srcObject = _localStream;
+    } catch (e) {
+      // Fallback to audio only if camera fails
+      _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': false});
+      localRenderer.srcObject = _localStream;
+    }
     _onMediaStateChanged.add(null);
 
     // Chỉ Receiver mới nhắn `private_join_call` để kích hoạt Caller tạo Offer
@@ -190,13 +205,16 @@ class WebRTCService {
     // Khi nhận được Media Track từ người kia
     pc.onTrack = (RTCTrackEvent event) async {
       if (event.streams.isNotEmpty) {
+        final stream = event.streams[0];
         if (!remoteRenderers.containsKey(remoteUserId)) {
           final renderer = RTCVideoRenderer();
           await renderer.initialize();
-          renderer.srcObject = event.streams[0];
+          renderer.srcObject = stream;
           remoteRenderers[remoteUserId] = renderer;
-          _onMediaStateChanged.add(null);
+        } else {
+          remoteRenderers[remoteUserId]!.srcObject = stream;
         }
+        _onMediaStateChanged.add(null);
       }
     };
 
@@ -229,10 +247,22 @@ class WebRTCService {
   }
 
   void toggleCamera() {
-    if (_localStream != null) {
+    if (_localStream != null && _localStream!.getVideoTracks().isNotEmpty) {
       bool enabled = _localStream!.getVideoTracks()[0].enabled;
       _localStream!.getVideoTracks()[0].enabled = !enabled;
     }
+  }
+
+  Future<void> switchCamera() async {
+    if (_localStream != null && _localStream!.getVideoTracks().isNotEmpty) {
+      await Helper.switchCamera(_localStream!.getVideoTracks()[0]);
+    }
+  }
+
+  void toggleSpeaker() {
+    _speakerOn = !_speakerOn;
+    // flutter_webrtc sẽ xử lý audio routing
+    // enableSpeakerphone is handled by the platform
   }
 
   /// Ngắt hoàn toàn cuộc gọi

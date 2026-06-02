@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../widgets/online_friend_avatar.dart';
 import '../widgets/chat_tile.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
-import 'package:learnex/shared/utils/date_formatter.dart';
 import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
@@ -15,7 +14,6 @@ import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
-import '../../../profile/presentation/screens/user_profile_screen.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
@@ -34,11 +32,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     context.read<ChatBloc>().add(LoadConversationsEvent());
   }
 
-  void _goRooms(BuildContext context) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const RoomListScreen()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,15 +99,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   const SizedBox(width: 8),
                 ],
               ),
-              SliverToBoxAdapter(
+              const SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16.0),
                   child: Text(
                     'Tin nhắn',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 18,
-                      color: const Color(0xFF312E81), // indigo-900
+                      color: Color(0xFF312E81), // indigo-900
                       letterSpacing: -0.5,
                     ),
                   ),
@@ -217,8 +210,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ),
 
-              SliverToBoxAdapter(
-                child: const SizedBox(height: 24),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 24),
               ),
 
               // Conversation List

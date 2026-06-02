@@ -13,6 +13,8 @@ import '../core/services/webrtc_service.dart';
 import '../features/chat/presentation/widgets/incoming_call_overlay.dart';
 import '../features/chat/presentation/screens/p2p_call_screen.dart';
 import '../features/room/presentation/screens/call_screen.dart';
+import '../features/room/presentation/bloc/room_detail_bloc.dart';
+import '../features/room/presentation/bloc/room_detail_event.dart';
 import 'dart:async';
 
 final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
@@ -129,9 +131,12 @@ class _GlobalCallListenerState extends State<GlobalCallListener> {
             onAccept: () {
               globalNavigatorKey.currentState!.push(
                 MaterialPageRoute(
-                  builder: (_) => CallScreen(
-                    webrtcService: getIt<WebRTCService>(),
-                    roomId: roomId,
+                  builder: (_) => BlocProvider(
+                    create: (_) => getIt<RoomDetailBloc>()..add(LoadRoomDetailEvent(roomId)),
+                    child: CallScreen(
+                      webrtcService: getIt<WebRTCService>(),
+                      roomId: roomId,
+                    ),
                   ),
                 ),
               );

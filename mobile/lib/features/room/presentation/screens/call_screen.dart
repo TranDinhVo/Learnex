@@ -1,24 +1,26 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../app/app.dart';
 import '../../../../core/services/webrtc_service.dart';
+import '../../../../core/services/call_manager.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../shared/widgets/custom_avatar.dart';
 import '../bloc/room_detail_bloc.dart';
 import '../bloc/room_detail_state.dart';
-import '../../data/models/room_model.dart';
 
 class CallScreen extends StatefulWidget {
   final WebRTCService webrtcService;
   final String roomId;
+  final bool isAudioOnly;
 
   const CallScreen({
     super.key,
     required this.webrtcService,
     required this.roomId,
+    this.isAudioOnly = false,
   });
 
   @override
@@ -42,7 +44,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     });
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
+      if (mounted && widget.webrtcService.remoteRenderers.isNotEmpty) {
         setState(() {
           _secondsElapsed++;
         });
@@ -63,20 +65,43 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
       currentUserId = authState.user.id;
     }
     
-    await widget.webrtcService.init(currentUserId);
+    if (widget.isAudioOnly) {
+      _isCameraOff = true;
+    }
+    
+    await widget.webrtcService.init(currentUserId, audioOnly: widget.isAudioOnly);
     await widget.webrtcService.joinCall(widget.roomId);
     
     if (mounted) {
       setState(() {
         _isInitializing = false;
       });
+
+      // Start tracking in CallManager
+      final roomState = context.read<RoomDetailBloc>().state;
+      String roomName = "Phòng họp";
+      if (roomState is RoomDetailLoaded) {
+        roomName = roomState.room.name;
+      }
+      CallManager.instance.startCall(ActiveCallInfo(
+        roomId: widget.roomId,
+        partnerName: roomName,
+        partnerId: widget.roomId,
+        isAudioOnly: widget.isAudioOnly,
+        isCaller: true, // everyone in room is roughly a caller
+        isRoomCall: true,
+        getParticipantCount: () => widget.webrtcService.remoteRenderers.length + 1,
+      ));
     }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    widget.webrtcService.leaveCall();
+    if (!CallManager.instance.isMinimized) {
+      CallManager.instance.endCall();
+      widget.webrtcService.leaveCall();
+    }
     super.dispose();
   }
 
@@ -94,55 +119,92 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
     });
   }
 
+  Future<void> _flipCamera() async {
+    await widget.webrtcService.switchCamera();
+  }
+
+  void _minimizeCall() {
+    final bloc = context.read<RoomDetailBloc>();
+    CallManager.instance.minimizeCall(
+      overlayState: Overlay.of(context),
+      webrtcService: widget.webrtcService,
+      onRestore: () {
+        globalNavigatorKey.currentState!.push(
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => BlocProvider.value(
+              value: bloc,
+              child: CallScreen(
+                webrtcService: widget.webrtcService,
+                roomId: widget.roomId,
+                isAudioOnly: widget.isAudioOnly,
+              ),
+            ),
+            transitionDuration: Duration.zero,
+          ),
+        );
+      },
+      onEnd: () {
+        widget.webrtcService.leaveCall();
+      },
+    );
+    Navigator.of(context).pop();
+  }
+
   void _endCall() {
+    CallManager.instance.endCall();
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
     final remoteRenderers = widget.webrtcService.remoteRenderers.values.toList();
-    final screenSize = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A), // Nền tối slate hiện đại
-      body: SafeArea(
-        top: false,
-        child: Stack(
-          children: [
-            // Ánh sáng trang trí nền
-            Positioned(
-              top: -100,
-              left: -100,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _minimizeCall();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F172A), // Nền tối slate hiện đại
+        body: SafeArea(
+          top: false,
+          child: Stack(
+            children: [
+              // Ánh sáng trang trí nền
+              Positioned(
+                top: -100,
+                left: -100,
                 child: Container(
                   width: 300,
                   height: 300,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.indigo.withValues(alpha: 0.15),
+                    gradient: RadialGradient(
+                      colors: [
+                        Colors.indigo.withValues(alpha: 0.15),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 1.0],
+                    ),
                   ),
                 ),
               ),
-            ),
-            
-            // Lưới Video tất cả người tham gia (Meet Style)
-            if (_isInitializing)
-              _buildWaitingScreen()
-            else
+              
+              // Lưới Video tất cả người tham gia (Meet Style)
               _buildMeetGrid(widget.webrtcService.remoteRenderers.entries.toList()),
 
-            // Header - Nút Back và Tiêu đề Call
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 16,
-              left: 16,
-              right: 16,
-              child: Row(
-                children: [
-                  _buildGlassButton(
-                    icon: Icons.keyboard_arrow_down,
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
+              // Header - Nút Back và Tiêu đề Call
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 16,
+                left: 16,
+                right: 16,
+                child: Row(
+                  children: [
+                    _buildGlassButton(
+                      icon: Icons.keyboard_arrow_down,
+                      onTap: _minimizeCall,
+                    ),
                   const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -198,10 +260,8 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
               right: 20,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(40),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(40),
@@ -212,33 +272,31 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                       children: [
                         _buildToolButton(
                           icon: Icons.chat_bubble_outline,
+                          label: 'Chat',
                           isActive: false,
                           activeColor: Colors.white,
-                          onTap: () {
-                            // pop to chat
-                            Navigator.of(context).pop();
-                          },
+                          onTap: _minimizeCall,
                         ),
                         _buildToolButton(
                           icon: _isCameraOff ? Icons.videocam_off : Icons.videocam_outlined,
+                          label: _isCameraOff ? 'Bật cam' : 'Tắt cam',
                           isActive: _isCameraOff,
                           activeColor: Colors.redAccent,
                           onTap: _toggleCamera,
                         ),
                         _buildToolButton(
                           icon: _isMuted ? Icons.mic_off : Icons.mic_none,
+                          label: _isMuted ? 'Bật mic' : 'Tắt mic',
                           isActive: _isMuted,
                           activeColor: Colors.redAccent,
                           onTap: _toggleMute,
                         ),
                         _buildToolButton(
-                          icon: Icons.screen_share_outlined,
+                          icon: Icons.flip_camera_android,
+                          label: 'Xoay cam',
                           isActive: false,
                           activeColor: Colors.white,
-                          onTap: () {
-                            // Screen share logic (placeholder)
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tính năng chia sẻ màn hình đang phát triển')));
-                          },
+                          onTap: _flipCamera,
                         ),
                         _buildCallEndButton(onTap: _endCall),
                       ],
@@ -246,39 +304,10 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
-    );
-  }
-
-  // Màn hình chờ phong cách hiện đại
-  Widget _buildWaitingScreen() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.indigo.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.people_alt_outlined, size: 64, color: Colors.indigoAccent),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            "Đang chờ mọi người tham gia...",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
+    ),
     );
   }
 
@@ -332,7 +361,7 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
               final authState = context.read<AuthBloc>().state;
               if (authState is Authenticated) {
                 userId = authState.user.id;
-                displayName = authState.user.fullName ?? authState.user.username;
+                displayName = authState.user.fullName.isNotEmpty ? authState.user.fullName : authState.user.username;
                 avatarUrl = authState.user.avatarUrl;
               }
               isVideoOn = !_isCameraOff;
@@ -361,60 +390,98 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             }
 
             return Container(
-              color: const Color(0xFF1E293B), // Nền xám đậm khi tắt cam
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (isVideoOn)
-                    RTCVideoView(
-                      renderer,
-                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
-                      mirror: isLocal,
-                    )
-                  else
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CustomAvatar(
-                            imageUrl: avatarUrl,
-                            name: displayName,
-                            radius: 40,
-                            backgroundColor: Colors.indigo.shade400,
-                            textColor: Colors.white,
-                          ),
-                        ],
-                      ),
-                    ),
-                  Positioned(
-                    bottom: 16,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        displayName,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  if (isLocal && _isMuted)
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B), // Nền xám đậm khi tắt cam
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (isVideoOn)
+                      RTCVideoView(
+                        renderer,
+                        objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitCover,
+                        mirror: isLocal,
+                      )
+                    else
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CustomAvatar(
+                              imageUrl: avatarUrl,
+                              name: displayName,
+                              radius: 40,
+                              backgroundColor: Colors.indigo.shade400,
+                              textColor: Colors.white,
+                            ),
+                          ],
                         ),
-                        child: const Icon(Icons.mic_off, color: Colors.redAccent, size: 16),
+                      ),
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          displayName,
+                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    if (isLocal && _isMuted)
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.mic_off, color: Colors.white, size: 16),
+                        ),
+                      ),
+                  if (count == 1 && isLocal && !_isInitializing)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.people_alt_outlined, size: 48, color: Colors.white),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                "Đang chờ mọi người tham gia...",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                 ],
+              ),
               ),
             );
           },
@@ -428,11 +495,9 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
       onTap: onTap,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(50),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: 44,
-            height: 44,
+        child: Container(
+          width: 44,
+          height: 44,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.1),
               shape: BoxShape.circle,
@@ -441,30 +506,43 @@ class _CallScreenState extends State<CallScreen> with SingleTickerProviderStateM
             child: Icon(icon, color: Colors.white, size: 24),
           ),
         ),
-      ),
     );
   }
 
   Widget _buildToolButton({
     required IconData icon,
+    required String label,
     required bool isActive,
     required Color activeColor,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          color: isActive ? activeColor : Colors.white,
-          size: 26,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: isActive ? activeColor : Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

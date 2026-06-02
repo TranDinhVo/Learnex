@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di.dart';
 import '../../domain/room_repository.dart';
 
@@ -42,9 +41,11 @@ class _RoomRequestsScreenState extends State<RoomRequestsScreen> {
   Future<void> _approveRequest(String userId) async {
     try {
       await _repository.approveJoinRequest(widget.roomId, userId);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã phê duyệt')));
       _loadRequests();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Có lỗi xảy ra', style: TextStyle(color: Colors.red))));
     }
   }
@@ -52,9 +53,11 @@ class _RoomRequestsScreenState extends State<RoomRequestsScreen> {
   Future<void> _rejectRequest(String userId) async {
     try {
       await _repository.rejectJoinRequest(widget.roomId, userId);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã từ chối')));
       _loadRequests();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Có lỗi xảy ra', style: TextStyle(color: Colors.red))));
     }
   }

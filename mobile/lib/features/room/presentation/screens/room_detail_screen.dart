@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di.dart';
-import '../../../../app/routes.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/services/webrtc_service.dart';
 import '../../../../shared/widgets/custom_avatar.dart';
@@ -38,6 +37,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
   String? _myRole;
   String? _ownerId;
   String _privacyMode = 'public';
+  List<String> _activeCallUsers = [];
 
   @override
   void initState() {
@@ -92,7 +92,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
     String callerName = 'Người dùng';
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      callerName = authState.user.fullName ?? authState.user.username;
+      callerName = authState.user.fullName.isNotEmpty ? authState.user.fullName : authState.user.username;
     }
 
     getIt<WebSocketService>().send({
@@ -110,9 +110,54 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
         child: CallScreen(
           webrtcService: getIt<WebRTCService>(),
           roomId: widget.roomId,
+          isAudioOnly: isAudioOnly,
         ),
       ),
     ));
+  }
+
+  Widget _buildOngoingCallBanner() {
+    if (_activeCallUsers.isEmpty) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () => _joinCall(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.green.shade50,
+          border: Border(bottom: BorderSide(color: Colors.green.shade200)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade500,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.videocam, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cuộc gọi nhóm đang diễn ra',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.green),
+                  ),
+                  Text(
+                    'Chạm để tham gia ngay',
+                    style: TextStyle(fontSize: 12, color: Colors.green.shade700),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.green),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showMenu() {
@@ -248,6 +293,15 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
             setState(() {
               _privacyMode = state.room.privacyMode;
             });
+            // Yêu cầu trạng thái cuộc gọi hiện tại
+            getIt<WebSocketService>().send({
+              'type': 'get_room_active_status',
+              'data': {'roomId': widget.roomId}
+            });
+          } else if (state is RoomActiveStatusUpdate) {
+            setState(() {
+              _activeCallUsers = state.activeUsers;
+            });
           } else if (state is RoomDetailLeft) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã rời phòng')));
             Navigator.of(context).popUntil((route) => route.isFirst);
@@ -336,8 +390,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                 },
               ),
             ),
-            
-            // Chat Body
+            _buildOngoingCallBanner(),
             Expanded(
               child: BlocBuilder<RoomDetailBloc, RoomDetailState>(
                 buildWhen: (p, c) => c is MessagesLoaded || c is RoomDetailLoading,
@@ -390,7 +443,7 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, -2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, -2))],
               ),
               child: Row(
                 children: [

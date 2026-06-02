@@ -5,8 +5,6 @@ import '../../../../shared/widgets/custom_avatar.dart';
 import '../bloc/room_detail_bloc.dart';
 import '../bloc/room_detail_event.dart';
 import '../bloc/room_detail_state.dart';
-import '../../data/models/room_model.dart';
-import '../../../friends/domain/repositories/friend_repository.dart';
 import '../../../friends/data/repositories/friend_repository_impl.dart';
 
 class RoomInviteScreen extends StatefulWidget {

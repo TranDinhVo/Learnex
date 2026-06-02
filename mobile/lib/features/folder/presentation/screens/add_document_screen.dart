@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -210,7 +209,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                                         Container(
                                           width: 54,
                                           height: 54,
-                                          decoration: BoxDecoration(
+                                          decoration: const BoxDecoration(
                                             color: Colors.white,
                                             shape: BoxShape.circle,
                                             boxShadow: [
@@ -322,7 +321,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               ),
                               const SizedBox(height: 8),
                               DropdownButtonFormField<String>(
-                                value: _subject,
+                                initialValue: _subject,
                                 decoration: InputDecoration(
                                   filled: true,
                                   fillColor: Colors.grey.shade100,
