@@ -65,8 +65,6 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: Stack(

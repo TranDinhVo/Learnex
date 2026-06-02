@@ -14,24 +14,61 @@ import '../../domain/enums/post_visibility.dart';
 import '../widgets/post_visibility_bottom_sheet.dart';
 import '../widgets/tag_user_bottom_sheet.dart';
 
-class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key});
+import '../../../../shared/utils/image_parser.dart';
+
+class EditPostScreen extends StatefulWidget {
+  final Map<String, dynamic> post;
+
+  const EditPostScreen({super.key, required this.post});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  State<EditPostScreen> createState() => _EditPostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _EditPostScreenState extends State<EditPostScreen> {
   final TextEditingController _contentController = TextEditingController();
-  final List<XFile> _selectedImages = [];
   bool _isSubmitting = false;
   PostVisibility _selectedVisibility = PostVisibility.public;
   Map<String, dynamic>? _attachedDocument;
   List<Map<String, dynamic>> _taggedUsers = [];
 
+  final List<dynamic> _currentImages = []; // Có thể là String (URL cũ) hoặc XFile (ảnh mới)
+
   @override
   void initState() {
     super.initState();
+    _contentController.text = widget.post['content'] ?? '';
+    
+    // Visibility
+    final vis = widget.post['visibility']?.toString() ?? 'public';
+    _selectedVisibility = PostVisibility.values.firstWhere(
+      (e) => e.value == vis,
+      orElse: () => PostVisibility.public,
+    );
+
+    // Tagged users
+    final tags = widget.post['tagged_users'];
+    if (tags is List) {
+      _taggedUsers = tags
+          .whereType<Map<dynamic, dynamic>>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    // Document
+    if (widget.post['document_id'] != null) {
+      _attachedDocument = {
+        'id': widget.post['document_id'],
+        'title': widget.post['document_title'] ?? 'Tài liệu',
+        'file_size': widget.post['document_size'],
+        'file_url': widget.post['document_url'],
+      };
+    }
+
+    // Images
+    final parsedImages = ImageParser.parseImageUrls(widget.post['image_urls']);
+    _currentImages.addAll(parsedImages);
+
     _contentController.addListener(() {
       setState(() {}); // Rebuild để cập nhật character count & button state
     });
@@ -39,15 +76,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   bool get _canSubmit {
     final content = _contentController.text.trim();
-    final hasContent = content.isNotEmpty || _selectedImages.isNotEmpty || _attachedDocument != null;
+    final hasContent = content.isNotEmpty || _currentImages.isNotEmpty || _attachedDocument != null;
     final isUnderLimit = content.length <= 2000;
     return hasContent && isUnderLimit && !_isSubmitting;
   }
 
   Future<void> _pickImages() async {
-    if (_selectedImages.length >= 5) {
+    if (_currentImages.length >= 5) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
+        const SnackBar(content: Text('Chỉ được có tối đa 5 ảnh')),
       );
       return;
     }
@@ -55,9 +92,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final pickedFiles = await picker.pickMultiImage();
     if (pickedFiles.isNotEmpty) {
       for (final xFile in pickedFiles) {
-        if (_selectedImages.length >= 5) {
+        if (_currentImages.length >= 5) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
+            const SnackBar(content: Text('Chỉ được có tối đa 5 ảnh')),
           );
           break;
         }
@@ -72,7 +109,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         }
         
         setState(() {
-          _selectedImages.add(xFile);
+          _currentImages.add(xFile);
         });
       }
     }
@@ -80,7 +117,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   void _submit() {
     final content = _contentController.text.trim();
-    if (content.isEmpty && _selectedImages.isEmpty && _attachedDocument == null) {
+    if (content.isEmpty && _currentImages.isEmpty && _attachedDocument == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng thêm nội dung, ảnh hoặc tài liệu trước khi đăng')),
       );
@@ -89,14 +126,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     setState(() => _isSubmitting = true);
 
-    if (_selectedImages.isNotEmpty) {
+    final newFiles = _currentImages.whereType<XFile>().toList();
+
+    if (newFiles.isNotEmpty) {
       context.read<FeedBloc>().add(
-        UploadImagesEvent(files: _selectedImages),
+        UploadImagesEvent(files: newFiles),
       );
     } else {
+      final oldUrls = _currentImages.whereType<String>().toList();
       context.read<FeedBloc>().add(
-        CreatePostEvent(
+        EditPostEvent(
+          postId: widget.post['id'].toString(),
           content: content.isEmpty ? null : content,
+          imageUrls: oldUrls,
           documentId: _attachedDocument?['id']?.toString(),
           visibility: _selectedVisibility,
           taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
@@ -122,23 +164,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     
     return BlocListener<FeedBloc, FeedState>(
       listener: (context, state) {
-        if (state is PostCreated) {
+        if (state is PostEdited) {
           setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('🎉 Đăng bài thành công!'), backgroundColor: Colors.green),
+            const SnackBar(content: Text('🎉 Sửa bài viết thành công!'), backgroundColor: Colors.green),
           );
-          Navigator.of(context).pop();
-        } else if (state is PostCreateError) {
+          Navigator.of(context).pop(state.post); // Trả về màn trước
+        } else if (state is PostEditError) {
           setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
           );
         } else if (state is ImagesUploaded) {
           final content = _contentController.text.trim();
+          final oldUrls = _currentImages.whereType<String>().toList();
           context.read<FeedBloc>().add(
-            CreatePostEvent(
+            EditPostEvent(
+              postId: widget.post['id'].toString(),
               content: content.isEmpty ? null : content,
-              imageUrls: state.urls,
+              imageUrls: [...oldUrls, ...state.urls],
               documentId: _attachedDocument?['id']?.toString(),
               visibility: _selectedVisibility,
               taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
@@ -147,9 +191,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         } else if (state is ImagesUploadError) {
           setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi tải ảnh: ${state.message}'), backgroundColor: Colors.red),
+            SnackBar(content: Text('Lỗi tải ảnh mới: ${state.message}'), backgroundColor: Colors.red),
           );
-        } else if (state is PostCreating || state is ImagesUploading) {
+        } else if (state is PostEditing || state is ImagesUploading) {
           if (!_isSubmitting) setState(() => _isSubmitting = true);
         }
       },
@@ -172,7 +216,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
           ),
           title: Text(
-            'Tạo bài đăng',
+            'Sửa bài đăng',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
@@ -230,7 +274,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                 ),
                 child: Text(
-                  'Đăng',
+                  'Lưu',
                   style: TextStyle(
                     color: _canSubmit ? theme.colorScheme.primary : theme.colorScheme.outline,
                     fontWeight: FontWeight.bold,
@@ -380,7 +424,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 height: 1.5,
               ),
               decoration: InputDecoration(
-                hintText: _selectedImages.isEmpty && _attachedDocument == null 
+                hintText: _currentImages.isEmpty && _attachedDocument == null 
                     ? 'Bạn đang nghĩ gì?' 
                     : 'Thêm mô tả...',
                 hintStyle: TextStyle(
@@ -405,7 +449,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             
-            if (_selectedImages.isNotEmpty) ...[
+            if (_currentImages.isNotEmpty) ...[
               const SizedBox(height: 16),
               _buildImageGrid(),
             ],
@@ -507,7 +551,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 }
 
   Widget _buildImageGrid() {
-    if (_selectedImages.isEmpty) return const SizedBox();
+    if (_currentImages.isEmpty) return const SizedBox();
 
     return Container(
       decoration: BoxDecoration(
@@ -524,7 +568,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Widget _buildGridContent() {
-    final count = _selectedImages.length;
+    final count = _currentImages.length;
     final h = 300.0; // Fixed height for grid
 
     if (count == 1) {
@@ -622,23 +666,28 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Widget _buildImageItem(int index) {
+    final image = _currentImages[index];
+    Widget imageWidget;
+
+    if (image is String) {
+      imageWidget = Image.network(image, fit: BoxFit.cover);
+    } else if (image is XFile) {
+      imageWidget = kIsWeb
+          ? Image.network(image.path, fit: BoxFit.cover)
+          : Image.file(File(image.path), fit: BoxFit.cover);
+    } else {
+      imageWidget = const SizedBox();
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        kIsWeb
-            ? Image.network(
-                _selectedImages[index].path,
-                fit: BoxFit.cover,
-              )
-            : Image.file(
-                File(_selectedImages[index].path),
-                fit: BoxFit.cover,
-              ),
+        imageWidget,
         Positioned(
           top: 8,
           right: 8,
           child: GestureDetector(
-            onTap: () => setState(() => _selectedImages.removeAt(index)),
+            onTap: () => setState(() => _currentImages.removeAt(index)),
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
