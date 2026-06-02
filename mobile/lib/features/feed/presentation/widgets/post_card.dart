@@ -175,7 +175,7 @@ class PostCard extends StatelessWidget {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          _buildTaggedTextSpans(theme),
+                          _buildTaggedTextSpans(context, theme),
                         ],
                       ],
                     ),
@@ -225,7 +225,7 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  TextSpan _buildTaggedTextSpans(ThemeData theme) {
+  TextSpan _buildTaggedTextSpans(BuildContext context, ThemeData theme) {
     if (taggedUsers == null || taggedUsers!.isEmpty) return const TextSpan();
     final users = taggedUsers!;
     final style = theme.textTheme.titleSmall?.copyWith(
@@ -274,11 +274,84 @@ class PostCard extends StatelessWidget {
           TextSpan(
             text: ' và ${users.length - 1} người khác',
             style: style,
-            // Only the first person is clickable for now, or you could make a list dialog
+            recognizer: TapGestureRecognizer()..onTap = () => _showTaggedUsersList(context),
           ),
         ],
       );
     }
+  }
+
+  void _showTaggedUsersList(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Những người được gắn thẻ',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: taggedUsers!.length,
+                  itemBuilder: (context, index) {
+                    final user = taggedUsers![index];
+                    final name = user['full_name'] ?? user['username'] ?? 'User';
+                    final id = user['id']?.toString() ?? '';
+                    final avatarUrl = user['avatar_url'] as String?;
+                    
+                    return ListTile(
+                      leading: avatarUrl != null
+                          ? CircleAvatar(
+                              backgroundImage: NetworkImage(avatarUrl),
+                            )
+                          : CircleAvatar(
+                              backgroundColor: Colors.indigo.shade100,
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                style: TextStyle(color: Colors.indigo.shade700, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onTaggedUserTap?.call(id);
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildDocumentAttachment(BuildContext context, ThemeData theme) {
