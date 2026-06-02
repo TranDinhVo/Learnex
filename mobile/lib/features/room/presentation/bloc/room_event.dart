@@ -20,6 +20,20 @@ class CreateRoomEvent extends RoomEvent {
   });
 }
 
+class UpdateRoomEvent extends RoomEvent {
+  final String id;
+  final String? name;
+  final String? description;
+  final String? privacyMode;
+
+  UpdateRoomEvent({
+    required this.id,
+    this.name,
+    this.description,
+    this.privacyMode,
+  });
+}
+
 class JoinRoomEvent extends RoomEvent {
   final String roomId;
   JoinRoomEvent({required this.roomId});
