@@ -20,6 +20,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     on<LoadRoomsEvent>(_onLoadRooms);
     on<LoadMoreRoomsEvent>(_onLoadMoreRooms);
     on<CreateRoomEvent>(_onCreateRoom);
+    on<UpdateRoomEvent>(_onUpdateRoom);
     on<JoinRoomEvent>(_onJoinRoom);
     on<LeaveRoomEvent>(_onLeaveRoom);
     on<DeleteRoomEvent>(_onDeleteRoom);
@@ -100,6 +101,26 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         privacyMode: event.privacyMode,
       );
       emit(RoomOperationSuccess('Tạo phòng thành công'));
+      add(LoadRoomsEvent(isRefresh: true));
+    } catch (e) {
+      emit(RoomError(_extractError(e)));
+      if (currentState is RoomsLoaded) emit(currentState);
+    }
+  }
+
+  Future<void> _onUpdateRoom(
+    UpdateRoomEvent event,
+    Emitter<RoomState> emit,
+  ) async {
+    final currentState = state;
+    try {
+      await _repository.updateRoom(
+        event.id,
+        name: event.name,
+        description: event.description,
+        privacyMode: event.privacyMode,
+      );
+      emit(RoomOperationSuccess('Cập nhật phòng thành công'));
       add(LoadRoomsEvent(isRefresh: true));
     } catch (e) {
       emit(RoomError(_extractError(e)));

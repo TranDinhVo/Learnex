@@ -164,6 +164,182 @@ class _RoomListScreenState extends State<RoomListScreen> {
     );
   }
 
+  void _confirmDeleteRoom(RoomModel room) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          backgroundColor: theme.colorScheme.surface,
+          title: const Text('Xóa phòng học', style: TextStyle(color: Colors.red)),
+          content: Text('Bạn có chắc chắn muốn xóa phòng "${room.name}"? Hành động này không thể hoàn tác.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Hủy', style: TextStyle(color: theme.colorScheme.outline)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _bloc.add(DeleteRoomEvent(roomId: room.id));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Xóa'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditRoomDialog(RoomModel room) {
+    final theme = Theme.of(context);
+    final nameController = TextEditingController(text: room.name);
+    final descController = TextEditingController(text: room.description ?? '');
+    String privacyMode = room.privacyMode;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: theme.colorScheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Cập nhật phòng học',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Tên phòng',
+                      hintText: 'Nhập tên phòng học...',
+                      labelStyle: TextStyle(color: theme.colorScheme.primary),
+                      border: const UnderlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descController,
+                    decoration: const InputDecoration(
+                      labelText: 'Mô tả',
+                      hintText: 'Nhập mô tả phòng học...',
+                      border: UnderlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: privacyMode,
+                    decoration: InputDecoration(
+                      labelText: 'Chế độ phòng',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'public', child: Text('Công khai')),
+                      DropdownMenuItem(value: 'private', child: Text('Riêng tư')),
+                      DropdownMenuItem(value: 'approval', child: Text('Cần phê duyệt')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDialogState(() {
+                          privacyMode = val;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Hủy', style: TextStyle(color: theme.colorScheme.outline)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (nameController.text.trim().isEmpty) return;
+                    Navigator.pop(context);
+                    
+                    _bloc.add(UpdateRoomEvent(
+                      id: room.id,
+                      name: nameController.text.trim(),
+                      description: descController.text.trim(),
+                      privacyMode: privacyMode,
+                    ));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Lưu'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showRoomOptions(RoomModel room) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.blue),
+                  title: const Text('Chỉnh sửa thông tin phòng'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEditRoomDialog(room);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Xóa phòng'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmDeleteRoom(room);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _handleRoomAction(RoomModel room, String? currentUserId) {
     final isOwner = room.ownerId == currentUserId;
 
@@ -482,6 +658,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
                                        baseColor: _getRoomColor(room.name),
                                        isLive: room.name.hashCode % 2 == 0,
                                        onTap: () => _handleRoomAction(room, currentUserId),
+                                       onOptions: () => _showRoomOptions(room),
                                      ),
                                    );
                                  }).toList(),
@@ -525,6 +702,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
                                      isLive: room.name.hashCode % 2 == 0,
                                      actionText: isOwner ? 'Mở' : (room.isMember ? 'Vào' : (room.isPending ? 'Đang chờ duyệt' : 'Tham gia')),
                                      actionIsPrimary: !isOwner && !room.isMember && !room.isPending,
+                                     onOptions: isOwner ? () => _showRoomOptions(room) : null,
                                      onAction: () {
                                        if (room.isPending) {
                                          ScaffoldMessenger.of(context).showSnackBar(

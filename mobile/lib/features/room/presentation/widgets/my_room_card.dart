@@ -6,6 +6,7 @@ class MyRoomCard extends StatelessWidget {
   final Color baseColor;
   final bool isLive;
   final VoidCallback? onTap;
+  final VoidCallback? onOptions;
 
   const MyRoomCard({
     super.key,
@@ -14,6 +15,7 @@ class MyRoomCard extends StatelessWidget {
     required this.baseColor,
     this.isLive = false,
     this.onTap,
+    this.onOptions,
   });
 
   @override
@@ -42,22 +44,36 @@ class MyRoomCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: baseColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                shortName,
-                style: TextStyle(
-                  color: baseColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: baseColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    shortName,
+                    style: TextStyle(
+                      color: baseColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
-              ),
+                if (onOptions != null)
+                  InkWell(
+                    onTap: onOptions,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Icon(Icons.more_vert, size: 18, color: theme.colorScheme.outline),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             Text(
