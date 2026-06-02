@@ -113,6 +113,20 @@ export const postController = {
     }
   },
 
+  async updateComment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const comment = await postService.updateComment(
+        req.params.id as string, 
+        req.params.commentId as string, 
+        req.user!.userId, 
+        req.body.content
+      );
+      sendResponse(res, 200, comment, 'Comment updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async deleteComment(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       await postService.deleteComment(req.params.commentId as string, req.user!.userId);

@@ -17,6 +17,7 @@ import '../../../feed/data/repositories/feed_repository_impl.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/screens/post_detail_screen.dart';
 import '../../../../shared/utils/date_formatter.dart';
+import '../../../../shared/utils/image_parser.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -382,17 +383,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final authorHandle = post['author_username'] != null ? '@${post['author_username']}' : '@$username';
                             final postContent = post['content'] ?? '';
 
-                            String? imageUrl;
-                            final imageList = post['image_urls'];
-                            if (imageList is List && imageList.isNotEmpty) {
-                              imageUrl = imageList.first as String?;
-                            } else if (imageList is String && imageList.isNotEmpty) {
-                              if (imageList.startsWith('[')) {
-                                imageUrl = imageList.replaceAll(RegExp('[\\[\\]"\' ]'), '');
-                              } else {
-                                imageUrl = imageList;
-                              }
-                            }
+                            final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12.0),
@@ -401,17 +392,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 authorHandle: authorHandle,
                                 timeAgo: formatTimeAgo(post['created_at']?.toString()),
                                 authorInitials: authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U',
+                                authorAvatarUrl: post['author_avatar'] as String?,
                                 avatarColor: Colors.indigo.shade100,
                                 avatarTextColor: Colors.indigo.shade700,
                                 content: postContent,
-                                postType: imageUrl != null
+                                postType: imageUrls.isNotEmpty
                                     ? PostType.image
                                     : (post['document_id'] != null ? PostType.document : PostType.text),
-                                imageUrl: imageUrl,
-                                documentName: post['document_title'] ?? 'Tài liệu.pdf',
+                                imageUrls: imageUrls,
+                                documentName: post['document_title'] as String? ?? 'Tài liệu',
                                 documentSize: post['document_size'] != null
-                                    ? '${(post['document_size'] / 1024).toStringAsFixed(0)} KB'
-                                    : '1.2 MB',
+                                    ? '${((post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
+                                    : null,
+                                documentUrl: post['document_url'] as String?,
+                                taggedUsers: post['tagged_users'] as List<dynamic>?,
+                                visibility: post['visibility']?.toString(),
                                 likes: post['like_count'] ?? 0,
                                 comments: post['comment_count'] ?? 0,
                                 isLiked: post['is_liked'] == true,

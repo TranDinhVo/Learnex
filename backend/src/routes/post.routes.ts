@@ -3,6 +3,13 @@ import { body } from 'express-validator';
 import { validate } from '../middleware/validate';
 import { requireAuth, optionalAuth } from '../middleware/auth.middleware';
 import { postController } from '../controllers/post.controller';
+import rateLimit from 'express-rate-limit';
+
+const createPostLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 5,
+  message: { success: false, message: 'Too many posts created. Please try again later.' },
+});
 
 const router = Router();
 
@@ -16,6 +23,7 @@ router.get('/saved', requireAuth, postController.getSavedPosts);
 router.post(
   '/',
   requireAuth,
+  createPostLimiter,
   validate([
     body('content').optional().isString(),
     body('image_urls').optional().isArray(),
@@ -23,6 +31,13 @@ router.post(
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
     body('tagged_user_ids').optional().isArray(),
     body('tagged_user_ids.*').optional().isUUID(),
+    body().custom((value, { req }) => {
+      const { content, image_urls, document_id } = req.body;
+      if (!content && (!image_urls || image_urls.length === 0) && !document_id) {
+        throw new Error('Post must have at least content, images, or a document.');
+      }
+      return true;
+    }),
   ]),
   postController.create
 );
@@ -38,6 +53,13 @@ router.put(
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
     body('tagged_user_ids').optional().isArray(),
     body('tagged_user_ids.*').optional().isUUID(),
+    body().custom((value, { req }) => {
+      const { content, image_urls, document_id } = req.body;
+      if (!content && (!image_urls || image_urls.length === 0) && !document_id) {
+        throw new Error('Post must have at least content, images, or a document.');
+      }
+      return true;
+    }),
   ]),
   postController.update
 );
@@ -57,6 +79,14 @@ router.post(
     body('content').notEmpty().withMessage('Comment content is required'),
   ]),
   postController.addComment
+);
+router.put(
+  '/:id/comments/:commentId',
+  requireAuth,
+  validate([
+    body('content').notEmpty().withMessage('Comment content is required'),
+  ]),
+  postController.updateComment
 );
 router.delete('/:id/comments/:commentId', requireAuth, postController.deleteComment);
 

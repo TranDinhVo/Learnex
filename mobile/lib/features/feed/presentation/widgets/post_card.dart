@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum PostType { document, image, text }
 
@@ -14,7 +15,8 @@ class PostCard extends StatelessWidget {
   final PostType postType;
   final String? documentName;
   final String? documentSize;
-  final String? imageUrl;
+  final String? documentUrl;
+  final List<String>? imageUrls;
   final List<dynamic>? taggedUsers;
   final int likes;
   final int comments;
@@ -27,7 +29,9 @@ class PostCard extends StatelessWidget {
   final VoidCallback? onShareTap;
   final VoidCallback? onMoreTap;
   final VoidCallback? onDeleteTap;
+  final String? authorAvatarUrl;
   final VoidCallback? onEditTap;
+  final String? visibility;
 
   const PostCard({
     super.key,
@@ -41,8 +45,11 @@ class PostCard extends StatelessWidget {
     this.postType = PostType.text,
     this.documentName,
     this.documentSize,
-    this.imageUrl,
+    this.documentUrl,
+    this.imageUrls,
     this.taggedUsers,
+    this.authorAvatarUrl,
+    this.visibility,
     required this.likes,
     required this.comments,
     this.onAuthorTap,
@@ -91,18 +98,13 @@ class PostCard extends StatelessWidget {
                 ),
                 if (postType == PostType.document) ...[
                   const SizedBox(height: 12),
-                  _buildDocumentAttachment(theme),
+                  _buildDocumentAttachment(context, theme),
                 ],
               ],
             ),
           ),
-          if (postType == PostType.image && imageUrl != null) ...[
-            Image.network(
-              imageUrl!,
-              width: double.infinity,
-              height: 180,
-              fit: BoxFit.cover,
-            ),
+          if (postType == PostType.image && imageUrls != null && imageUrls!.isNotEmpty) ...[
+            _buildImageGrid(),
             const SizedBox(height: 0),
           ],
           Padding(
@@ -123,22 +125,27 @@ class PostCard extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: avatarColor,
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  authorInitials,
-                  style: TextStyle(
-                    color: avatarTextColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              authorAvatarUrl != null
+                  ? CircleAvatar(
+                      radius: 20,
+                      backgroundImage: NetworkImage(authorAvatarUrl!),
+                    )
+                  : Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: avatarColor,
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        authorInitials,
+                        style: TextStyle(
+                          color: avatarTextColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,12 +181,34 @@ class PostCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(
-                    '$authorHandle · $timeAgo',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        '$authorHandle · $timeAgo',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      if (visibility != null) ...[
+                        Text(
+                          ' · ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Icon(
+                          visibility == 'friends'
+                              ? Icons.group
+                              : (visibility == 'private'
+                                  ? Icons.lock
+                                  : Icons.public),
+                          size: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -209,52 +238,195 @@ class PostCard extends StatelessWidget {
     }
   }
 
-  Widget _buildDocumentAttachment(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
+  Widget _buildDocumentAttachment(BuildContext context, ThemeData theme) {
+    return InkWell(
+      onTap: documentUrl != null
+          ? () async {
+              final uri = Uri.tryParse(documentUrl!);
+              if (uri != null && await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            }
+          : null,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.picture_as_pdf, color: Colors.red.shade600),
                 ),
-                child: Icon(Icons.picture_as_pdf, color: Colors.red.shade600),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    documentName ?? 'Tài liệu',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      documentName ?? 'Tài liệu',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  Text(
-                    documentSize ?? '0 MB',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    Text(
+                      documentSize ?? '0 MB',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+                  ],
+                ),
+              ],
+            ),
+            Icon(
+              documentUrl != null ? Icons.open_in_new : Icons.chevron_right,
+              color: documentUrl != null
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageGrid() {
+    final count = imageUrls!.length;
+    final h = count == 1 ? 250.0 : 300.0;
+
+    return SizedBox(
+      height: h,
+      child: Stack(
+        children: [
+          _buildGridContent(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGridContent() {
+    final count = imageUrls!.length;
+    
+    if (count == 1) {
+      return SizedBox.expand(child: _buildImageItem(0));
+    } else if (count == 2) {
+      return Row(
+        children: [
+          Expanded(child: _buildImageItem(0)),
+          const SizedBox(width: 2),
+          Expanded(child: _buildImageItem(1)),
+        ],
+      );
+    } else if (count == 3) {
+      return Row(
+        children: [
+          Expanded(flex: 2, child: _buildImageItem(0)),
+          const SizedBox(width: 2),
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                Expanded(child: _buildImageItem(1)),
+                const SizedBox(height: 2),
+                Expanded(child: _buildImageItem(2)),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (count == 4) {
+      return Column(
+        children: [
+          Expanded(flex: 2, child: _buildImageItem(0)),
+          const SizedBox(height: 2),
+          Expanded(
+            flex: 1,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(1)),
+                const SizedBox(width: 2),
+                Expanded(child: _buildImageItem(2)),
+                const SizedBox(width: 2),
+                Expanded(child: _buildImageItem(3)),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // 5+ images
+      return Column(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(0)),
+                const SizedBox(width: 2),
+                Expanded(child: _buildImageItem(1)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            flex: 1,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(2)),
+                const SizedBox(width: 2),
+                Expanded(child: _buildImageItem(3)),
+                const SizedBox(width: 2),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildImageItem(4),
+                      if (count > 5)
+                        Container(
+                          color: Colors.black54,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '+${count - 5}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildImageItem(int index) {
+    return Image.network(
+      imageUrls![index],
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.broken_image, color: Colors.grey),
       ),
     );
   }
@@ -371,7 +543,9 @@ class PostCard extends StatelessWidget {
                   color: const Color(0xFF4F46E5),
                   onTap: () {
                     Navigator.pop(context);
-                    onEditTap!();
+                    Future.delayed(const Duration(milliseconds: 300), () {
+                      onEditTap!();
+                    });
                   },
                 ),
               if (onDeleteTap != null)

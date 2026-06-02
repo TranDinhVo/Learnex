@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dio/dio.dart';
+import '../../../../app/di.dart';
 import '../widgets/story_strip.dart';
 import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import 'package:learnex/shared/utils/date_formatter.dart';
-import '../../domain/entities/post.dart';
+import 'package:learnex/shared/utils/image_parser.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import 'create_post_screen.dart';
+import 'edit_post_screen.dart';
 import 'notification_screen.dart';
 import 'post_detail_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
@@ -30,12 +33,26 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
+  int _unreadNotificationsCount = 0;
+
   @override
   void initState() {
     super.initState();
     // Tải bảng tin và danh sách bạn bè từ API thực tế
     context.read<FeedBloc>().add(LoadFeedEvent());
     context.read<FriendBloc>().add(LoadFriendsEvent());
+    _loadUnreadNotificationsCount();
+  }
+
+  Future<void> _loadUnreadNotificationsCount() async {
+    try {
+      final response = await getIt<Dio>().get('/notifications/unread-count');
+      if (mounted) {
+        setState(() {
+          _unreadNotificationsCount = response.data['data']['count'] ?? 0;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -93,30 +110,40 @@ class _FeedScreenState extends State<FeedScreen> {
                               Icons.notifications_none,
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
-                            onPressed: () {
-                              Navigator.of(context).push(
+                            onPressed: () async {
+                              await Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder: (_) => const NotificationScreen(),
                                 ),
                               );
+                              // Refresh unread count after returning
+                              _loadUnreadNotificationsCount();
                             },
                           ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.error,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1.5,
+                          if (_unreadNotificationsCount > 0)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.error,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  _unreadNotificationsCount > 9 ? '9+' : _unreadNotificationsCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(width: 8),
@@ -205,21 +232,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           final currentUserId = authState is Authenticated ? authState.user.id : '';
                           final isOwner = postUserId == currentUserId;
 
-                          String? imageUrl;
-                          final imageList = post['image_urls'];
-                          if (imageList is List && imageList.isNotEmpty) {
-                            imageUrl = imageList.first as String?;
-                          } else if (imageList is String &&
-                              imageList.isNotEmpty) {
-                            if (imageList.startsWith('[')) {
-                              imageUrl = imageList.replaceAll(
-                                RegExp('[\\[\\]"\' ]'),
-                                '',
-                              );
-                            } else {
-                              imageUrl = imageList;
-                            }
-                          }
+                          final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 16.0),
@@ -230,25 +243,41 @@ class _FeedScreenState extends State<FeedScreen> {
                               authorInitials: name.isNotEmpty
                                   ? name[0].toUpperCase()
                                   : 'U',
+                              authorAvatarUrl: post['author_avatar'] as String?,
                               avatarColor: Colors.indigo.shade100,
                               avatarTextColor: Colors.indigo.shade700,
                               content: content,
-                              postType: imageUrl != null
+                              postType: imageUrls.isNotEmpty
                                   ? PostType.image
                                   : (post['document_id'] != null
                                         ? PostType.document
                                         : PostType.text),
-                              imageUrl: imageUrl,
+                              imageUrls: imageUrls,
                               taggedUsers: post['tagged_users'] as List<dynamic>?,
-                              documentName:
-                                  post['document_title'] ?? 'Tài liệu.pdf',
+                              documentName: post['document_title'] as String? ?? 'Tài liệu',
                               documentSize: post['document_size'] != null
-                                  ? '${(post['document_size'] / 1024).toStringAsFixed(0)} KB'
-                                  : '1.2 MB',
+                                  ? '${((post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
+                                  : null,
+                              documentUrl: post['document_url'] as String?,
+                              visibility: post['visibility']?.toString(),
                               likes: post['like_count'] ?? 0,
                               comments: post['comment_count'] ?? 0,
                               isLiked: post['is_liked'] == true,
                               isSaved: post['is_saved'] == true,
+                              onEditTap: isOwner ? () {
+                                try {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EditPostScreen(post: post),
+                                    ),
+                                  );
+                                } catch (e, stackTrace) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Lỗi: $e')),
+                                  );
+                                  print('Lỗi EditPostScreen: $e\n$stackTrace');
+                                }
+                              } : null,
                               onDeleteTap: isOwner
                                   ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
                                   : null,

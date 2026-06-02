@@ -42,6 +42,9 @@ export const postService = {
         'u.full_name as author_name',
         'u.username as author_username',
         'u.avatar_url as author_avatar',
+        'd.title as document_title',
+        'd.file_size as document_size',
+        'd.file_url as document_url',
         db.raw('(SELECT COUNT(*) FROM likes WHERE post_id = p.id)::int as like_count'),
         db.raw('(SELECT COUNT(*) FROM comments WHERE post_id = p.id)::int as comment_count'),
         db.raw(`
@@ -55,6 +58,7 @@ export const postService = {
         `)
       )
       .leftJoin('users as u', 'p.user_id', 'u.id')
+      .leftJoin('documents as d', 'p.document_id', 'd.id')
       .where('p.id', postId)
       .andWhere('p.is_deleted', false)
       .first();
@@ -73,7 +77,7 @@ export const postService = {
     return post;
   },
 
-  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
+  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string; tagged_user_ids?: string[]; document_id?: string }): Promise<Post> {
     const post = await db('posts').where({ id: postId, user_id: userId, is_deleted: false }).first();
     if (!post) {
       throw new AppError('Post not found or you are not the author.', 404);
@@ -84,13 +88,13 @@ export const postService = {
     if (data.image_urls !== undefined) updateData.image_urls = JSON.stringify(data.image_urls);
     if (data.visibility !== undefined) updateData.visibility = data.visibility;
     if (data.tagged_user_ids !== undefined) updateData.tagged_user_ids = JSON.stringify(data.tagged_user_ids);
+    if (data.document_id !== undefined) updateData.document_id = data.document_id;
 
-    const [updated] = await db('posts')
+    await db('posts')
       .where({ id: postId })
-      .update(updateData)
-      .returning('*');
+      .update(updateData);
 
-    return updated;
+    return this.getById(postId, userId);
   },
 
   async delete(postId: string, userId: string): Promise<void> {
@@ -108,7 +112,7 @@ export const postService = {
     targetUserId?: string
   ): Promise<{ data: any[]; total: number }> {
     const baseQuery = db('posts').where('is_deleted', false);
-    
+
     // Áp dụng bộ lọc visibility
     if (currentUserId) {
       if (targetUserId) {
@@ -118,33 +122,33 @@ export const postService = {
           // Kiểm tra xem có phải bạn bè không (bằng subquery)
           baseQuery.where((builder) => {
             builder.where('visibility', 'public')
-                .orWhere((orBuilder) => {
-                  orBuilder.where('visibility', 'friends')
-                      .whereExists(
-                        db.select('*')
-                          .from('friendships')
-                          .where('status', 'accepted')
-                          .andWhere((subBuilder) => {
-                            subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
-                                .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
-                          })
-                      );
-                });
+              .orWhere((orBuilder) => {
+                orBuilder.where('visibility', 'friends')
+                  .whereExists(
+                    db.select('*')
+                      .from('friendships')
+                      .where('status', 'accepted')
+                      .andWhere((subBuilder) => {
+                        subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
+                          .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
+                      })
+                  );
+              });
           });
         }
       } else {
         // Đang xem feed chung
         baseQuery.where((builder) => {
           builder.where('user_id', currentUserId) // Bài của mình
-              .orWhere('visibility', 'public') // Bài public
-              .orWhere((orBuilder) => {
-                // Bài friends của những người là bạn bè
-                orBuilder.where('visibility', 'friends')
-                    .andWhere((subBuilder) => {
-                      subBuilder.whereIn('user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
-                          .orWhereIn('user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
-                    });
-              });
+            .orWhere('visibility', 'public') // Bài public
+            .orWhere((orBuilder) => {
+              // Bài friends của những người là bạn bè
+              orBuilder.where('visibility', 'friends')
+                .andWhere((subBuilder) => {
+                  subBuilder.whereIn('user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
+                    .orWhereIn('user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                });
+            });
         });
       }
     } else {
@@ -164,6 +168,9 @@ export const postService = {
         'u.full_name as author_name',
         'u.username as author_username',
         'u.avatar_url as author_avatar',
+        'd.title as document_title',
+        'd.file_size as document_size',
+        'd.file_url as document_url',
         db.raw('(SELECT COUNT(*) FROM likes WHERE post_id = p.id)::int as like_count'),
         db.raw('(SELECT COUNT(*) FROM comments WHERE post_id = p.id)::int as comment_count'),
         db.raw(`
@@ -177,6 +184,7 @@ export const postService = {
         `)
       )
       .leftJoin('users as u', 'p.user_id', 'u.id')
+      .leftJoin('documents as d', 'p.document_id', 'd.id')
       .where('p.is_deleted', false)
       .orderBy('p.created_at', 'desc')
       .limit(pagination.limit)
@@ -189,31 +197,31 @@ export const postService = {
         if (targetUserId !== currentUserId) {
           postsQuery.where((builder) => {
             builder.where('p.visibility', 'public')
-                .orWhere((orBuilder) => {
-                  orBuilder.where('p.visibility', 'friends')
-                      .whereExists(
-                        db.select('*')
-                          .from('friendships')
-                          .where('status', 'accepted')
-                          .andWhere((subBuilder) => {
-                            subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
-                                .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
-                          })
-                      );
-                });
+              .orWhere((orBuilder) => {
+                orBuilder.where('p.visibility', 'friends')
+                  .whereExists(
+                    db.select('*')
+                      .from('friendships')
+                      .where('status', 'accepted')
+                      .andWhere((subBuilder) => {
+                        subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
+                          .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
+                      })
+                  );
+              });
           });
         }
       } else {
         postsQuery.where((builder) => {
           builder.where('p.user_id', currentUserId)
-              .orWhere('p.visibility', 'public')
-              .orWhere((orBuilder) => {
-                orBuilder.where('p.visibility', 'friends')
-                    .andWhere((subBuilder) => {
-                      subBuilder.whereIn('p.user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
-                          .orWhereIn('p.user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
-                    });
-              });
+            .orWhere('p.visibility', 'public')
+            .orWhere((orBuilder) => {
+              orBuilder.where('p.visibility', 'friends')
+                .andWhere((subBuilder) => {
+                  subBuilder.whereIn('p.user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
+                    .orWhereIn('p.user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                });
+            });
         });
       }
     } else {
@@ -300,12 +308,16 @@ export const postService = {
         'u.full_name as author_name',
         'u.username as author_username',
         'u.avatar_url as author_avatar',
+        'd.title as document_title',
+        'd.file_size as document_size',
+        'd.file_url as document_url',
         db.raw('(SELECT COUNT(*) FROM likes WHERE post_id = p.id)::int as like_count'),
         db.raw('(SELECT COUNT(*) FROM comments WHERE post_id = p.id)::int as comment_count'),
         'sp.created_at as saved_at',
       )
       .innerJoin('posts as p', 'sp.post_id', 'p.id')
       .leftJoin('users as u', 'p.user_id', 'u.id')
+      .leftJoin('documents as d', 'p.document_id', 'd.id')
       .where('sp.user_id', userId)
       .andWhere('p.is_deleted', false)
       .orderBy('sp.created_at', 'desc')
@@ -364,6 +376,26 @@ export const postService = {
       .offset((pagination.page - 1) * pagination.limit);
 
     return { data: comments, total };
+  },
+
+  async updateComment(postId: string, commentId: string, userId: string, content: string): Promise<any> {
+    const comment = await db('comments')
+      .where({ id: commentId, post_id: postId })
+      .first();
+
+    if (!comment) {
+      throw new AppError('Comment not found.', 404);
+    }
+    if (comment.user_id !== userId) {
+      throw new AppError('You are not authorized to edit this comment.', 403);
+    }
+
+    const [updatedComment] = await db('comments')
+      .where({ id: commentId })
+      .update({ content, is_edited: true })
+      .returning('*');
+
+    return updatedComment;
   },
 
   async deleteComment(commentId: string, userId: string): Promise<void> {

@@ -28,6 +28,25 @@ class CreatePostEvent extends FeedEvent {
   });
 }
 
+/// Sửa bài viết
+class EditPostEvent extends FeedEvent {
+  final String postId;
+  final String? content;
+  final List<String>? imageUrls;
+  final String? documentId;
+  final PostVisibility visibility;
+  final List<String>? taggedUserIds;
+
+  EditPostEvent({
+    required this.postId,
+    this.content, 
+    this.imageUrls, 
+    this.documentId,
+    this.visibility = PostVisibility.public,
+    this.taggedUserIds,
+  });
+}
+
 /// Like / Unlike bài viết
 class LikePostEvent extends FeedEvent {
   final String postId;

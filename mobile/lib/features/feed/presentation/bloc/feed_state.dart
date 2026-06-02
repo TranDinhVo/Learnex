@@ -64,6 +64,21 @@ class PostCreateError extends FeedState {
   PostCreateError(this.message);
 }
 
+/// Đang sửa bài viết
+class PostEditing extends FeedState {}
+
+/// Sửa bài viết thành công
+class PostEdited extends FeedState {
+  final Map<String, dynamic> post;
+  PostEdited(this.post);
+}
+
+/// Lỗi khi sửa bài viết
+class PostEditError extends FeedState {
+  final String message;
+  PostEditError(this.message);
+}
+
 /// Bình luận đã tải
 class CommentsLoaded extends FeedState {
   final String postId;

@@ -70,12 +70,18 @@ class FeedRemoteDatasource {
     String id, {
     String? content,
     List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
   }) async {
     final response = await _dio.put(
       ApiEndpoints.postById(id),
       data: {
         if (content != null) 'content': content,
         if (imageUrls != null) 'image_urls': imageUrls,
+        if (documentId != null) 'document_id': documentId,
+        if (visibility != null) 'visibility': visibility,
+        if (taggedUserIds != null) 'tagged_user_ids': taggedUserIds,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -118,6 +124,19 @@ class FeedRemoteDatasource {
   ) async {
     final response = await _dio.post(
       ApiEndpoints.postComments(postId),
+      data: {'content': content},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Cập nhật bình luận
+  Future<Map<String, dynamic>> updateComment(
+    String postId,
+    String commentId,
+    String content,
+  ) async {
+    final response = await _dio.put(
+      ApiEndpoints.deleteComment(postId, commentId), // Using deleteComment endpoint path since it matches /:id/comments/:commentId
       data: {'content': content},
     );
     return response.data as Map<String, dynamic>;

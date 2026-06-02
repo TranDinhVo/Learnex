@@ -39,9 +39,22 @@ class FeedRepositoryImpl implements FeedRepository {
       _datasource.getPostById(id);
 
   @override
-  Future<Map<String, dynamic>> updatePost(String id,
-          {String? content, List<String>? imageUrls}) =>
-      _datasource.updatePost(id, content: content, imageUrls: imageUrls);
+  Future<Map<String, dynamic>> updatePost(
+    String id, {
+    String? content,
+    List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
+  }) =>
+      _datasource.updatePost(
+        id,
+        content: content,
+        imageUrls: imageUrls,
+        documentId: documentId,
+        visibility: visibility,
+        taggedUserIds: taggedUserIds,
+      );
 
   @override
   Future<void> deletePost(String id) => _datasource.deletePost(id);
@@ -62,6 +75,10 @@ class FeedRepositoryImpl implements FeedRepository {
   @override
   Future<Map<String, dynamic>> addComment(String postId, String content) =>
       _datasource.addComment(postId, content);
+
+  @override
+  Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content) =>
+      _datasource.updateComment(postId, commentId, content);
 
   @override
   Future<void> deleteComment(String postId, String commentId) =>

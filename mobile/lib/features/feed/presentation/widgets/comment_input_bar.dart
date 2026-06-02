@@ -3,11 +3,19 @@ import 'package:flutter/material.dart';
 class CommentInputBar extends StatefulWidget {
   final Function(String) onSend;
   final String userInitials;
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final bool isEditing;
+  final VoidCallback? onCancelEdit;
 
   const CommentInputBar({
     super.key,
     required this.onSend,
     this.userInitials = 'U',
+    this.controller,
+    this.focusNode,
+    this.isEditing = false,
+    this.onCancelEdit,
   });
 
   @override
@@ -15,20 +23,30 @@ class CommentInputBar extends StatefulWidget {
 }
 
 class _CommentInputBarState extends State<CommentInputBar> {
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller ?? TextEditingController();
+  }
 
   void _submit() {
     final text = _controller.text.trim();
     if (text.isNotEmpty) {
       widget.onSend(text);
-      _controller.clear();
+      if (widget.controller == null) {
+        _controller.clear();
+      }
       FocusScope.of(context).unfocus();
     }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
     super.dispose();
   }
 
@@ -72,10 +90,11 @@ class _CommentInputBarState extends State<CommentInputBar> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _controller,
+              focusNode: widget.focusNode,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
@@ -95,7 +114,18 @@ class _CommentInputBarState extends State<CommentInputBar> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          if (widget.isEditing) ...[
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.red),
+              onPressed: () {
+                _controller.clear();
+                FocusScope.of(context).unfocus();
+                widget.onCancelEdit?.call();
+              },
+            ),
+            const SizedBox(width: 4),
+          ],
           Container(
             width: 40,
             height: 40,
@@ -115,7 +145,7 @@ class _CommentInputBarState extends State<CommentInputBar> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white, size: 20),
+              icon: Icon(widget.isEditing ? Icons.check : Icons.send, color: Colors.white, size: 20),
               onPressed: _submit,
             ),
           ),

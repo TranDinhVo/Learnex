@@ -7,6 +7,10 @@ class CommentItem extends StatelessWidget {
   final String content;
   final Color avatarColor;
   final Color avatarTextColor;
+  final String? authorAvatarUrl;
+  final bool isEdited;
+  final VoidCallback? onDeleteTap;
+  final VoidCallback? onEditTap;
 
   const CommentItem({
     super.key,
@@ -16,6 +20,10 @@ class CommentItem extends StatelessWidget {
     required this.content,
     required this.avatarColor,
     required this.avatarTextColor,
+    this.authorAvatarUrl,
+    this.isEdited = false,
+    this.onDeleteTap,
+    this.onEditTap,
   });
 
   @override
@@ -32,32 +40,71 @@ class CommentItem extends StatelessWidget {
             color: avatarColor,
             shape: BoxShape.circle,
             border: Border.all(color: theme.colorScheme.surface, width: 2),
+            image: authorAvatarUrl != null
+                ? DecorationImage(
+                    image: NetworkImage(authorAvatarUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
           alignment: Alignment.center,
-          child: Text(
-            authorInitials,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: avatarTextColor,
-            ),
-          ),
+          child: authorAvatarUrl == null
+              ? Text(
+                  authorInitials,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: avatarTextColor,
+                  ),
+                )
+              : null,
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
+              GestureDetector(
+                onLongPress: (onDeleteTap != null || onEditTap != null) ? () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (context) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (onEditTap != null)
+                            ListTile(
+                              leading: const Icon(Icons.edit_outlined, color: Colors.indigo),
+                              title: const Text('Chỉnh sửa bình luận', style: TextStyle(color: Colors.indigo)),
+                              onTap: () {
+                                Navigator.pop(context);
+                                onEditTap!();
+                              },
+                            ),
+                          if (onDeleteTap != null)
+                            ListTile(
+                              leading: const Icon(Icons.delete_outline, color: Colors.red),
+                              title: const Text('Xóa bình luận', style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                Navigator.pop(context);
+                                onDeleteTap!();
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                } : null,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerLow,
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
                   ),
-                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -76,7 +123,7 @@ class CommentItem extends StatelessWidget {
                            ),
                          ),
                         Text(
-                          timeAgo,
+                          isEdited ? '$timeAgo (đã chỉnh sửa)' : timeAgo,
                           style: TextStyle(
                             fontSize: 11,
                             color: theme.colorScheme.onSurfaceVariant,
@@ -95,6 +142,7 @@ class CommentItem extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
               ),
               const SizedBox(height: 4),
               Row(

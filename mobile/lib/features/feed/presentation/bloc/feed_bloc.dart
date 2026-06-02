@@ -16,6 +16,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<LoadMoreFeedEvent>(_onLoadMore);
     on<RefreshFeedEvent>(_onRefresh);
     on<CreatePostEvent>(_onCreatePost);
+    on<EditPostEvent>(_onEditPost);
     on<LikePostEvent>(_onLikePost);
     on<SavePostEvent>(_onSavePost);
     on<DeletePostEvent>(_onDeletePost);
@@ -117,6 +118,32 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     }
   }
 
+  Future<void> _onEditPost(
+    EditPostEvent event,
+    Emitter<FeedState> emit,
+  ) async {
+    emit(PostEditing());
+    try {
+      final result = await _repository.updatePost(
+        event.postId,
+        content: event.content,
+        imageUrls: event.imageUrls,
+        documentId: event.documentId,
+        visibility: event.visibility.value,
+        taggedUserIds: event.taggedUserIds,
+      );
+      final data = result['data'] ?? result;
+      emit(PostEdited(data as Map<String, dynamic>));
+
+      // Cập nhật lại post trong danh sách nếu FeedLoaded
+      add(UpdatePostInListEvent(updatedPost: data));
+    } on DioException catch (e) {
+      emit(PostEditError(_extractError(e)));
+    } catch (e) {
+      emit(PostEditError('Không thể sửa bài viết.'));
+    }
+  }
+
   Future<void> _onLikePost(
     LikePostEvent event,
     Emitter<FeedState> emit,
@@ -173,11 +200,26 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     DeletePostEvent event,
     Emitter<FeedState> emit,
   ) async {
+    final currentState = state;
+    List<Map<String, dynamic>> previousPosts = [];
+
+    if (currentState is FeedLoaded) {
+      previousPosts = List<Map<String, dynamic>>.from(currentState.posts);
+      final updatedPosts = currentState.posts.where((post) => post['id'].toString() != event.postId).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    }
+
     try {
       await _repository.deletePost(event.postId);
-      // Reload feed
-      add(LoadFeedEvent());
-    } catch (_) {}
+      // We don't need to reload feed entirely if we optimistically removed it
+      // But reloading can ensure data consistency.
+      // add(LoadFeedEvent()); 
+    } catch (_) {
+      // Revert if error
+      if (currentState is FeedLoaded) {
+        emit(currentState.copyWith(posts: previousPosts));
+      }
+    }
   }
 
   Future<void> _onLoadComments(

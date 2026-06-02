@@ -23,7 +23,14 @@ abstract class FeedRepository {
   Future<Map<String, dynamic>> getPostById(String id);
 
   /// Cập nhật bài viết
-  Future<Map<String, dynamic>> updatePost(String id, {String? content, List<String>? imageUrls});
+  Future<Map<String, dynamic>> updatePost(
+    String id, {
+    String? content,
+    List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
+  });
 
   /// Xoá bài viết
   Future<void> deletePost(String id);
@@ -39,6 +46,7 @@ abstract class FeedRepository {
 
   /// Thêm bình luận
   Future<Map<String, dynamic>> addComment(String postId, String content);
+  Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content);
 
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId);
