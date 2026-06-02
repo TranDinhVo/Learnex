@@ -8,6 +8,10 @@ import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/screens/post_detail_screen.dart';
 import '../../../../shared/utils/date_formatter.dart';
 import '../../../../shared/utils/image_parser.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import 'profile_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String userId;
@@ -485,6 +489,23 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               return p;
                             }).toList();
                           });
+                        }
+                      },
+                      onTaggedUserTap: (taggedUserId) {
+                        final authState = context.read<AuthBloc>().state;
+                        final currentUserId = authState is Authenticated ? authState.user.id : '';
+                        if (taggedUserId == currentUserId) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileScreen(),
+                            ),
+                          );
+                        } else if (taggedUserId != widget.userId) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => UserProfileScreen(userId: taggedUserId),
+                            ),
+                          );
                         }
                       },
                     ),

@@ -317,6 +317,23 @@ class _FeedScreenState extends State<FeedScreen> {
                                   }
                                 }
                               },
+                              onTaggedUserTap: (taggedUserId) {
+                                final authState = context.read<AuthBloc>().state;
+                                final currentUserId = authState is Authenticated ? authState.user.id : '';
+                                if (taggedUserId == currentUserId) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProfileScreen(),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => UserProfileScreen(userId: taggedUserId),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                           );
                         }, childCount: rawPosts.length),

@@ -12,6 +12,8 @@ import '../../../../shared/utils/image_parser.dart';
 import 'edit_post_screen.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../profile/presentation/screens/user_profile_screen.dart';
 class PostDetailScreen extends StatefulWidget {
   final Map<String, dynamic> post;
 
@@ -316,6 +318,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         print('Lỗi EditPostScreen: $e\n$stackTrace');
                       }
                     } : null,
+                    onAuthorTap: () {
+                      final postUserId = _post['user_id']?.toString();
+                      if (postUserId != null) {
+                        final authState = context.read<AuthBloc>().state;
+                        final currentUserId = authState is Authenticated ? authState.user.id : '';
+                        if (postUserId == currentUserId) {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                        } else {
+                          Navigator.of(context).push(MaterialPageRoute(builder: (_) => UserProfileScreen(userId: postUserId)));
+                        }
+                      }
+                    },
+                    onTaggedUserTap: (taggedUserId) {
+                      final authState = context.read<AuthBloc>().state;
+                      final currentUserId = authState is Authenticated ? authState.user.id : '';
+                      if (taggedUserId == currentUserId) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+                      } else {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => UserProfileScreen(userId: taggedUserId)));
+                      }
+                    },
                   ),
                   
                   // Comment Section Header

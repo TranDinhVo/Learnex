@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 enum PostType { document, image, text }
@@ -32,6 +33,7 @@ class PostCard extends StatelessWidget {
   final String? authorAvatarUrl;
   final VoidCallback? onEditTap;
   final String? visibility;
+  final Function(String)? onTaggedUserTap;
 
   const PostCard({
     super.key,
@@ -62,6 +64,7 @@ class PostCard extends StatelessWidget {
     this.onMoreTap,
     this.onDeleteTap,
     this.onEditTap,
+    this.onTaggedUserTap,
   });
 
   @override
@@ -120,34 +123,35 @@ class PostCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: onAuthorTap,
-          behavior: HitTestBehavior.opaque,
+        Expanded(
           child: Row(
             children: [
-              authorAvatarUrl != null
-                  ? CircleAvatar(
-                      radius: 20,
-                      backgroundImage: NetworkImage(authorAvatarUrl!),
-                    )
-                  : Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: avatarColor,
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        authorInitials,
-                        style: TextStyle(
-                          color: avatarTextColor,
-                          fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: onAuthorTap,
+                child: authorAvatarUrl != null
+                    ? CircleAvatar(
+                        radius: 20,
+                        backgroundImage: NetworkImage(authorAvatarUrl!),
+                      )
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: avatarColor,
+                          shape: BoxShape.circle,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          authorInitials,
+                          style: TextStyle(
+                            color: avatarTextColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
+              ),
               const SizedBox(width: 12),
-              Column(
+              Expanded(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   RichText(
@@ -161,6 +165,7 @@ class PostCard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
                           ),
+                          recognizer: TapGestureRecognizer()..onTap = onAuthorTap,
                         ),
                         if (taggedUsers != null && taggedUsers!.isNotEmpty) ...[
                           TextSpan(
@@ -170,13 +175,7 @@ class PostCard extends StatelessWidget {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          TextSpan(
-                            text: _buildTaggedText(taggedUsers!),
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
+                          _buildTaggedTextSpans(theme),
                         ],
                       ],
                     ),
@@ -215,6 +214,7 @@ class PostCard extends StatelessWidget {
             ],
           ),
         ),
+        ),
         IconButton(
           icon: Icon(Icons.more_horiz, color: theme.colorScheme.onSurfaceVariant),
           onPressed: onMoreTap ?? () => _showMoreBottomSheet(context),
@@ -225,16 +225,59 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  String _buildTaggedText(List<dynamic> users) {
+  TextSpan _buildTaggedTextSpans(ThemeData theme) {
+    if (taggedUsers == null || taggedUsers!.isEmpty) return const TextSpan();
+    final users = taggedUsers!;
+    final style = theme.textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: theme.colorScheme.onSurface,
+    );
+
     if (users.length == 1) {
-      return users.first['full_name'] ?? users.first['username'] ?? 'User';
+      final name = users.first['full_name'] ?? users.first['username'] ?? 'User';
+      final id = users.first['id']?.toString() ?? '';
+      return TextSpan(
+        text: name,
+        style: style,
+        recognizer: TapGestureRecognizer()..onTap = () => onTaggedUserTap?.call(id),
+      );
     } else if (users.length == 2) {
       final name1 = users[0]['full_name'] ?? users[0]['username'] ?? 'User';
+      final id1 = users[0]['id']?.toString() ?? '';
       final name2 = users[1]['full_name'] ?? users[1]['username'] ?? 'User';
-      return '$name1 và $name2';
+      final id2 = users[1]['id']?.toString() ?? '';
+      return TextSpan(
+        children: [
+          TextSpan(
+            text: name1,
+            style: style,
+            recognizer: TapGestureRecognizer()..onTap = () => onTaggedUserTap?.call(id1),
+          ),
+          TextSpan(text: ' và ', style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
+          TextSpan(
+            text: name2,
+            style: style,
+            recognizer: TapGestureRecognizer()..onTap = () => onTaggedUserTap?.call(id2),
+          ),
+        ],
+      );
     } else {
       final name1 = users.first['full_name'] ?? users.first['username'] ?? 'User';
-      return '$name1 và ${users.length - 1} người khác';
+      final id1 = users.first['id']?.toString() ?? '';
+      return TextSpan(
+        children: [
+          TextSpan(
+            text: name1,
+            style: style,
+            recognizer: TapGestureRecognizer()..onTap = () => onTaggedUserTap?.call(id1),
+          ),
+          TextSpan(
+            text: ' và ${users.length - 1} người khác',
+            style: style,
+            // Only the first person is clickable for now, or you could make a list dialog
+          ),
+        ],
+      );
     }
   }
 

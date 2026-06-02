@@ -19,6 +19,7 @@ import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/screens/post_detail_screen.dart';
 import '../../../../shared/utils/date_formatter.dart';
 import '../../../../shared/utils/image_parser.dart';
+import 'user_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -452,6 +453,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         return p;
                                       }).toList();
                                     });
+                                  }
+                                },
+                                onTaggedUserTap: (taggedUserId) {
+                                  final authState = context.read<AuthBloc>().state;
+                                  final currentUserId = authState is Authenticated ? authState.user.id : '';
+                                  if (taggedUserId != currentUserId) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => UserProfileScreen(userId: taggedUserId),
+                                      ),
+                                    );
                                   }
                                 },
                               ),
