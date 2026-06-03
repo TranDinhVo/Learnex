@@ -100,16 +100,19 @@ export default function Reports() {
     {
       key: 'target',
       header: 'Đối tượng vi phạm',
-      render: (r) => (
-        <div>
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded mb-1">
-            {getTargetTypeLabel(r.targetType)}
-          </span>
-          <p className="text-sm text-slate-600 truncate max-w-[200px]" title={r.targetInfo?.name || r.targetInfo?.content || r.targetId}>
-            {r.targetInfo?.name || r.targetInfo?.content || r.targetId}
-          </p>
-        </div>
-      ),
+      render: (r) => {
+        const targetName = (r.targetInfo?.name as string) || (r.targetInfo?.content as string) || r.targetId;
+        return (
+          <div>
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded mb-1">
+              {getTargetTypeLabel(r.targetType)}
+            </span>
+            <p className="text-sm text-slate-600 truncate max-w-[200px]" title={targetName}>
+              {targetName}
+            </p>
+          </div>
+        );
+      },
     },
     {
       key: 'reason',
