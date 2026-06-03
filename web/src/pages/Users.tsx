@@ -7,7 +7,8 @@ import SearchInput from '../components/ui/SearchInput';
 import Pagination from '../components/ui/Pagination';
 import StatusBadge from '../components/ui/StatusBadge';
 import ConfirmModal from '../components/ui/ConfirmModal';
-import { Shield, ShieldAlert, Trash2, UserCog, UserMinus } from 'lucide-react';
+import { Shield, ShieldAlert, Trash2, UserCog, UserMinus, Download } from 'lucide-react';
+import { exportToCSV } from '../utils/export';
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -42,6 +43,28 @@ export default function Users() {
   useEffect(() => {
     fetchUsers();
   }, [page, search]);
+
+  const handleExportCSV = async () => {
+    try {
+      // Lấy toàn bộ user để xuất thay vì chỉ trang hiện tại (tùy chỉnh limit lớn)
+      const res = await usersApi.getAll({ page: 1, limit: 1000, search });
+      
+      const formatData = res.data.map(u => ({
+        ID: u._id,
+        Họ_Tên: u.name,
+        Username: u.username,
+        Email: u.email,
+        Vai_trò: u.role,
+        Trạng_thái: u.isBanned ? 'Bị khóa' : 'Hoạt động',
+        Ngày_tham_gia: new Date(u.createdAt).toLocaleString('vi-VN')
+      }));
+      
+      exportToCSV(formatData, 'Danh_sach_nguoi_dung');
+    } catch (err) {
+      console.error('Lỗi khi xuất file:', err);
+      alert('Có lỗi xảy ra khi xuất dữ liệu.');
+    }
+  };
 
   const handleBan = async () => {
     if (!selectedUser) return;
@@ -220,20 +243,29 @@ export default function Users() {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-        <PageHeader title="Quản lý thành viên" description="Kiểm duyệt và khóa/mở khóa tài khoản sinh viên" />
-        <div className="w-full md:w-80">
-          <SearchInput
-            placeholder="Tìm theo tên, email..."
-            value={search}
-            onChange={(val) => {
-              setSearch(val);
-              setPage(1);
-            }}
-          />
+        <PageHeader title="Quản lý người dùng" description="Quản lý tài khoản và phân quyền cho học viên trong hệ thống" />
+        <div className="w-full md:w-auto flex items-center gap-3">
+          <div className="w-full md:w-80">
+            <SearchInput
+              placeholder="Tìm theo tên, email, username..."
+              value={search}
+              onChange={(val) => {
+                setSearch(val);
+                setPage(1);
+              }}
+            />
+          </div>
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition-all hover:bg-emerald-100 whitespace-nowrap"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Xuất CSV</span>
+          </button>
         </div>
       </div>
 
-      <div className="shadow-xl shadow-slate-200/40 rounded-2xl overflow-hidden border border-slate-200/60">
+      <div className="shadow-xl shadow-slate-200/40 rounded-2xl overflow-hidden border border-slate-200/60 bg-white">
         <DataTable
           columns={columns}
           data={users}
