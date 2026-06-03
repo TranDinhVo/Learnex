@@ -17,13 +17,44 @@ export const adminService = {
     const pendingDocs = await db('documents').whereNull('is_approved').count('* as count');
     const pendingDocuments = parseInt(pendingDocs[0].count as string, 10);
 
-    // Mock chart data for premium visualization
-    const userGrowth = [
-      { name: 'T2', value: Math.max(0, totalUsers - 3) },
-      { name: 'T3', value: Math.max(0, totalUsers - 2) },
-      { name: 'T4', value: Math.max(0, totalUsers - 1) },
-      { name: 'T5', value: totalUsers }
-    ];
+    // Lấy số lượng người dùng mới hôm nay
+    const [{ count: newUsersTodayCount }] = await db('users')
+      .whereRaw('DATE(created_at) = CURRENT_DATE')
+      .count('* as count');
+    const newUsersToday = parseInt(newUsersTodayCount as string, 10);
+
+    // Lấy số lượng bài viết mới hôm nay
+    const [{ count: newPostsTodayCount }] = await db('posts')
+      .whereRaw('DATE(created_at) = CURRENT_DATE')
+      .count('* as count');
+    const newPostsToday = parseInt(newPostsTodayCount as string, 10);
+
+    // Lấy dữ liệu tăng trưởng người dùng 7 ngày gần nhất (tính cả hôm nay)
+    const rawGrowth = await db('users')
+      .select(db.raw('DATE(created_at) as date'))
+      .count('* as count')
+      .whereRaw('created_at >= CURRENT_DATE - INTERVAL \'6 days\'')
+      .groupByRaw('DATE(created_at)')
+      .orderByRaw('DATE(created_at) ASC');
+
+    // Chuyển đổi dữ liệu thô thành format cho biểu đồ
+    // Tạo danh sách 7 ngày gần nhất để điền số 0 nếu ngày đó không có ai đăng ký
+    const userGrowth = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      const found = rawGrowth.find((r: any) => {
+        const rDate = new Date(r.date);
+        return rDate.toISOString().split('T')[0] === dateStr;
+      });
+
+      userGrowth.push({
+        name: `${d.getDate()}/${d.getMonth() + 1}`,
+        value: found ? parseInt(found.count as string, 10) : 0
+      });
+    }
 
     const approvedDocs = await db('documents').where('is_approved', true).count('* as count');
     const approvedCount = parseInt(approvedDocs[0].count as string, 10);
@@ -39,8 +70,8 @@ export const adminService = {
       totalDocuments,
       totalRooms,
       activeUsers: Math.max(2, totalUsers),
-      newUsersToday: 1,
-      newPostsToday: totalPosts > 0 ? 1 : 0,
+      newUsersToday,
+      newPostsToday,
       pendingDocuments,
       userGrowth,
       documentStats
