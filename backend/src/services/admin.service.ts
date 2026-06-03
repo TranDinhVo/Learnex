@@ -412,6 +412,30 @@ export const adminService = {
     }));
 
     return { data, total };
+  },
+
+  // ── System Settings ──
+  async getSettings() {
+    const rawSettings = await db('system_settings').select('*');
+    return rawSettings.map(s => ({
+      key: s.key,
+      value: s.value,
+      description: s.description,
+      updated_at: s.updated_at
+    }));
+  },
+
+  async updateSettings(settingsData: { key: string; value: string }[]) {
+    // Start a transaction to ensure all updates succeed or fail together
+    await db.transaction(async (trx) => {
+      for (const setting of settingsData) {
+        await trx('system_settings')
+          .where({ key: setting.key })
+          .update({ value: setting.value });
+      }
+    });
+
+    return await this.getSettings();
   }
 };
 

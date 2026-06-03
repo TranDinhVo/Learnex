@@ -206,5 +206,25 @@ export const adminController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  // ── System Settings ──
+  async getSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const settings = await adminService.getSettings();
+      sendResponse(res, 200, settings, 'Settings retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { settings } = req.body;
+      const updatedSettings = await adminService.updateSettings(settings);
+      sendResponse(res, 200, updatedSettings, 'Settings updated successfully');
+    } catch (error) {
+      next(error);
+    }
   }
 };

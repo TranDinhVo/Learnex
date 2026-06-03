@@ -11,7 +11,8 @@ import {
   Menu,
   ChevronLeft,
   GraduationCap,
-  ShieldAlert
+  ShieldAlert,
+  Settings
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/rooms', icon: MessageSquare, label: 'Phòng học' },
   { to: '/reports', icon: ShieldAlert, label: 'Báo cáo vi phạm' },
   { to: '/notifications', icon: Bell, label: 'Thông báo' },
+  { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ];
 
 export default function AdminLayout() {

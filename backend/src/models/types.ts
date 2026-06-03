@@ -165,6 +165,13 @@ export interface Report {
   updated_at: Date;
 }
 
+export interface SystemSetting {
+  key: string;
+  value: string;
+  description: string | null;
+  updated_at: Date;
+}
+
 // ============================================================
 // Auth Types
 // ============================================================

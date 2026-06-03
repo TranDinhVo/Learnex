@@ -33,6 +33,10 @@ router.delete('/rooms/:id', adminController.deleteRoom);
 
 // System Notifications
 router.post('/notifications', adminController.sendNotification);
-router.get('/notifications', adminController.getNotificationHistory);
+router.get('/notifications/history', adminController.getNotificationHistory);
+
+// System Settings
+router.get('/settings', adminController.getSettings);
+router.put('/settings', adminController.updateSettings);
 
 export default router;
