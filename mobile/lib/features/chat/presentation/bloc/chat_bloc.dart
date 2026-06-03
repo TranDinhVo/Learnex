@@ -11,6 +11,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final ChatRepositoryImpl _repository;
   final WebSocketService _wsService;
   StreamSubscription? _wsSubscription;
+  
+  List<String> _latestOnlineUsers = [];
 
   ChatBloc({
     required ChatRepositoryImpl repository,
@@ -23,11 +25,33 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<LoadMoreMessagesEvent>(_onLoadMoreMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<ReceiveMessageEvent>(_onReceiveMessage);
+    on<SendTypingEvent>(_onSendTyping);
+    on<SendStopTypingEvent>(_onSendStopTyping);
+    on<PeerTypingStatusEvent>(_onPeerTypingStatus);
+    on<OnlineStatusReceivedEvent>(_onOnlineStatusReceived);
+    on<DeleteMessageEvent>(_onDeleteMessage);
+    on<EditMessageEvent>(_onEditMessage);
+    on<MessageDeletedByPeerEvent>(_onMessageDeletedByPeer);
+    on<MessageEditedByPeerEvent>(_onMessageEditedByPeer);
 
     // Lắng nghe tin nhắn realtime từ WebSocket
     _wsSubscription = _wsService.messages.listen((data) {
       if (data['type'] == 'chat_message') {
         add(ReceiveMessageEvent(message: data['data'] as Map<String, dynamic>));
+      } else if (data['type'] == 'typing') {
+        add(PeerTypingStatusEvent(peerId: data['data']['senderId'], isTyping: true));
+      } else if (data['type'] == 'stop_typing') {
+        add(PeerTypingStatusEvent(peerId: data['data']['senderId'], isTyping: false));
+      } else if (data['type'] == 'online_status') {
+        final users = List<String>.from(data['data']['onlineUsers'] ?? []);
+        add(OnlineStatusReceivedEvent(onlineUserIds: users));
+      } else if (data['type'] == 'message_deleted') {
+        add(MessageDeletedByPeerEvent(messageId: data['data']['messageId']));
+      } else if (data['type'] == 'message_edited') {
+        add(MessageEditedByPeerEvent(
+          messageId: data['data']['messageId'],
+          newContent: data['data']['content'],
+        ));
       }
     });
   }
@@ -42,7 +66,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     try {
       final result = await _repository.getConversations();
       final conversations = _extractList(result);
-      emit(ConversationsLoaded(conversations));
+      emit(ConversationsLoaded(conversations, onlineUserIds: _latestOnlineUsers));
     } on DioException catch (e) {
       if (state is! ConversationsLoaded) emit(ChatError(_extractError(e)));
     } catch (e) {
@@ -67,6 +91,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         messages: messages,
         hasMore: hasMore,
         currentPage: 1,
+        onlineUserIds: _latestOnlineUsers,
       ));
     } catch (e) {
       emit(ChatError('Không thể tải tin nhắn.'));
@@ -134,6 +159,107 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } else if (currentState is ConversationsLoaded) {
       // Background load để làm mới tin nhắn/unread count
       add(LoadConversationsEvent());
+    }
+  }
+
+  void _onSendTyping(SendTypingEvent event, Emitter<ChatState> emit) {
+    _wsService.send({
+      'type': 'typing',
+      'data': {'receiverId': event.targetId}
+    });
+  }
+
+  void _onSendStopTyping(SendStopTypingEvent event, Emitter<ChatState> emit) {
+    _wsService.send({
+      'type': 'stop_typing',
+      'data': {'receiverId': event.targetId}
+    });
+  }
+
+  void _onPeerTypingStatus(PeerTypingStatusEvent event, Emitter<ChatState> emit) {
+    final currentState = state;
+    if (currentState is MessagesLoaded) {
+      final newTypingUsers = Set<String>.from(currentState.typingUsers);
+      if (event.isTyping) {
+        newTypingUsers.add(event.peerId);
+      } else {
+        newTypingUsers.remove(event.peerId);
+      }
+      emit(currentState.copyWith(typingUsers: newTypingUsers));
+    }
+  }
+
+  void _onOnlineStatusReceived(OnlineStatusReceivedEvent event, Emitter<ChatState> emit) {
+    _latestOnlineUsers = event.onlineUserIds;
+    final currentState = state;
+    if (currentState is ConversationsLoaded) {
+      emit(currentState.copyWith(onlineUserIds: _latestOnlineUsers));
+    } else if (currentState is MessagesLoaded) {
+      emit(currentState.copyWith(onlineUserIds: _latestOnlineUsers));
+    }
+  }
+
+  Future<void> _onDeleteMessage(DeleteMessageEvent event, Emitter<ChatState> emit) async {
+    final currentState = state;
+    if (currentState is! MessagesLoaded) return;
+
+    try {
+      await _repository.deleteMessage(event.messageId, type: event.type);
+      // Cập nhật state nội bộ
+      final newMessages = currentState.messages.map((m) {
+        if (m['id'] == event.messageId) {
+          if (event.type == 'for_everyone') {
+            return {...m, 'is_deleted': true, 'content': null, 'file_url': null};
+          } else {
+            // for_me -> ẩn tin nhắn
+            return {...m, 'hidden_for_me': true};
+          }
+        }
+        return m;
+      }).where((m) => m['hidden_for_me'] != true).toList();
+      emit(currentState.copyWith(messages: newMessages));
+    } catch (_) {}
+  }
+
+  Future<void> _onEditMessage(EditMessageEvent event, Emitter<ChatState> emit) async {
+    final currentState = state;
+    if (currentState is! MessagesLoaded) return;
+
+    try {
+      await _repository.editMessage(event.messageId, event.content);
+      final newMessages = currentState.messages.map((m) {
+        if (m['id'] == event.messageId) {
+          return {...m, 'content': event.content, 'edited_at': DateTime.now().toIso8601String()};
+        }
+        return m;
+      }).toList();
+      emit(currentState.copyWith(messages: newMessages));
+    } catch (_) {}
+  }
+
+  void _onMessageDeletedByPeer(MessageDeletedByPeerEvent event, Emitter<ChatState> emit) {
+    final currentState = state;
+    if (currentState is MessagesLoaded) {
+      final newMessages = currentState.messages.map((m) {
+        if (m['id'] == event.messageId) {
+          return {...m, 'is_deleted': true, 'content': null, 'file_url': null};
+        }
+        return m;
+      }).toList();
+      emit(currentState.copyWith(messages: newMessages));
+    }
+  }
+
+  void _onMessageEditedByPeer(MessageEditedByPeerEvent event, Emitter<ChatState> emit) {
+    final currentState = state;
+    if (currentState is MessagesLoaded) {
+      final newMessages = currentState.messages.map((m) {
+        if (m['id'] == event.messageId) {
+          return {...m, 'content': event.newContent, 'edited_at': DateTime.now().toIso8601String()};
+        }
+        return m;
+      }).toList();
+      emit(currentState.copyWith(messages: newMessages));
     }
   }
 

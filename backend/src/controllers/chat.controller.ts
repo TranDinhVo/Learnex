@@ -82,4 +82,23 @@ export const chatController = {
       next(error);
     }
   },
+
+  async deleteMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const type = req.body.type === 'for_everyone' ? 'for_everyone' : 'for_me';
+      const result = await messageService.deleteMessage(req.params.messageId as string, req.user!.userId, type);
+      sendResponse(res, 200, result, 'Message deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async editMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await messageService.editMessage(req.params.messageId as string, req.user!.userId, req.body.content);
+      sendResponse(res, 200, result, 'Message edited successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
 };

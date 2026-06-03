@@ -18,4 +18,12 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<Map<String, dynamic>> sendMessage(String conversationId, {String? content, String? fileUrl}) =>
       _datasource.sendMessage(conversationId, content: content, fileUrl: fileUrl);
+
+  @override
+  Future<void> deleteMessage(String messageId, {required String type}) =>
+      _datasource.deleteMessage(messageId, type: type);
+
+  @override
+  Future<void> editMessage(String messageId, String content) =>
+      _datasource.editMessage(messageId, content);
 }

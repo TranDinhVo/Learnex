@@ -33,3 +33,55 @@ class ReceiveMessageEvent extends ChatEvent {
   final Map<String, dynamic> message;
   ReceiveMessageEvent({required this.message});
 }
+
+/// Gửi tín hiệu đang gõ
+class SendTypingEvent extends ChatEvent {
+  final String targetId;
+  SendTypingEvent({required this.targetId});
+}
+
+/// Gửi tín hiệu ngừng gõ
+class SendStopTypingEvent extends ChatEvent {
+  final String targetId;
+  SendStopTypingEvent({required this.targetId});
+}
+
+/// Nhận tín hiệu đang gõ từ đối phương
+class PeerTypingStatusEvent extends ChatEvent {
+  final String peerId;
+  final bool isTyping;
+  PeerTypingStatusEvent({required this.peerId, required this.isTyping});
+}
+
+/// Cập nhật danh sách online
+class OnlineStatusReceivedEvent extends ChatEvent {
+  final List<String> onlineUserIds;
+  OnlineStatusReceivedEvent({required this.onlineUserIds});
+}
+
+/// Yêu cầu xóa tin nhắn (cho mình hoặc cả 2)
+class DeleteMessageEvent extends ChatEvent {
+  final String messageId;
+  final String type; // 'for_me' or 'for_everyone'
+  DeleteMessageEvent({required this.messageId, required this.type});
+}
+
+/// Yêu cầu sửa tin nhắn
+class EditMessageEvent extends ChatEvent {
+  final String messageId;
+  final String content;
+  EditMessageEvent({required this.messageId, required this.content});
+}
+
+/// Nhận thông báo đối phương đã xóa tin nhắn
+class MessageDeletedByPeerEvent extends ChatEvent {
+  final String messageId;
+  MessageDeletedByPeerEvent({required this.messageId});
+}
+
+/// Nhận thông báo đối phương đã sửa tin nhắn
+class MessageEditedByPeerEvent extends ChatEvent {
+  final String messageId;
+  final String newContent;
+  MessageEditedByPeerEvent({required this.messageId, required this.newContent});
+}

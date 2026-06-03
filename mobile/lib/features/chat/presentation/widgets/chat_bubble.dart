@@ -14,6 +14,8 @@ class ChatBubble extends StatelessWidget {
   final bool showAvatar;
   final String? avatarInitials;
   final VoidCallback? onCallPressed;
+  final bool isDeleted;
+  final bool isEdited;
 
   const ChatBubble({
     super.key,
@@ -30,6 +32,8 @@ class ChatBubble extends StatelessWidget {
     this.showAvatar = false,
     this.avatarInitials,
     this.onCallPressed,
+    this.isDeleted = false,
+    this.isEdited = false,
   });
 
   @override
@@ -139,7 +143,7 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           )
-        else
+        else if (isCallHistory)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -150,26 +154,68 @@ class ChatBubble extends StatelessWidget {
                 bottomLeft: const Radius.circular(16),
                 bottomRight: const Radius.circular(4),
               ),
-              boxShadow: [
-                if (isBottom)
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
+            ),
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: _buildCallHistoryCard(theme),
+          )
+        else if (isDeleted)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(color: const Color(0xFFC7C6D3), width: 1),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: Radius.circular(isTop ? 18 : 4),
+                bottomLeft: const Radius.circular(18),
+                bottomRight: Radius.circular(isBottom ? 18 : 4),
+              ),
+            ),
+            child: const Text(
+              'Tin nhắn đã thu hồi',
+              style: TextStyle(
+                color: Color(0xFF777587),
+                fontStyle: FontStyle.italic,
+                fontSize: 15,
+              ),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3730A3),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: Radius.circular(isTop ? 18 : 4),
+                bottomLeft: const Radius.circular(18),
+                bottomRight: Radius.circular(isBottom ? 18 : 4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  message ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                  ),
+                ),
+                if (isEdited)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      '(đã chỉnh sửa)',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                   ),
               ],
             ),
-            constraints: const BoxConstraints(maxWidth: 280),
-            child: isCallHistory 
-                ? _buildCallHistoryCard(theme)
-                : Text(
-                    message ?? '',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
           ),
         if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
@@ -247,14 +293,40 @@ class ChatBubble extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 280),
               child: isCallHistory 
                   ? _buildCallHistoryCard(theme)
-                  : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Text(
-                      message ?? '',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
-                    ))),
+                  : isDeleted
+                      ? const Text(
+                          'Tin nhắn đã thu hồi',
+                          style: TextStyle(
+                            color: Color(0xFF777587),
+                            fontStyle: FontStyle.italic,
+                            fontSize: 14,
+                          ),
+                        )
+                      : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              message ?? '',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
+                            ),
+                            if (isEdited)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  '(đã chỉnh sửa)',
+                                  style: TextStyle(
+                                    color: Color(0xFF777587),
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ))),
             ),
           ],
         ),

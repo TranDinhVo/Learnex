@@ -221,11 +221,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   child: BlocBuilder<ChatBloc, ChatState>(
                     builder: (context, chatState) {
                       List<dynamic> conversations = [];
+                      List<String> onlineUserIds = [];
                       final isLoading = chatState is ChatLoading;
                       final errorMsg = chatState is ChatError ? chatState.message : null;
 
                       if (chatState is ConversationsLoaded) {
                         conversations = chatState.conversations;
+                        onlineUserIds = chatState.onlineUserIds;
                       }
 
                       if (isLoading) {
@@ -300,6 +302,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                               unreadCount: unreadCount,
                               avatarColor: Colors.indigo.shade600,
                               avatarTextColor: Colors.white,
+                              isOnline: onlineUserIds.contains(otherUser['id']?.toString()),
                               onTap: () {
                                 final otherUserId = otherUser['id']?.toString() ?? '';
                                 Navigator.of(context).push(

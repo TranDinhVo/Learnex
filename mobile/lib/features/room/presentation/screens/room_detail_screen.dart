@@ -7,6 +7,8 @@ import '../../../../core/services/media_upload_service.dart';
 import '../../../../shared/widgets/custom_avatar.dart';
 import '../../../../shared/widgets/media_picker_sheet.dart';
 import 'package:image_picker/image_picker.dart'; // XFile - works on Web & Mobile
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+import 'package:flutter/foundation.dart' as foundation;
 import '../screens/call_screen.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -35,6 +37,7 @@ class RoomDetailScreen extends StatefulWidget {
 class _RoomDetailScreenState extends State<RoomDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
   late RoomDetailBloc _bloc;
   String? _myUserId;
   String? _myRole;
@@ -42,10 +45,18 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
   String _privacyMode = 'public';
   List<String> _activeCallUsers = [];
   bool _isUploading = false;
+  bool _showEmoji = false;
 
   @override
   void initState() {
     super.initState();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        setState(() {
+          _showEmoji = false;
+        });
+      }
+    });
     _bloc = getIt<RoomDetailBloc>();
     _bloc.add(LoadRoomDetailEvent(widget.roomId));
     _bloc.add(LoadMessagesEvent(widget.roomId));
@@ -67,8 +78,10 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
 
   @override
   void dispose() {
-    _messageController.dispose();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _messageController.dispose();
+    _focusNode.dispose();
     _bloc.close();
     super.dispose();
   }
@@ -325,9 +338,43 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    return BlocProvider.value(
-      value: _bloc,
-      child: BlocListener<RoomDetailBloc, RoomDetailState>(
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            BlocBuilder<RoomDetailBloc, RoomDetailState>(
+              buildWhen: (p, c) => c is RoomDetailLoaded,
+              builder: (context, state) {
+                String? avatarUrl;
+                if (state is RoomDetailLoaded) avatarUrl = state.room.avatarUrl;
+                return CustomAvatar(imageUrl: avatarUrl, name: widget.roomName, radius: 18);
+              },
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.roomName,
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(icon: const Icon(Icons.call, color: Color(0xFF4F46E5)), onPressed: () => _joinCall(isAudioOnly: true)),
+          IconButton(icon: const Icon(Icons.videocam, color: Color(0xFF4F46E5)), onPressed: () => _joinCall(isAudioOnly: false)),
+          IconButton(icon: const Icon(Icons.more_horiz), onPressed: _showMenu),
+        ],
+      ),
+      body: BlocListener<RoomDetailBloc, RoomDetailState>(
         listener: (context, state) {
           if (state is RoomDetailLoaded) {
             _myRole = state.room.userRole;
@@ -335,7 +382,6 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
             setState(() {
               _privacyMode = state.room.privacyMode;
             });
-            // Yêu cầu trạng thái cuộc gọi hiện tại
             getIt<WebSocketService>().send({
               'type': 'get_room_active_status',
               'data': {'roomId': widget.roomId}
@@ -357,45 +403,8 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message, style: const TextStyle(color: Colors.red))));
           }
         },
-        child: Scaffold(
-          backgroundColor: theme.colorScheme.surface,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0.5,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Row(
-            children: [
-              BlocBuilder<RoomDetailBloc, RoomDetailState>(
-                buildWhen: (p, c) => c is RoomDetailLoaded,
-                builder: (context, state) {
-                  String? avatarUrl;
-                  if (state is RoomDetailLoaded) avatarUrl = state.room.avatarUrl;
-                  return CustomAvatar(imageUrl: avatarUrl, name: widget.roomName, radius: 18);
-                },
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.roomName,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            IconButton(icon: const Icon(Icons.call, color: Color(0xFF4F46E5)), onPressed: () => _joinCall(isAudioOnly: true)),
-            IconButton(icon: const Icon(Icons.videocam, color: Color(0xFF4F46E5)), onPressed: () => _joinCall(isAudioOnly: false)),
-            IconButton(icon: const Icon(Icons.more_horiz), onPressed: _showMenu),
-          ],
-        ),
-        body: Column(
+        child: Column(
           children: [
-            // Avatar strip (members)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: const Color(0xFFF8F9FA),
@@ -445,7 +454,6 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                   if (state is MessagesLoaded) {
                     currentMessages = state.messages;
                   } else {
-                    // Cố lấy data từ currentState nếu cast fail
                     if (_bloc.state is MessagesLoaded) {
                        currentMessages = (_bloc.state as MessagesLoaded).messages;
                     }
@@ -463,7 +471,6 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                     itemBuilder: (context, index) {
                       final msg = currentMessages[index];
                       final isMe = msg.senderId == _myUserId;
-                      // Logic nhóm ngày và hiển thị avatar có thể làm thêm sau (showAvatar = true)
                       return RoomMessageBubble(
                         message: msg,
                         isMe: isMe,
@@ -475,7 +482,6 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
               ),
             ),
             
-            // Input Bar
             Column(
               children: [
                 if (_isUploading)
@@ -494,9 +500,31 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.add_circle, color: Color(0xFF4F46E5)),
+                        icon: const Icon(Icons.add_circle_outline, color: Color(0xFF464555), size: 26),
                         onPressed: _isUploading ? null : _openMediaPicker,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
+                      IconButton(
+                        icon: Icon(
+                          _showEmoji ? Icons.keyboard : Icons.emoji_emotions_outlined,
+                          color: const Color(0xFF464555),
+                          size: 26,
+                        ),
+                        onPressed: () {
+                          if (_showEmoji) {
+                            _focusNode.requestFocus();
+                          } else {
+                            _focusNode.unfocus();
+                            setState(() {
+                              _showEmoji = true;
+                            });
+                          }
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -506,12 +534,11 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                           ),
                           child: TextField(
                             controller: _messageController,
+                            focusNode: _focusNode,
                             onSubmitted: _isUploading ? null : (_) => _sendMessage(),
                             decoration: const InputDecoration(
                               hintText: 'Nhắn tin trong phòng...',
                               border: InputBorder.none,
-                              suffixIcon: Icon(Icons.sentiment_satisfied_alt, color: Colors.grey),
-                              suffixIconConstraints: BoxConstraints(minWidth: 32, minHeight: 32),
                             ),
                           ),
                         ),
@@ -532,9 +559,28 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
                 ),
               ],
             ),
+            if (_showEmoji)
+              SizedBox(
+                height: 250,
+                child: EmojiPicker(
+                  onEmojiSelected: (category, emoji) {},
+                  textEditingController: _messageController,
+                  config: Config(
+                    height: 250,
+                    checkPlatformCompatibility: true,
+                    viewOrderConfig: const ViewOrderConfig(),
+                    emojiViewConfig: EmojiViewConfig(
+                      backgroundColor: theme.colorScheme.surface,
+                    ),
+                    skinToneConfig: const SkinToneConfig(),
+                    categoryViewConfig: const CategoryViewConfig(),
+                    bottomActionBarConfig: const BottomActionBarConfig(),
+                    searchViewConfig: const SearchViewConfig(),
+                  ),
+                ),
+              ),
           ],
         ),
-      ),
       ),
     );
   }
