@@ -7,7 +7,7 @@ import SearchInput from '../components/ui/SearchInput';
 import Pagination from '../components/ui/Pagination';
 import StatusBadge from '../components/ui/StatusBadge';
 import ConfirmModal from '../components/ui/ConfirmModal';
-import { Shield, ShieldAlert, Trash2 } from 'lucide-react';
+import { Shield, ShieldAlert, Trash2, UserCog, UserMinus } from 'lucide-react';
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,6 +22,8 @@ export default function Users() {
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [unbanModalOpen, setUnbanModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [targetRole, setTargetRole] = useState<'admin' | 'user'>('user');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchUsers = async () => {
@@ -84,6 +86,20 @@ export default function Users() {
     }
   };
 
+  const handleRoleChange = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      await usersApi.updateRole(selectedUser._id, targetRole);
+      setRoleModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error('Role update error', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const columns: Column<User>[] = [
     {
       key: 'avatar',
@@ -135,9 +151,34 @@ export default function Users() {
       header: 'Hành động',
       className: 'text-right',
       render: (u) => {
-        if (u.role === 'admin') return <span className="text-xs text-gray-600">-</span>;
         return (
           <div className="flex justify-end gap-2.5">
+            {u.role === 'user' ? (
+              <button
+                onClick={() => {
+                  setSelectedUser(u);
+                  setTargetRole('admin');
+                  setRoleModalOpen(true);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200/60 bg-indigo-50/50 text-indigo-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm cursor-pointer"
+                title="Cấp quyền Admin"
+              >
+                <UserCog className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedUser(u);
+                  setTargetRole('user');
+                  setRoleModalOpen(true);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/60 bg-slate-50/50 text-slate-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm cursor-pointer"
+                title="Hạ quyền xuống User"
+              >
+                <UserMinus className="h-4 w-4" />
+              </button>
+            )}
+            
             {u.isBanned ? (
               <button
                 onClick={() => {
@@ -246,6 +287,20 @@ export default function Users() {
         message={`Bạn có chắc muốn XÓA VĨNH VIỄN tài khoản của ${selectedUser?.name}? Hành động này KHÔNG THỂ khôi phục và sẽ xóa sạch mọi thông tin liên quan.`}
         confirmLabel="Xóa vĩnh viễn"
         variant="danger"
+        loading={actionLoading}
+      />
+
+      {/* Role Change Modal */}
+      <ConfirmModal
+        open={roleModalOpen}
+        onCancel={() => setRoleModalOpen(false)}
+        onConfirm={handleRoleChange}
+        title={targetRole === 'admin' ? "Cấp quyền Admin" : "Thu hồi quyền Admin"}
+        message={targetRole === 'admin' 
+          ? `Bạn có chắc muốn cấp quyền Quản trị viên (Admin) cho tài khoản ${selectedUser?.name}? Người này sẽ có toàn quyền kiểm duyệt bài viết và quản lý người dùng.`
+          : `Bạn có chắc muốn hạ cấp tài khoản ${selectedUser?.name} xuống người dùng thường?`}
+        confirmLabel={targetRole === 'admin' ? "Cấp quyền" : "Hạ quyền"}
+        variant={targetRole === 'admin' ? "info" : "danger"}
         loading={actionLoading}
       />
     </div>

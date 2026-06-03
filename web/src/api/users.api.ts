@@ -17,6 +17,11 @@ export const usersApi = {
     return res.data.data;
   },
 
+  updateRole: async (id: string, role: 'admin' | 'user'): Promise<User> => {
+    const res = await apiClient.put<ApiResponse<User>>(`/admin/users/${id}/role`, { role });
+    return res.data.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/admin/users/${id}`);
   },

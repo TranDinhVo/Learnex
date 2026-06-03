@@ -103,6 +103,20 @@ export const adminService = {
     await db('users').where({ id }).del();
   },
 
+  async updateUserRole(id: string, role: string) {
+    if (role !== 'admin' && role !== 'user') {
+      throw new AppError('Invalid role specified.', 400);
+    }
+    const user = await db('users').where({ id }).first();
+    if (!user) throw new AppError('User not found.', 404);
+
+    const [updated] = await db('users')
+      .where({ id })
+      .update({ role })
+      .returning('*');
+    return updated;
+  },
+
   // ── Posts Moderation ──
   async getAllPosts(pagination: PaginationParams) {
     let query = db('posts as p')
@@ -398,6 +412,30 @@ export const adminService = {
     }));
 
     return { data, total };
+  },
+
+  // ── System Settings ──
+  async getSettings() {
+    const rawSettings = await db('system_settings').select('*');
+    return rawSettings.map(s => ({
+      key: s.key,
+      value: s.value,
+      description: s.description,
+      updated_at: s.updated_at
+    }));
+  },
+
+  async updateSettings(settingsData: { key: string; value: string }[]) {
+    // Start a transaction to ensure all updates succeed or fail together
+    await db.transaction(async (trx) => {
+      for (const setting of settingsData) {
+        await trx('system_settings')
+          .where({ key: setting.key })
+          .update({ value: setting.value });
+      }
+    });
+
+    return await this.getSettings();
   }
 };
 

@@ -229,6 +229,36 @@ CREATE TABLE document_views (
 );
 
 -- ============================================================
+-- 15. REPORTS (Báo cáo vi phạm)
+-- ============================================================
+CREATE TABLE reports (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type VARCHAR(50) NOT NULL,                        -- 'user' | 'post' | 'comment' | 'room'
+  target_id   UUID        NOT NULL,
+  reason      TEXT        NOT NULL,
+  status      VARCHAR(20) DEFAULT 'pending',               -- 'pending' | 'resolved' | 'dismissed'
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 16. SYSTEM SETTINGS
+-- ============================================================
+CREATE TABLE system_settings (
+  key         VARCHAR(50) PRIMARY KEY,
+  value       TEXT NOT NULL,
+  description TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert default settings
+INSERT INTO system_settings (key, value, description) VALUES
+('maintenance_mode', 'false', 'Bật chế độ bảo trì toàn hệ thống'),
+('allow_registrations', 'true', 'Cho phép người dùng mới đăng ký'),
+('auto_approve_documents', 'false', 'Tự động duyệt tài liệu mà không cần admin');
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -293,4 +323,12 @@ CREATE TRIGGER trg_users_updated_at
 
 CREATE TRIGGER trg_posts_updated_at
   BEFORE UPDATE ON posts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_reports_updated_at
+  BEFORE UPDATE ON reports
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_system_settings_updated_at
+  BEFORE UPDATE ON system_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
