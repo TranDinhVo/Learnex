@@ -59,11 +59,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
-<<<<<<< HEAD
 app.use('/api/stories', storyRoutes);
-=======
 app.use('/api/reports', reportRoutes);
->>>>>>> main
 
 // Unhandled Routes
 app.use((req: Request, res: Response, next: NextFunction) => {
