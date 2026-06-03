@@ -37,6 +37,7 @@ export default function Rooms() {
 
   useEffect(() => {
     fetchRooms();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search]);
 
   const handleDelete = async () => {

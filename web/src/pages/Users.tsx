@@ -42,6 +42,7 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search]);
 
   const handleExportCSV = async () => {

@@ -28,18 +28,15 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Cài đặt' },
 ];
 
-export default function AdminLayout() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const { user, logout } = useAuthStore();
-  const navigate = useNavigate();
+interface SidebarContentProps {
+  collapsed: boolean;
+  user: { name: string; email: string } | null;
+  handleLogout: () => void;
+  setMobileOpen: (open: boolean) => void;
+}
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const SidebarContent = () => (
+function SidebarContent({ collapsed, user, handleLogout, setMobileOpen }: SidebarContentProps) {
+  return (
     <div className="flex h-full flex-col bg-white">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-5">
@@ -109,6 +106,18 @@ export default function AdminLayout() {
       </div>
     </div>
   );
+}
+
+export default function AdminLayout() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="flex h-screen bg-[#f8fafc]">
@@ -119,7 +128,12 @@ export default function AdminLayout() {
           collapsed ? 'w-[72px]' : 'w-64',
         )}
       >
-        <SidebarContent />
+        <SidebarContent
+          collapsed={collapsed}
+          user={user}
+          handleLogout={handleLogout}
+          setMobileOpen={setMobileOpen}
+        />
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-20 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:text-slate-600 lg:flex cursor-pointer"
@@ -133,7 +147,12 @@ export default function AdminLayout() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <aside className="relative z-50 flex h-full w-64 flex-col border-r border-slate-200 bg-white">
-            <SidebarContent />
+            <SidebarContent
+              collapsed={false}
+              user={user}
+              handleLogout={handleLogout}
+              setMobileOpen={setMobileOpen}
+            />
           </aside>
         </div>
       )}

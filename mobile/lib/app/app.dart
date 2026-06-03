@@ -7,6 +7,7 @@ import '../features/feed/presentation/bloc/feed_bloc.dart';
 import '../features/folder/presentation/bloc/document_bloc.dart';
 import '../features/friends/presentation/bloc/friend_bloc.dart';
 import '../features/chat/presentation/bloc/chat_bloc.dart';
+import '../features/story/presentation/bloc/story_bloc.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../core/services/websocket_service.dart';
 import '../core/services/webrtc_service.dart';
@@ -41,6 +42,9 @@ class App extends StatelessWidget {
         ),
         BlocProvider<ChatBloc>(
           create: (_) => getIt<ChatBloc>(),
+        ),
+        BlocProvider<StoryBloc>(
+          create: (_) => getIt<StoryBloc>(),
         ),
       ],
       child: MaterialApp(

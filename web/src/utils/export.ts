@@ -1,4 +1,4 @@
-export const exportToCSV = (data: any[], filename: string) => {
+export const exportToCSV = (data: Record<string, unknown>[], filename: string) => {
   if (!data || !data.length) {
     alert('Không có dữ liệu để xuất');
     return;
@@ -9,12 +9,13 @@ export const exportToCSV = (data: any[], filename: string) => {
   const headers = Object.keys(data[0]);
 
   // Escape CSV function
-  const escapeCSV = (val: any) => {
+  const escapeCSV = (val: unknown) => {
     if (val === null || val === undefined) return '';
     if (typeof val === 'object') {
+      const obj = val as Record<string, unknown>;
       // Nếu là object lồng nhau, thử lấy .name hoặc .email hoặc stringify
-      if (val.name) return `"${String(val.name).replace(/"/g, '""')}"`;
-      if (val.email) return `"${String(val.email).replace(/"/g, '""')}"`;
+      if (obj.name) return `"${String(obj.name).replace(/"/g, '""')}"`;
+      if (obj.email) return `"${String(obj.email).replace(/"/g, '""')}"`;
       return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
     }
     const str = String(val);

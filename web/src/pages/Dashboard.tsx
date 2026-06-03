@@ -28,7 +28,7 @@ export default function Dashboard() {
       try {
         const data = await dashboardApi.getStats();
         setStats(data);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Lỗi khi tải số liệu thống kê:', err);
         setError('Không thể kết nối đến máy chủ API để lấy số liệu.');
       } finally {

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/network/api_endpoints.dart';
 
 /// Remote datasource gọi API feed/posts qua Dio.
@@ -41,6 +42,8 @@ class FeedRemoteDatasource {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
+    List<String>? taggedUserIds,
   }) async {
     final response = await _dio.post(
       ApiEndpoints.createPost,
@@ -48,6 +51,8 @@ class FeedRemoteDatasource {
         if (content != null) 'content': content,
         if (imageUrls != null) 'image_urls': imageUrls,
         if (documentId != null) 'document_id': documentId,
+        'visibility': visibility,
+        if (taggedUserIds != null && taggedUserIds.isNotEmpty) 'tagged_user_ids': taggedUserIds,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -64,12 +69,18 @@ class FeedRemoteDatasource {
     String id, {
     String? content,
     List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
   }) async {
     final response = await _dio.put(
       ApiEndpoints.postById(id),
       data: {
         if (content != null) 'content': content,
         if (imageUrls != null) 'image_urls': imageUrls,
+        if (documentId != null) 'document_id': documentId,
+        if (visibility != null) 'visibility': visibility,
+        if (taggedUserIds != null) 'tagged_user_ids': taggedUserIds,
       },
     );
     return response.data as Map<String, dynamic>;
@@ -106,12 +117,31 @@ class FeedRemoteDatasource {
   }
 
   /// Thêm bình luận
-  Future<Map<String, dynamic>> addComment(
-    String postId,
-    String content,
-  ) async {
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId}) async {
+    final data = <String, dynamic>{
+      'content': content,
+    };
+    if (parentId != null) {
+      data['parent_id'] = parentId;
+    }
+    if (replyToCommentId != null) {
+      data['reply_to_comment_id'] = replyToCommentId;
+    }
     final response = await _dio.post(
       ApiEndpoints.postComments(postId),
+      data: data,
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Cập nhật bình luận
+  Future<Map<String, dynamic>> updateComment(
+    String postId,
+    String commentId,
+    String content,
+  ) async {
+    final response = await _dio.put(
+      ApiEndpoints.deleteComment(postId, commentId), // Using deleteComment endpoint path since it matches /:id/comments/:commentId
       data: {'content': content},
     );
     return response.data as Map<String, dynamic>;
@@ -120,5 +150,66 @@ class FeedRemoteDatasource {
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId) async {
     await _dio.delete(ApiEndpoints.deleteComment(postId, commentId));
+  }
+
+  /// Toggle like bình luận
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId) async {
+    final response = await _dio.post('${ApiEndpoints.postComments(postId)}/$commentId/like');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Lấy danh sách người đã like
+  Future<List<dynamic>> getLikers(String postId) async {
+    final response = await _dio.get('${ApiEndpoints.postById(postId)}/likers');
+    return response.data['data'] as List<dynamic>;
+  }
+
+  /// Upload nhiều ảnh lên Cloudinary qua backend, trả về list URL
+  Future<List<String>> uploadImages(List<XFile> files) async {
+    try {
+      final List<MultipartFile> multipartFiles = [];
+      for (var i = 0; i < files.length; i++) {
+        final file = files[i];
+        final bytes = await file.readAsBytes();
+        final name = file.name;
+        final extension = name.contains('.') ? name.split('.').last.toLowerCase() : 'png';
+        
+        multipartFiles.add(
+          MultipartFile.fromBytes(
+            bytes,
+            filename: name.isEmpty ? 'image_$i.$extension' : name,
+          ),
+        );
+      }
+      
+      final formData = FormData.fromMap({
+        'images': multipartFiles,
+      });
+
+      final response = await _dio.post('/upload/images', data: formData);
+      final data = response.data as Map<String, dynamic>;
+      
+      final urls = data['data']?['urls'] as List<dynamic>?;
+      if (urls != null) {
+        return urls.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Upload images error: $e');
+      throw Exception('Không thể tải ảnh: $e');
+    }
+  }
+
+  /// Tìm kiếm người dùng theo tên
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    final response = await _dio.get(
+      '/users/search',
+      queryParameters: {'q': query},
+    );
+    final data = response.data['data'];
+    if (data is List) {
+      return data.map((e) => e as Map<String, dynamic>).toList();
+    }
+    return [];
   }
 }

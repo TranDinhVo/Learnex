@@ -37,6 +37,7 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +162,7 @@ export default function Notifications() {
               <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Loại thông báo</label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => setType(e.target.value as 'info' | 'warning' | 'success' | 'error')}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:border-indigo-500 focus:bg-white focus:outline-none"
               >
                 <option value="info">Thông tin (Info)</option>

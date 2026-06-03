@@ -429,6 +429,15 @@ export class WebSocketService {
       }
     });
   }
+
+  public broadcastToAll(payload: any): void {
+    const dataStr = JSON.stringify(payload);
+    this.wss?.clients.forEach((client: any) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(dataStr);
+      }
+    });
+  }
 }
 
 export const webSocketService = WebSocketService.getInstance();

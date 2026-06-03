@@ -19,6 +19,7 @@ import uploadRoutes from './routes/upload.routes';
 import adminRoutes from './routes/admin.routes';
 import notificationRoutes from './routes/notification.routes';
 import chatRoutes from './routes/chat.routes';
+import storyRoutes from './routes/story.routes';
 import reportRoutes from './routes/reports.routes';
 
 const app = express();
@@ -58,6 +59,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/stories', storyRoutes);
 app.use('/api/reports', reportRoutes);
 
 // Unhandled Routes

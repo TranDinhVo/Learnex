@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { reportsApi } from '../api/reports.api';
 import type { Report } from '../types';
 import PageHeader from '../components/ui/PageHeader';
@@ -21,7 +21,7 @@ export default function Reports() {
   const [dismissModalOpen, setDismissModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
       const res = await reportsApi.getAll({ page, limit });
@@ -32,11 +32,11 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit]);
 
   useEffect(() => {
     fetchReports();
-  }, [page]);
+  }, [fetchReports]);
 
   const handleResolve = async () => {
     if (!selectedReport) return;
@@ -100,16 +100,19 @@ export default function Reports() {
     {
       key: 'target',
       header: 'Đối tượng vi phạm',
-      render: (r) => (
-        <div>
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded mb-1">
-            {getTargetTypeLabel(r.targetType)}
-          </span>
-          <p className="text-sm text-slate-600 truncate max-w-[200px]" title={r.targetInfo?.name || r.targetInfo?.content || r.targetId}>
-            {r.targetInfo?.name || r.targetInfo?.content || r.targetId}
-          </p>
-        </div>
-      ),
+      render: (r) => {
+        const targetName = (r.targetInfo?.name as string) || (r.targetInfo?.content as string) || r.targetId;
+        return (
+          <div>
+            <span className="inline-block px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 rounded mb-1">
+              {getTargetTypeLabel(r.targetType)}
+            </span>
+            <p className="text-sm text-slate-600 truncate max-w-[200px]" title={targetName}>
+              {targetName}
+            </p>
+          </div>
+        );
+      },
     },
     {
       key: 'reason',
@@ -120,7 +123,7 @@ export default function Reports() {
       key: 'status',
       header: 'Trạng thái',
       render: (r) => {
-        let statusColor = 'pending';
+        let statusColor: 'pending' | 'active' | 'banned' | 'inactive' = 'pending';
         let statusLabel = 'Chờ xử lý';
         if (r.status === 'resolved') {
           statusColor = 'active';
@@ -129,7 +132,7 @@ export default function Reports() {
           statusColor = 'banned';
           statusLabel = 'Đã bỏ qua';
         }
-        return <StatusBadge status={statusColor as any} label={statusLabel} />;
+        return <StatusBadge status={statusColor} label={statusLabel} />;
       },
     },
     {

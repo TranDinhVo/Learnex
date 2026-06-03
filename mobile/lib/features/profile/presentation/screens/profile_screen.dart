@@ -5,6 +5,7 @@ import 'edit_profile_screen.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
+import '../../../feed/presentation/screens/edit_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
@@ -17,6 +18,8 @@ import '../../../feed/data/repositories/feed_repository_impl.dart';
 import '../../../feed/presentation/widgets/post_card.dart';
 import '../../../feed/presentation/screens/post_detail_screen.dart';
 import '../../../../shared/utils/date_formatter.dart';
+import '../../../../shared/utils/image_parser.dart';
+import 'user_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -32,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<dynamic> _myPosts = [];
   bool _postsLoading = false;
   String? _postsError;
+  int? _localPostCount;
 
   @override
   void initState() {
@@ -52,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _myPosts = res['data'] as List<dynamic>? ?? [];
           _postsLoading = false;
+          _localPostCount = authState.user.postsCount;
         });
       } catch (e) {
         setState(() {
@@ -108,6 +113,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       setState(() {
         _myPosts = _myPosts.where((post) => post['id'].toString() != postId).toList();
+        if (_localPostCount != null && _localPostCount! > 0) {
+          _localPostCount = _localPostCount! - 1;
+        }
       });
       await getIt<FeedRepositoryImpl>().deletePost(postId);
     } catch (_) {}
@@ -139,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
       friendCount = user.friendsCount.toString();
       docCount = user.documentsCount.toString();
-      postCount = user.postsCount.toString();
+      postCount = _localPostCount != null ? _localPostCount.toString() : user.postsCount.toString();
     }
 
     return BlocListener<AuthBloc, AuthState>(
@@ -380,17 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             final authorHandle = post['author_username'] != null ? '@${post['author_username']}' : '@$username';
                             final postContent = post['content'] ?? '';
 
-                            String? imageUrl;
-                            final imageList = post['image_urls'];
-                            if (imageList is List && imageList.isNotEmpty) {
-                              imageUrl = imageList.first as String?;
-                            } else if (imageList is String && imageList.isNotEmpty) {
-                              if (imageList.startsWith('[')) {
-                                imageUrl = imageList.replaceAll(RegExp('[\\[\\]"\' ]'), '');
-                              } else {
-                                imageUrl = imageList;
-                              }
-                            }
+                            final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 12.0),
@@ -399,17 +397,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 authorHandle: authorHandle,
                                 timeAgo: formatTimeAgo(post['created_at']?.toString()),
                                 authorInitials: authorName.isNotEmpty ? authorName[0].toUpperCase() : 'U',
+                                authorAvatarUrl: post['author_avatar'] as String?,
                                 avatarColor: Colors.indigo.shade100,
                                 avatarTextColor: Colors.indigo.shade700,
                                 content: postContent,
-                                postType: imageUrl != null
+                                postType: imageUrls.isNotEmpty
                                     ? PostType.image
                                     : (post['document_id'] != null ? PostType.document : PostType.text),
-                                imageUrl: imageUrl,
-                                documentName: post['document_title'] ?? 'Tài liệu.pdf',
+                                imageUrls: imageUrls,
+                                documentName: post['document_title'] as String? ?? 'Tài liệu',
                                 documentSize: post['document_size'] != null
-                                    ? '${(post['document_size'] / 1024).toStringAsFixed(0)} KB'
-                                    : '1.2 MB',
+                                    ? '${((post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
+                                    : null,
+                                documentUrl: post['document_url'] as String?,
+                                taggedUsers: post['tagged_users'] as List<dynamic>?,
+                                visibility: post['visibility']?.toString(),
                                 likes: post['like_count'] ?? 0,
                                 comments: post['comment_count'] ?? 0,
                                 isLiked: post['is_liked'] == true,
@@ -417,6 +419,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onLikeTap: () => _toggleLikePost(post['id'].toString()),
                                 onSaveTap: () => _toggleSavePost(post['id'].toString()),
                                 onDeleteTap: () => _deletePost(post['id'].toString()),
+                                onEditTap: () async {
+                                  final updated = await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => EditPostScreen(post: post),
+                                    ),
+                                  );
+                                  if (updated != null && mounted) {
+                                    setState(() {
+                                      _myPosts = _myPosts.map((p) {
+                                        if (p['id'].toString() == updated['id'].toString()) {
+                                          return updated;
+                                        }
+                                        return p;
+                                      }).toList();
+                                    });
+                                  }
+                                },
                                 onCommentTap: () async {
                                   final updated = await Navigator.of(context).push(
                                     MaterialPageRoute(
@@ -432,6 +451,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         return p;
                                       }).toList();
                                     });
+                                  }
+                                },
+                                onTaggedUserTap: (taggedUserId) {
+                                  final authState = context.read<AuthBloc>().state;
+                                  final currentUserId = authState is Authenticated ? authState.user.id : '';
+                                  if (taggedUserId != currentUserId) {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => UserProfileScreen(userId: taggedUserId),
+                                      ),
+                                    );
                                   }
                                 },
                               ),

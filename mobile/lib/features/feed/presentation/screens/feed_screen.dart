@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import '../../domain/enums/post_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:dio/dio.dart';
+import '../../../../app/di.dart';
+import '../../data/repositories/feed_repository_impl.dart';
 import '../widgets/story_strip.dart';
 import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import 'package:learnex/shared/utils/date_formatter.dart';
+import 'package:learnex/shared/utils/image_parser.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import 'create_post_screen.dart';
+import 'edit_post_screen.dart';
 import 'notification_screen.dart';
 import 'post_detail_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
@@ -30,12 +36,122 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
+  int _unreadNotificationsCount = 0;
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     // Tải bảng tin và danh sách bạn bè từ API thực tế
     context.read<FeedBloc>().add(LoadFeedEvent());
     context.read<FriendBloc>().add(LoadFriendsEvent());
+    _loadUnreadNotificationsCount();
+  }
+
+  Future<void> _loadUnreadNotificationsCount() async {
+    try {
+      final response = await getIt<Dio>().get('/notifications/unread-count');
+      if (mounted) {
+        setState(() {
+          _unreadNotificationsCount = response.data['data']['count'] ?? 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _showLikersBottomSheet(BuildContext context, String postId) async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Lượt thích',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: FutureBuilder<List<dynamic>>(
+                future: getIt<FeedRepositoryImpl>().getLikers(postId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Đã có lỗi xảy ra'));
+                  }
+                  final likers = snapshot.data ?? [];
+                  if (likers.isEmpty) {
+                    return const Center(child: Text('Chưa có lượt thích nào.'));
+                  }
+                  return ListView.builder(
+                    itemCount: likers.length,
+                    itemBuilder: (context, index) {
+                      final liker = likers[index];
+                      final name = liker['full_name'] ?? 'U';
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: liker['avatar_url'] != null
+                              ? NetworkImage(liker['avatar_url'])
+                              : null,
+                          child: liker['avatar_url'] == null
+                              ? Text(name[0].toUpperCase())
+                              : null,
+                        ),
+                        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text('@${liker['username']}'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          final likerId = liker['id']?.toString();
+                          if (likerId != null) {
+                            final authState = context.read<AuthBloc>().state;
+                            final currentUserId = authState is Authenticated ? authState.user.id : '';
+                            if (likerId == currentUserId) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                              );
+                            } else {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => UserProfileScreen(userId: likerId)),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -58,6 +174,7 @@ class _FeedScreenState extends State<FeedScreen> {
               }
 
               return CustomScrollView(
+                controller: _scrollController,
                 slivers: [
                   // Top App Bar implementation using SliverAppBar
                   SliverAppBar(
@@ -95,11 +212,18 @@ class _FeedScreenState extends State<FeedScreen> {
                         alignment: Alignment.center,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.notifications_none, color: theme.colorScheme.onSurfaceVariant),
+                            icon: Icon(
+                              Icons.notifications_none,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                             onPressed: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationScreen(),
+                                ),
                               );
+                              // Refresh unread count after returning
+                              _loadUnreadNotificationsCount();
                             },
                           ),
                           Positioned(
@@ -111,7 +235,10 @@ class _FeedScreenState extends State<FeedScreen> {
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.error,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ),
@@ -203,21 +330,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           final currentUserId = authState is Authenticated ? authState.user.id : '';
                           final isOwner = postUserId == currentUserId;
 
-                          String? imageUrl;
-                          final imageList = post['image_urls'];
-                          if (imageList is List && imageList.isNotEmpty) {
-                            imageUrl = imageList.first as String?;
-                          } else if (imageList is String &&
-                              imageList.isNotEmpty) {
-                            if (imageList.startsWith('[')) {
-                              imageUrl = imageList.replaceAll(
-                                RegExp('[\\[\\]"\' ]'),
-                                '',
-                              );
-                            } else {
-                              imageUrl = imageList;
-                            }
-                          }
+                          final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 16.0),
@@ -228,24 +341,30 @@ class _FeedScreenState extends State<FeedScreen> {
                               authorInitials: name.isNotEmpty
                                   ? name[0].toUpperCase()
                                   : 'U',
+                              authorAvatarUrl: post['author_avatar'] as String?,
                               avatarColor: Colors.indigo.shade100,
                               avatarTextColor: Colors.indigo.shade700,
                               content: content,
-                              postType: imageUrl != null
+                              postType: imageUrls.isNotEmpty
                                   ? PostType.image
                                   : (post['document_id'] != null
                                         ? PostType.document
                                         : PostType.text),
-                              imageUrl: imageUrl,
-                              documentName:
-                                  post['document_title'] ?? 'Tài liệu.pdf',
+                              imageUrls: imageUrls,
+                              taggedUsers: post['tagged_users'] as List<dynamic>?,
+                              documentName: post['document_title'] as String? ?? 'Tài liệu',
                               documentSize: post['document_size'] != null
-                                  ? '${(post['document_size'] / 1024).toStringAsFixed(0)} KB'
-                                  : '1.2 MB',
+                                  ? '${((post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
+                                  : null,
+                              documentUrl: post['document_url'] as String?,
+                              visibility: post['visibility']?.toString(),
                               likes: post['like_count'] ?? 0,
                               comments: post['comment_count'] ?? 0,
                               isLiked: post['is_liked'] == true,
                               isSaved: post['is_saved'] == true,
+                              onEditTap: isOwner ? () {
+                                _showPrivacyEditBottomSheet(context, id, post['visibility']?.toString() ?? 'friends', post);
+                              } : null,
                               onDeleteTap: isOwner
                                   ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
                                   : null,
@@ -255,6 +374,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               onSaveTap: () {
                                 context.read<FeedBloc>().add(SavePostEvent(postId: id));
                               },
+                              onLikersTap: () => _showLikersBottomSheet(context, id),
                               onCommentTap: () async {
                                 final updated = await Navigator.of(context).push(
                                   MaterialPageRoute(
@@ -285,12 +405,91 @@ class _FeedScreenState extends State<FeedScreen> {
                                   }
                                 }
                               },
+                              onTaggedUserTap: (taggedUserId) {
+                                final authState = context.read<AuthBloc>().state;
+                                final currentUserId = authState is Authenticated ? authState.user.id : '';
+                                if (taggedUserId == currentUserId) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ProfileScreen(),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => UserProfileScreen(userId: taggedUserId),
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                           );
                         }, childCount: rawPosts.length),
                       ),
                     ),
                 ],
+              );
+            },
+          ),
+
+          // Banner: New Posts
+          BlocBuilder<FeedBloc, FeedState>(
+            builder: (context, state) {
+              int pendingCount = 0;
+              if (state is FeedLoaded) {
+                pendingCount = state.pendingNewPosts.length;
+              }
+              if (pendingCount == 0) return const SizedBox.shrink();
+
+              return Positioned(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        context.read<FeedBloc>().add(MergePendingPostsEvent());
+                        _scrollController.animateTo(
+                          0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_upward, size: 16, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Có $pendingCount bài viết mới',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               );
             },
           ),
@@ -311,14 +510,10 @@ class _FeedScreenState extends State<FeedScreen> {
                 );
               },
               onAddTap: () async {
-                final feedBloc = context.read<FeedBloc>();
                 await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
-                // Reload feed
-                if (mounted) {
-                  feedBloc.add(LoadFeedEvent());
-                }
+                // WS feed_new_post will handle adding the new post to the list automatically
               },
               onChatTap: () {
                 Navigator.of(context).pushReplacement(
@@ -338,6 +533,49 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
       ),
+    );
+  }
+  void _showPrivacyEditBottomSheet(BuildContext context, String postId, String currentVisibility, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Chỉnh sửa quyền riêng tư', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildPrivacyOption(ctx, postId, post, 'public', 'Công khai', Icons.public, currentVisibility == 'public'),
+              _buildPrivacyOption(ctx, postId, post, 'friends', 'Bạn bè', Icons.group, currentVisibility == 'friends'),
+              _buildPrivacyOption(ctx, postId, post, 'except', 'Loại trừ', Icons.people_outline, currentVisibility == 'except'),
+              _buildPrivacyOption(ctx, postId, post, 'private', 'Chỉ mình tôi', Icons.lock, currentVisibility == 'private'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyOption(BuildContext ctx, String postId, Map<String, dynamic> post, String value, String label, IconData icon, bool isSelected) {
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.blue : null),
+      title: Text(label, style: TextStyle(color: isSelected ? Colors.blue : null, fontWeight: isSelected ? FontWeight.bold : null)),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () {
+        Navigator.of(ctx).pop();
+        if (!isSelected) {
+          context.read<FeedBloc>().add(EditPostEvent(
+            postId: postId,
+            content: post['content'],
+            visibility: PostVisibility.values.firstWhere((e) => e.value == value, orElse: () => PostVisibility.friends),
+          ));
+        }
+      },
     );
   }
 }

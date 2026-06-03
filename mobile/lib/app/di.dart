@@ -38,6 +38,11 @@ import '../features/room/data/repositories/room_repository_impl.dart';
 import '../features/room/presentation/bloc/room_bloc.dart';
 import '../features/room/presentation/bloc/room_detail_bloc.dart';
 
+// Story
+import '../features/story/data/datasources/story_remote_datasource.dart';
+import '../features/story/data/repositories/story_repository_impl.dart';
+import '../features/story/presentation/bloc/story_bloc.dart';
+
 final getIt = GetIt.instance;
 
 void setupDependencies() {
@@ -80,6 +85,9 @@ void setupDependencies() {
   getIt.registerLazySingleton<ChatRemoteDatasource>(
     () => ChatRemoteDatasource(getIt<Dio>()),
   );
+  getIt.registerLazySingleton<StoryRemoteDataSource>(
+    () => StoryRemoteDataSource(dio: getIt<Dio>()),
+  );
 
   // ── Repositories ──
   getIt.registerLazySingleton<AuthRepositoryImpl>(
@@ -100,13 +108,19 @@ void setupDependencies() {
   getIt.registerLazySingleton<ChatRepositoryImpl>(
     () => ChatRepositoryImpl(datasource: getIt<ChatRemoteDatasource>()),
   );
+  getIt.registerLazySingleton<StoryRepositoryImpl>(
+    () => StoryRepositoryImpl(remoteDataSource: getIt<StoryRemoteDataSource>()),
+  );
 
   // ── BLoCs ──
   getIt.registerFactory<AuthBloc>(
     () => AuthBloc(repository: getIt<AuthRepositoryImpl>()),
   );
   getIt.registerFactory<FeedBloc>(
-    () => FeedBloc(repository: getIt<FeedRepositoryImpl>()),
+    () => FeedBloc(
+      repository: getIt<FeedRepositoryImpl>(),
+      wsService: getIt<WebSocketService>(),
+    ),
   );
   getIt.registerFactory<DocumentBloc>(
     () => DocumentBloc(repository: getIt<DocumentRepositoryImpl>()),
@@ -139,6 +153,15 @@ void setupDependencies() {
     () => RoomDetailBloc(
       repository: getIt<RoomRepositoryImpl>(),
       wsService: getIt<WebSocketService>(),
+    ),
+  );
+
+  // ── Story ──
+  getIt.registerFactory<StoryBloc>(
+    () => StoryBloc(
+      repository: getIt<StoryRepositoryImpl>(),
+      wsService: getIt<WebSocketService>(),
+      dio: getIt<Dio>(),
     ),
   );
 }

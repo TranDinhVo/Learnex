@@ -29,9 +29,12 @@ export default function Login() {
       
       // Redirect to dashboard
       navigate('/dashboard');
-    } catch (err: any) {
+    } catch (err) {
       console.error('[Login Error]', err);
-      setError(err.response?.data?.message || 'Email hoặc mật khẩu không hợp lệ.');
+      const errorMessage = err instanceof Error 
+        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || err.message
+        : 'Email hoặc mật khẩu không hợp lệ.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
