@@ -2,11 +2,23 @@ import { Request, Response, NextFunction } from 'express';
 import { messageService } from '../services/message.service';
 import { sendResponse } from '../utils/response';
 import { getPaginationParams, buildPaginationInfo } from '../utils/pagination';
+import { webSocketService } from '../services/websocket.service';
 
 export const messageController = {
   async send(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const message = await messageService.send(req.user!.userId, req.params.userId as string, req.body);
+      const message = await messageService.send(req.user!.userId, req.body.receiverId, req.body);
+      
+      // Broadcast real-time message
+      webSocketService.sendToUser(req.body.receiverId, {
+        type: 'chat_message',
+        data: message,
+      });
+      webSocketService.sendToUser(req.user!.userId, {
+        type: 'chat_message',
+        data: message,
+      });
+
       sendResponse(res, 201, message, 'Message sent');
     } catch (error) {
       next(error);

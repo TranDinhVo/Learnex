@@ -18,18 +18,23 @@ const PORT = process.env.PORT || 8080;
 const server = http.createServer(app);
 
 const startServer = async () => {
-  // 1. Connect to Database & Redis before starting server
-  await checkDatabaseConnection();
-  await connectRedis();
+  try {
+    // 1. Connect to Database & Redis before starting server
+    await checkDatabaseConnection();
+    await connectRedis();
 
-  // 2. Setup WebSocket
-  webSocketService.initialize(server);
+    // 2. Setup WebSocket
+    webSocketService.initialize(server);
 
-  // 3. Start HTTP Server
-  server.listen(PORT, () => {
-    console.log(`LearnEx Backend is running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV}`);
-  });
+    // 3. Start listening
+    server.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
 };
 
 startServer();

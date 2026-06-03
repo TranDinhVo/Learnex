@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../domain/enums/post_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../../../../app/di.dart';
@@ -362,18 +363,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               isLiked: post['is_liked'] == true,
                               isSaved: post['is_saved'] == true,
                               onEditTap: isOwner ? () {
-                                try {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => EditPostScreen(post: post),
-                                    ),
-                                  );
-                                } catch (e, stackTrace) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Lỗi: $e')),
-                                  );
-                                  print('Lỗi EditPostScreen: $e\n$stackTrace');
-                                }
+                                _showPrivacyEditBottomSheet(context, id, post['visibility']?.toString() ?? 'friends', post);
                               } : null,
                               onDeleteTap: isOwner
                                   ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
@@ -543,6 +533,49 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
         ],
       ),
+    );
+  }
+  void _showPrivacyEditBottomSheet(BuildContext context, String postId, String currentVisibility, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Chỉnh sửa quyền riêng tư', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildPrivacyOption(ctx, postId, post, 'public', 'Công khai', Icons.public, currentVisibility == 'public'),
+              _buildPrivacyOption(ctx, postId, post, 'friends', 'Bạn bè', Icons.group, currentVisibility == 'friends'),
+              _buildPrivacyOption(ctx, postId, post, 'except', 'Loại trừ', Icons.people_outline, currentVisibility == 'except'),
+              _buildPrivacyOption(ctx, postId, post, 'private', 'Chỉ mình tôi', Icons.lock, currentVisibility == 'private'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyOption(BuildContext ctx, String postId, Map<String, dynamic> post, String value, String label, IconData icon, bool isSelected) {
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.blue : null),
+      title: Text(label, style: TextStyle(color: isSelected ? Colors.blue : null, fontWeight: isSelected ? FontWeight.bold : null)),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () {
+        Navigator.of(ctx).pop();
+        if (!isSelected) {
+          context.read<FeedBloc>().add(EditPostEvent(
+            postId: postId,
+            content: post['content'],
+            visibility: PostVisibility.values.firstWhere((e) => e.value == value, orElse: () => PostVisibility.friends),
+          ));
+        }
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../domain/enums/post_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../app/di.dart';
@@ -484,25 +485,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     onLikeTap: _toggleLike,
                     onSaveTap: _toggleSave,
                     onLikersTap: () => _showLikersBottomSheet(context, _post['id'].toString()),
-                    onEditTap: isOwner ? () async {
-                      try {
-                        final updated = await Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => EditPostScreen(post: _post),
-                          ),
-                        );
-                        if (updated != null && mounted) {
-                          setState(() {
-                            _post = updated as Map<String, dynamic>;
-                          });
-                          context.read<FeedBloc>().add(UpdatePostInListEvent(updatedPost: updated));
-                        }
-                      } catch (e, stackTrace) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Lỗi: $e')),
-                        );
-                        print('Lỗi EditPostScreen: $e\n$stackTrace');
-                      }
+                    onEditTap: isOwner ? () {
+                      _showPrivacyEditBottomSheet(context, _post['id'].toString(), _post['visibility']?.toString() ?? 'friends', _post);
                     } : null,
                     onAuthorTap: () {
                       final postUserId = _post['user_id']?.toString();
@@ -663,6 +647,52 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         ],
       ),
     ),
+    );
+  }
+  void _showPrivacyEditBottomSheet(BuildContext context, String postId, String currentVisibility, Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Chỉnh sửa quyền riêng tư', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              _buildPrivacyOption(ctx, postId, post, 'public', 'Công khai', Icons.public, currentVisibility == 'public'),
+              _buildPrivacyOption(ctx, postId, post, 'friends', 'Bạn bè', Icons.group, currentVisibility == 'friends'),
+              _buildPrivacyOption(ctx, postId, post, 'except', 'Loại trừ', Icons.people_outline, currentVisibility == 'except'),
+              _buildPrivacyOption(ctx, postId, post, 'private', 'Chỉ mình tôi', Icons.lock, currentVisibility == 'private'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPrivacyOption(BuildContext ctx, String postId, Map<String, dynamic> post, String value, String label, IconData icon, bool isSelected) {
+    return ListTile(
+      leading: Icon(icon, color: isSelected ? Colors.blue : null),
+      title: Text(label, style: TextStyle(color: isSelected ? Colors.blue : null, fontWeight: isSelected ? FontWeight.bold : null)),
+      trailing: isSelected ? const Icon(Icons.check, color: Colors.blue) : null,
+      onTap: () {
+        Navigator.of(ctx).pop();
+        if (!isSelected) {
+          context.read<FeedBloc>().add(EditPostEvent(
+            postId: postId,
+            content: post['content'],
+            visibility: PostVisibility.values.firstWhere((e) => e.value == value, orElse: () => PostVisibility.friends),
+          ));
+          setState(() {
+            _post['visibility'] = value;
+          });
+        }
+      },
     );
   }
 }

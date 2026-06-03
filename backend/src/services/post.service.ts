@@ -155,11 +155,18 @@ export const postService = {
           builder.where('user_id', currentUserId) // Bài của mình
             .orWhere('visibility', 'public') // Bài public
             .orWhere((orBuilder) => {
-              // Bài friends của những người là bạn bè
-              orBuilder.where('visibility', 'friends')
+              // Bài friends của những người là bạn bè (hoặc except)
+              orBuilder.whereIn('visibility', ['friends', 'except'])
                 .andWhere((subBuilder) => {
                   subBuilder.whereIn('user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
                     .orWhereIn('user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                })
+                .andWhere((exceptBuilder) => {
+                  exceptBuilder.where('visibility', 'friends')
+                    .orWhere((eb2) => {
+                      eb2.where('visibility', 'except')
+                         .andWhereRaw('NOT (COALESCE(excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                    });
                 });
             });
         });
@@ -211,7 +218,7 @@ export const postService = {
           postsQuery.where((builder) => {
             builder.where('p.visibility', 'public')
               .orWhere((orBuilder) => {
-                orBuilder.where('p.visibility', 'friends')
+                orBuilder.whereIn('p.visibility', ['friends', 'except'])
                   .whereExists(
                     db.select('*')
                       .from('friendships')
@@ -220,7 +227,14 @@ export const postService = {
                         subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
                           .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
                       })
-                  );
+                  )
+                  .andWhere((exceptBuilder) => {
+                    exceptBuilder.where('p.visibility', 'friends')
+                      .orWhere((eb2) => {
+                        eb2.where('p.visibility', 'except')
+                           .andWhereRaw('NOT (COALESCE(p.excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                      });
+                  });
               });
           });
         }
@@ -229,10 +243,17 @@ export const postService = {
           builder.where('p.user_id', currentUserId)
             .orWhere('p.visibility', 'public')
             .orWhere((orBuilder) => {
-              orBuilder.where('p.visibility', 'friends')
+              orBuilder.whereIn('p.visibility', ['friends', 'except'])
                 .andWhere((subBuilder) => {
                   subBuilder.whereIn('p.user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
                     .orWhereIn('p.user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                })
+                .andWhere((exceptBuilder) => {
+                  exceptBuilder.where('p.visibility', 'friends')
+                    .orWhere((eb2) => {
+                      eb2.where('p.visibility', 'except')
+                         .andWhereRaw('NOT (COALESCE(p.excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                    });
                 });
             });
         });
