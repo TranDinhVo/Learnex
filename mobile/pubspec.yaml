@@ -25,6 +25,8 @@ dependencies:
   dotenv: ^4.2.0
   permission_handler: ^11.2.0
   emoji_picker_flutter: ^4.4.0
+  record: ^6.2.1
+  audioplayers: ^6.7.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

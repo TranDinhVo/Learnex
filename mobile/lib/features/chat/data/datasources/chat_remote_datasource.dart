@@ -58,4 +58,11 @@ class ChatRemoteDatasource {
       data: {'content': content},
     );
   }
+
+  Future<void> toggleReaction(String messageId, String emoji) async {
+    await _dio.post(
+      ApiEndpoints.toggleReaction(messageId),
+      data: {'emoji': emoji},
+    );
+  }
 }

@@ -26,4 +26,8 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> editMessage(String messageId, String content) =>
       _datasource.editMessage(messageId, content);
+
+  @override
+  Future<void> toggleReaction(String messageId, String emoji) =>
+      _datasource.toggleReaction(messageId, emoji);
 }

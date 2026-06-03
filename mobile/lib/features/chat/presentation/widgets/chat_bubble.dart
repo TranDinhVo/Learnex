@@ -16,6 +16,7 @@ class ChatBubble extends StatelessWidget {
   final VoidCallback? onCallPressed;
   final bool isDeleted;
   final bool isEdited;
+  final Map<String, dynamic>? reactions;
 
   const ChatBubble({
     super.key,
@@ -34,6 +35,7 @@ class ChatBubble extends StatelessWidget {
     this.onCallPressed,
     this.isDeleted = false,
     this.isEdited = false,
+    this.reactions,
   });
 
   @override
@@ -217,6 +219,8 @@ class ChatBubble extends StatelessWidget {
               ],
             ),
           ),
+        if (reactions != null && reactions!.isNotEmpty)
+          _buildReactionsWidget(),
         if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Row(
@@ -330,6 +334,11 @@ class ChatBubble extends StatelessWidget {
             ),
           ],
         ),
+        if (reactions != null && reactions!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 36.0),
+            child: _buildReactionsWidget(),
+          ),
         if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Padding(
@@ -504,5 +513,46 @@ class ChatBubble extends StatelessWidget {
     return lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
         lower.endsWith('.png') || lower.endsWith('.gif') ||
         lower.endsWith('.webp');
+  }
+
+  Widget _buildReactionsWidget() {
+    if (reactions == null || reactions!.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: reactions!.entries.map((e) {
+          final count = (e.value as List).length;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(e.key, style: const TextStyle(fontSize: 12)),
+                if (count > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text('$count', style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }

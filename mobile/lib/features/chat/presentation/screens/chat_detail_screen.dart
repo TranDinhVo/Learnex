@@ -15,8 +15,6 @@ import '../../../../core/services/webrtc_service.dart';
 import '../../../../core/services/media_upload_service.dart';
 import '../../../../shared/widgets/media_picker_sheet.dart';
 import 'package:image_picker/image_picker.dart'; // XFile - works on Web & Mobile
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:flutter/foundation.dart' as foundation;
 import 'p2p_call_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -36,23 +34,14 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final FocusNode _focusNode = FocusNode();
   bool _isLoadingMore = false;
   bool _isUploading = false;
-  bool _showEmoji = false;
   Timer? _typingTimer;
   bool _isTyping = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
-      if (_focusNode.hasFocus) {
-        setState(() {
-          _showEmoji = false;
-        });
-      }
-    });
     context.read<ChatBloc>().add(
           LoadMessagesEvent(conversationId: widget.conversationId),
         );
@@ -98,7 +87,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _scrollController.removeListener(_onScroll);
     _messageController.dispose();
     _scrollController.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
@@ -216,6 +204,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         return SafeArea(
           child: Wrap(
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ['❤️', '👍', '😆', '😮', '😢', '😡'].map((emoji) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.read<ChatBloc>().add(
+                          ToggleReactionEvent(messageId: messageId, emoji: emoji),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const Divider(height: 1),
               if (isMe && currentContent != null)
                 ListTile(
                   leading: const Icon(Icons.edit, color: Colors.blue),
@@ -462,6 +475,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           avatarInitials: initials,
                           isDeleted: isDeleted,
                           isEdited: isEdited,
+                          reactions: msg['reactions'],
                           onCallPressed: isCallHistory
                               ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
                               : null,
@@ -648,32 +662,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-              IconButton(
-                icon: Icon(
-                  _showEmoji ? Icons.keyboard : Icons.emoji_emotions_outlined,
-                  color: const Color(0xFF464555),
-                  size: 26,
-                ),
-                onPressed: () {
-                  if (_showEmoji) {
-                    _focusNode.requestFocus();
-                  } else {
-                    _focusNode.unfocus();
-                    setState(() {
-                      _showEmoji = true;
-                    });
-                  }
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: SizedBox(
                   height: 40,
                   child: TextField(
                     controller: _messageController,
-                    focusNode: _focusNode,
                     onSubmitted: _isUploading ? null : (_) => _sendMessage(),
                     decoration: InputDecoration(
                       hintText: 'Nhập tin nhắn...',
@@ -705,28 +699,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ],
           ),
         ),
-        if (_showEmoji)
-          SizedBox(
-            height: 250,
-            child: EmojiPicker(
-              onEmojiSelected: (category, emoji) {
-                // Do not automatically append because textEditingController manages state
-              },
-              textEditingController: _messageController,
-              config: Config(
-                height: 250,
-                checkPlatformCompatibility: true,
-                viewOrderConfig: const ViewOrderConfig(),
-                emojiViewConfig: EmojiViewConfig(
-                  backgroundColor: theme.colorScheme.surface,
-                ),
-                skinToneConfig: const SkinToneConfig(),
-                categoryViewConfig: const CategoryViewConfig(),
-                bottomActionBarConfig: const BottomActionBarConfig(),
-                searchViewConfig: const SearchViewConfig(),
-              ),
-            ),
-          ),
       ],
     );
   }

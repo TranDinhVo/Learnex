@@ -33,6 +33,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<EditMessageEvent>(_onEditMessage);
     on<MessageDeletedByPeerEvent>(_onMessageDeletedByPeer);
     on<MessageEditedByPeerEvent>(_onMessageEditedByPeer);
+    on<ToggleReactionEvent>(_onToggleReaction);
+    on<MessageReactionUpdatedEvent>(_onMessageReactionUpdated);
 
     // Lắng nghe tin nhắn realtime từ WebSocket
     _wsSubscription = _wsService.messages.listen((data) {
@@ -51,6 +53,11 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         add(MessageEditedByPeerEvent(
           messageId: data['data']['messageId'],
           newContent: data['data']['content'],
+        ));
+      } else if (data['type'] == 'message_reaction_updated') {
+        add(MessageReactionUpdatedEvent(
+          messageId: data['data']['messageId'],
+          reactions: data['data']['reactions'],
         ));
       }
     });
@@ -256,6 +263,29 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final newMessages = currentState.messages.map((m) {
         if (m['id'] == event.messageId) {
           return {...m, 'content': event.newContent, 'edited_at': DateTime.now().toIso8601String()};
+        }
+        return m;
+      }).toList();
+      emit(currentState.copyWith(messages: newMessages));
+    }
+  }
+
+  Future<void> _onToggleReaction(ToggleReactionEvent event, Emitter<ChatState> emit) async {
+    final currentState = state;
+    if (currentState is! MessagesLoaded) return;
+
+    try {
+      await _repository.toggleReaction(event.messageId, event.emoji);
+      // Let websocket event handle UI update, or we can optimistcally update it here.
+    } catch (_) {}
+  }
+
+  void _onMessageReactionUpdated(MessageReactionUpdatedEvent event, Emitter<ChatState> emit) {
+    final currentState = state;
+    if (currentState is MessagesLoaded) {
+      final newMessages = currentState.messages.map((m) {
+        if (m['id'] == event.messageId) {
+          return {...m, 'reactions': event.reactions};
         }
         return m;
       }).toList();

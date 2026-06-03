@@ -199,4 +199,53 @@ export const messageService = {
     });
     return updatedMessage;
   },
+
+  async toggleReaction(messageId: string, userId: string, emoji: string): Promise<any> {
+    const message = await db('direct_messages').where({ id: messageId }).first();
+    if (!message) {
+      throw new AppError('Message not found', 404);
+    }
+
+    let reactions = message.reactions || {};
+    
+    // Ensure reactions is parsed correctly if it's a string from DB driver
+    if (typeof reactions === 'string') {
+      try {
+        reactions = JSON.parse(reactions);
+      } catch (e) {
+        reactions = {};
+      }
+    }
+
+    if (!reactions[emoji]) {
+      reactions[emoji] = [];
+    }
+
+    const userIndex = reactions[emoji].indexOf(userId);
+    if (userIndex > -1) {
+      // Remove reaction
+      reactions[emoji].splice(userIndex, 1);
+      if (reactions[emoji].length === 0) {
+        delete reactions[emoji];
+      }
+    } else {
+      // Add reaction
+      reactions[emoji].push(userId);
+    }
+
+    const [updatedMessage] = await db('direct_messages')
+      .where({ id: messageId })
+      .update({ reactions })
+      .returning('*');
+
+    // Determine the peer to notify
+    const peerId = message.sender_id === userId ? message.receiver_id : message.sender_id;
+
+    webSocketService.sendToUser(peerId, {
+      type: 'message_reaction_updated',
+      data: { messageId, reactions: updatedMessage.reactions }
+    });
+
+    return updatedMessage;
+  }
 };

@@ -101,4 +101,18 @@ export const chatController = {
       next(error);
     }
   },
+
+  async toggleReaction(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { emoji } = req.body;
+      if (!emoji) {
+        res.status(400).json({ status: 'error', message: 'Emoji is required' });
+        return;
+      }
+      const result = await messageService.toggleReaction(req.params.messageId as string, req.user!.userId, emoji);
+      sendResponse(res, 200, result, 'Reaction toggled successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 };

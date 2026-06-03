@@ -12,5 +12,6 @@ router.post('/conversations/:conversationId/messages', chatController.sendMessag
 
 router.delete('/messages/:messageId', chatController.deleteMessage);
 router.put('/messages/:messageId', chatController.editMessage);
+router.post('/messages/:messageId/reactions', chatController.toggleReaction);
 
 export default router;

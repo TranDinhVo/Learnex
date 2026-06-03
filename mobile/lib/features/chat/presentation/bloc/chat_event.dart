@@ -85,3 +85,17 @@ class MessageEditedByPeerEvent extends ChatEvent {
   final String newContent;
   MessageEditedByPeerEvent({required this.messageId, required this.newContent});
 }
+
+/// Yêu cầu thả cảm xúc
+class ToggleReactionEvent extends ChatEvent {
+  final String messageId;
+  final String emoji;
+  ToggleReactionEvent({required this.messageId, required this.emoji});
+}
+
+/// Nhận cập nhật cảm xúc từ đối phương
+class MessageReactionUpdatedEvent extends ChatEvent {
+  final String messageId;
+  final dynamic reactions; // Có thể là Map<String, dynamic>
+  MessageReactionUpdatedEvent({required this.messageId, required this.reactions});
+}
