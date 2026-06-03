@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { reportsApi } from '../api/reports.api';
 import type { Report } from '../types';
 import PageHeader from '../components/ui/PageHeader';
@@ -21,7 +21,7 @@ export default function Reports() {
   const [dismissModalOpen, setDismissModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     setLoading(true);
     try {
       const res = await reportsApi.getAll({ page, limit });
@@ -32,11 +32,11 @@ export default function Reports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit]);
 
   useEffect(() => {
     fetchReports();
-  }, [page]);
+  }, [fetchReports]);
 
   const handleResolve = async () => {
     if (!selectedReport) return;
@@ -120,7 +120,7 @@ export default function Reports() {
       key: 'status',
       header: 'Trạng thái',
       render: (r) => {
-        let statusColor = 'pending';
+        let statusColor: 'pending' | 'active' | 'banned' | 'inactive' = 'pending';
         let statusLabel = 'Chờ xử lý';
         if (r.status === 'resolved') {
           statusColor = 'active';
@@ -129,7 +129,7 @@ export default function Reports() {
           statusColor = 'banned';
           statusLabel = 'Đã bỏ qua';
         }
-        return <StatusBadge status={statusColor as any} label={statusLabel} />;
+        return <StatusBadge status={statusColor} label={statusLabel} />;
       },
     },
     {

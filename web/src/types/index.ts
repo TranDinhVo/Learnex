@@ -98,7 +98,7 @@ export interface Report {
   reporter: Pick<User, '_id' | 'name' | 'avatar'>;
   targetType: 'user' | 'post' | 'comment' | 'room';
   targetId: string;
-  targetInfo: any;
+  targetInfo: Record<string, unknown>;
   reason: string;
   status: 'pending' | 'resolved' | 'dismissed';
   createdAt: string;
