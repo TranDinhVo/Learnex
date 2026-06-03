@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/websocket_service.dart';
 import '../../data/repositories/feed_repository_impl.dart';
 import '../../domain/enums/post_visibility.dart';
 import 'feed_event.dart';
@@ -8,9 +10,14 @@ import 'feed_state.dart';
 /// BLoC xử lý feed bài viết: tải, phân trang, CRUD, like/save.
 class FeedBloc extends Bloc<FeedEvent, FeedState> {
   final FeedRepositoryImpl _repository;
+  final WebSocketService _wsService;
+  StreamSubscription? _wsSubscription;
 
-  FeedBloc({required FeedRepositoryImpl repository})
-      : _repository = repository,
+  FeedBloc({
+    required FeedRepositoryImpl repository,
+    required WebSocketService wsService,
+  })  : _repository = repository,
+        _wsService = wsService,
         super(FeedInitial()) {
     on<LoadFeedEvent>(_onLoadFeed);
     on<LoadMoreFeedEvent>(_onLoadMore);
@@ -25,6 +32,55 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
     on<DeleteCommentEvent>(_onDeleteComment);
     on<UpdatePostInListEvent>(_onUpdatePostInList);
     on<UploadImagesEvent>(_onUploadImages);
+    on<MergePendingPostsEvent>(_onMergePendingPosts);
+
+    on<WsNewPostReceivedEvent>(_onWsNewPostReceived);
+    on<WsPostLikeUpdatedEvent>(_onWsPostLikeUpdated);
+    on<WsCommentAddedEvent>(_onWsCommentAdded);
+    on<WsCommentDeletedEvent>(_onWsCommentDeleted);
+    on<WsPostDeletedEvent>(_onWsPostDeleted);
+
+    _wsSubscription = _wsService.messages.listen((message) {
+      final type = message['type'];
+      final data = message['data'] ?? {};
+      
+      switch (type) {
+        case 'feed_new_post':
+          if (data['post'] != null) {
+            add(WsNewPostReceivedEvent(post: data['post']));
+          }
+          break;
+        case 'feed_post_liked':
+          add(WsPostLikeUpdatedEvent(
+            postId: data['postId']?.toString() ?? '',
+            likedBy: data['likedBy']?.toString() ?? '',
+            liked: data['liked'] == true,
+            likeCount: data['likeCount'] ?? 0,
+          ));
+          break;
+        case 'feed_comment_added':
+          add(WsCommentAddedEvent(
+            postId: data['postId']?.toString() ?? '',
+            comment: data['comment'] ?? {},
+          ));
+          break;
+        case 'feed_comment_deleted':
+          add(WsCommentDeletedEvent(
+            postId: data['postId']?.toString() ?? '',
+            commentId: data['commentId']?.toString() ?? '',
+          ));
+          break;
+        case 'feed_post_deleted':
+          add(WsPostDeletedEvent(postId: data['postId']?.toString() ?? ''));
+          break;
+      }
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _wsSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onLoadFeed(
@@ -107,10 +163,21 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         taggedUserIds: event.taggedUserIds,
       );
       final data = result['data'] ?? result;
-      emit(PostCreated(data as Map<String, dynamic>));
+      final postData = data as Map<String, dynamic>;
+      
+      final currentState = state; // Wait, state is currently PostCreating, but we need previous FeedLoaded.
+      // Actually, we can't get FeedLoaded directly if we emitted PostCreating.
+      // Let's just emit PostCreated to close the dialog.
+      emit(PostCreated(postData));
 
-      // Reload feed sau khi tạo
-      add(LoadFeedEvent());
+      // After a short delay, to make sure UI is ready, we dispatch an event to insert it locally
+      // if we don't want to wait for WS, but since we are emitting PostCreated, we might lose the FeedLoaded state entirely!
+      // Wait, FeedBloc state replaces FeedLoaded with PostCreated, then it is stuck in PostCreated?
+      // Yes, if we don't restore FeedLoaded!
+      // This is why add(LoadFeedEvent()) was used!
+      // Let's create an event to insert post.
+      add(WsNewPostReceivedEvent(post: postData, isLocal: true));
+      
     } on DioException catch (e) {
       emit(PostCreateError(_extractError(e)));
     } catch (e) {
@@ -268,6 +335,110 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         }
         return post;
       }).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    }
+  }
+
+  // --- Realtime WebSocket Handlers ---
+  
+  void _onWsNewPostReceived(WsNewPostReceivedEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final existsInPosts = currentState.posts.any((p) => p['id'].toString() == event.post['id'].toString());
+      final existsInPending = currentState.pendingNewPosts.any((p) => p['id'].toString() == event.post['id'].toString());
+      
+      if (!existsInPosts && !existsInPending) {
+        if (event.isLocal) {
+          // If created locally by this user, insert directly
+          emit(currentState.copyWith(posts: [event.post, ...currentState.posts]));
+        } else {
+          // If from others, put in pending list to show banner
+          emit(currentState.copyWith(pendingNewPosts: [event.post, ...currentState.pendingNewPosts]));
+        }
+      }
+    } else if (currentState is PostCreated && event.isLocal) {
+       // If currently in PostCreated, wait a bit or we can't insert.
+       // Actually, we need to recover the feed list. But we lost it because we didn't save it.
+       // We should just call LoadFeedEvent if we lost the list.
+       add(LoadFeedEvent());
+    }
+  }
+
+  void _onMergePendingPosts(MergePendingPostsEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded && currentState.pendingNewPosts.isNotEmpty) {
+      emit(currentState.copyWith(
+        posts: [...currentState.pendingNewPosts, ...currentState.posts],
+        pendingNewPosts: [],
+      ));
+    }
+  }
+
+  void _onWsPostLikeUpdated(WsPostLikeUpdatedEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final updatedPosts = currentState.posts.map((post) {
+        if (post['id'].toString() == event.postId) {
+          return {
+            ...post,
+            'like_count': event.likeCount,
+            // Only updating likeCount, keeping local is_liked optimistic
+          };
+        }
+        return post;
+      }).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    }
+  }
+
+  void _onWsCommentAdded(WsCommentAddedEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final updatedPosts = currentState.posts.map((post) {
+        if (post['id'].toString() == event.postId) {
+          return {
+            ...post,
+            'comment_count': (post['comment_count'] as int? ?? 0) + 1,
+          };
+        }
+        return post;
+      }).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    } else if (currentState is CommentsLoaded && currentState.postId == event.postId) {
+      final exists = currentState.comments.any((c) => c['id'].toString() == event.comment['id'].toString());
+      if (!exists) {
+        emit(CommentsLoaded(
+          postId: event.postId,
+          comments: [...currentState.comments, event.comment],
+        ));
+      }
+    }
+  }
+
+  void _onWsCommentDeleted(WsCommentDeletedEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final updatedPosts = currentState.posts.map((post) {
+        if (post['id'].toString() == event.postId) {
+          final currentCount = post['comment_count'] as int? ?? 1;
+          return {
+            ...post,
+            'comment_count': currentCount > 0 ? currentCount - 1 : 0,
+          };
+        }
+        return post;
+      }).toList();
+      emit(currentState.copyWith(posts: updatedPosts));
+    } else if (currentState is CommentsLoaded && currentState.postId == event.postId) {
+      final updatedComments = currentState.comments.where((c) => c['id'].toString() != event.commentId).toList();
+      emit(CommentsLoaded(postId: event.postId, comments: updatedComments));
+    }
+  }
+
+  void _onWsPostDeleted(WsPostDeletedEvent event, Emitter<FeedState> emit) {
+    final currentState = state;
+    if (currentState is FeedLoaded) {
+      final updatedPosts = currentState.posts.where((p) => p['id'].toString() != event.postId).toList();
       emit(currentState.copyWith(posts: updatedPosts));
     }
   }

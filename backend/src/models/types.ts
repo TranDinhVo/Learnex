@@ -154,6 +154,38 @@ export interface DocumentView {
   viewed_at: Date;
 }
 
+export interface Story {
+  id: string;
+  user_id: string;
+  media_url: string | null;
+  media_type: string;
+  text_content: string | null;
+  text_color: string | null;
+  bg_color: string | null;
+  bg_gradient: string | null;
+  duration_sec: number;
+  visibility: string;
+  is_active: boolean;
+  is_archived: boolean;
+  created_at: Date;
+  expires_at: Date;
+  archived_at: Date | null;
+}
+
+export interface StoryView {
+  id: string;
+  story_id: string;
+  viewer_id: string;
+  viewed_at: Date;
+}
+
+export interface StoryReaction {
+  id: string;
+  story_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: Date;
+}
 export interface Report {
   id: string;
   reporter_id: string;
@@ -224,6 +256,18 @@ export interface CreateRoomRequest {
 export interface SendMessageRequest {
   content?: string;
   file_url?: string;
+}
+
+export interface CreateStoryRequest {
+  media_url?: string;
+  media_type?: string;
+  text_content?: string;
+  text_color?: string;
+  bg_color?: string;
+  bg_gradient?: string;
+  duration_sec?: number;
+  visibility?: string;
+  excluded_user_ids?: string[];
 }
 
 // ============================================================

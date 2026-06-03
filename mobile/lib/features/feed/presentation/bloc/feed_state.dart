@@ -10,22 +10,26 @@ class FeedLoading extends FeedState {}
 /// Feed đã tải thành công
 class FeedLoaded extends FeedState {
   final List<Map<String, dynamic>> posts;
+  final List<Map<String, dynamic>> pendingNewPosts;
   final bool hasMore;
   final int currentPage;
 
   FeedLoaded({
     required this.posts,
+    this.pendingNewPosts = const [],
     this.hasMore = true,
     this.currentPage = 1,
   });
 
   FeedLoaded copyWith({
     List<Map<String, dynamic>>? posts,
+    List<Map<String, dynamic>>? pendingNewPosts,
     bool? hasMore,
     int? currentPage,
   }) {
     return FeedLoaded(
       posts: posts ?? this.posts,
+      pendingNewPosts: pendingNewPosts ?? this.pendingNewPosts,
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
     );

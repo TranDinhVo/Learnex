@@ -667,8 +667,8 @@ class PostCard extends StatelessWidget {
               if (onEditTap != null)
                 _buildBottomSheetTile(
                   context,
-                  icon: Icons.edit_outlined,
-                  label: 'Chỉnh sửa bài viết',
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Chỉnh sửa quyền riêng tư',
                   color: const Color(0xFF4F46E5),
                   onTap: () {
                     Navigator.pop(context);

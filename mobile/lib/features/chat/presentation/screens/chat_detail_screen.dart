@@ -315,6 +315,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         isBottom: isBottom,
                         showAvatar: !isMe && isBottom,
                         avatarInitials: initials,
+                        replyStoryPreview: msg['reply_story_preview']?.toString(),
                         onCallPressed: isCallHistory
                             ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
                             : null,
