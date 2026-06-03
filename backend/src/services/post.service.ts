@@ -3,6 +3,7 @@ import { AppError } from '../utils/AppError';
 import { Post, Comment as CommentType } from '../models/types';
 import { PaginationParams } from '../utils/pagination';
 import { notificationService } from './notification.service';
+import { webSocketService } from './websocket.service';
 
 export const postService = {
   async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
@@ -31,6 +32,13 @@ export const postService = {
         }
       }
     }
+
+    const fullPost = await this.getById(post.id, userId);
+
+    webSocketService.broadcastToAll({
+      type: 'feed_new_post',
+      data: { post: fullPost }
+    });
 
     return post;
   },
@@ -104,6 +112,11 @@ export const postService = {
     }
 
     await db('posts').where({ id: postId }).update({ is_deleted: true });
+
+    webSocketService.broadcastToAll({
+      type: 'feed_post_deleted',
+      data: { postId }
+    });
   },
 
   async getFeed(
@@ -142,11 +155,18 @@ export const postService = {
           builder.where('user_id', currentUserId) // Bài của mình
             .orWhere('visibility', 'public') // Bài public
             .orWhere((orBuilder) => {
-              // Bài friends của những người là bạn bè
-              orBuilder.where('visibility', 'friends')
+              // Bài friends của những người là bạn bè (hoặc except)
+              orBuilder.whereIn('visibility', ['friends', 'except'])
                 .andWhere((subBuilder) => {
                   subBuilder.whereIn('user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
                     .orWhereIn('user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                })
+                .andWhere((exceptBuilder) => {
+                  exceptBuilder.where('visibility', 'friends')
+                    .orWhere((eb2) => {
+                      eb2.where('visibility', 'except')
+                         .andWhereRaw('NOT (COALESCE(excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                    });
                 });
             });
         });
@@ -198,7 +218,7 @@ export const postService = {
           postsQuery.where((builder) => {
             builder.where('p.visibility', 'public')
               .orWhere((orBuilder) => {
-                orBuilder.where('p.visibility', 'friends')
+                orBuilder.whereIn('p.visibility', ['friends', 'except'])
                   .whereExists(
                     db.select('*')
                       .from('friendships')
@@ -207,7 +227,14 @@ export const postService = {
                         subBuilder.where('requester_id', currentUserId).andWhere('addressee_id', targetUserId)
                           .orWhere('requester_id', targetUserId).andWhere('addressee_id', currentUserId);
                       })
-                  );
+                  )
+                  .andWhere((exceptBuilder) => {
+                    exceptBuilder.where('p.visibility', 'friends')
+                      .orWhere((eb2) => {
+                        eb2.where('p.visibility', 'except')
+                           .andWhereRaw('NOT (COALESCE(p.excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                      });
+                  });
               });
           });
         }
@@ -216,10 +243,17 @@ export const postService = {
           builder.where('p.user_id', currentUserId)
             .orWhere('p.visibility', 'public')
             .orWhere((orBuilder) => {
-              orBuilder.where('p.visibility', 'friends')
+              orBuilder.whereIn('p.visibility', ['friends', 'except'])
                 .andWhere((subBuilder) => {
                   subBuilder.whereIn('p.user_id', db.select('addressee_id').from('friendships').where('requester_id', currentUserId).andWhere('status', 'accepted'))
                     .orWhereIn('p.user_id', db.select('requester_id').from('friendships').where('addressee_id', currentUserId).andWhere('status', 'accepted'));
+                })
+                .andWhere((exceptBuilder) => {
+                  exceptBuilder.where('p.visibility', 'friends')
+                    .orWhere((eb2) => {
+                      eb2.where('p.visibility', 'except')
+                         .andWhereRaw('NOT (COALESCE(p.excluded_user_ids, \'[]\'::jsonb) @> ?::jsonb)', [JSON.stringify([currentUserId])]);
+                    });
                 });
             });
         });
@@ -253,11 +287,13 @@ export const postService = {
 
     const existingLike = await db('likes').where({ post_id: postId, user_id: userId }).first();
 
+    let isLiked = false;
     if (existingLike) {
       await db('likes').where({ id: existingLike.id }).del();
-      return { liked: false };
+      isLiked = false;
     } else {
       await db('likes').insert({ post_id: postId, user_id: userId });
+      isLiked = true;
 
       // Create notification for post owner (if not self-like)
       if (post.user_id !== userId) {
@@ -271,9 +307,15 @@ export const postService = {
           ref_id: postId,
         });
       }
-
-      return { liked: true };
     }
+
+    const [{ count }] = await db('likes').where({ post_id: postId }).count('* as count');
+    webSocketService.broadcastToAll({
+      type: 'feed_post_liked',
+      data: { postId, likedBy: userId, liked: isLiked, likeCount: parseInt(count as string, 10) }
+    });
+
+    return { liked: isLiked };
   },
 
   async toggleSave(postId: string, userId: string): Promise<{ saved: boolean }> {
@@ -379,7 +421,7 @@ export const postService = {
       });
     }
 
-    return {
+    const newCommentData = {
       ...comment,
       author_name: commenter.full_name,
       author_username: commenter.username,
@@ -388,6 +430,16 @@ export const postService = {
       is_liked: false,
       replies: []
     };
+
+    webSocketService.broadcastToAll({
+      type: 'feed_comment_added',
+      data: {
+        postId,
+        comment: newCommentData
+      }
+    });
+
+    return newCommentData;
   },
 
   async getComments(
@@ -528,5 +580,10 @@ export const postService = {
     }
 
     await db('comments').where({ id: commentId }).del();
+
+    webSocketService.broadcastToAll({
+      type: 'feed_comment_deleted',
+      data: { postId: comment.post_id, commentId }
+    });
   },
 };

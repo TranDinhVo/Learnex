@@ -8,7 +8,7 @@ export const messageService = {
   async send(
     senderId: string,
     receiverId: string,
-    data: { content?: string; file_url?: string }
+    data: { content?: string; file_url?: string; replyToStoryId?: string; replyStoryPreview?: string }
   ): Promise<DirectMessage> {
     if (senderId === receiverId) {
       throw new AppError('You cannot send a message to yourself.', 400);
@@ -29,6 +29,8 @@ export const messageService = {
         receiver_id: receiverId,
         content: data.content || null,
         file_url: data.file_url || null,
+        reply_to_story_id: data.replyToStoryId || null,
+        reply_story_preview: data.replyStoryPreview || null,
       })
       .returning('*');
 

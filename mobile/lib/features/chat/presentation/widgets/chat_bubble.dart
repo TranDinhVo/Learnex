@@ -14,6 +14,7 @@ class ChatBubble extends StatelessWidget {
   final bool showAvatar;
   final String? avatarInitials;
   final VoidCallback? onCallPressed;
+  final String? replyStoryPreview;
 
   const ChatBubble({
     super.key,
@@ -30,6 +31,7 @@ class ChatBubble extends StatelessWidget {
     this.showAvatar = false,
     this.avatarInitials,
     this.onCallPressed,
+    this.replyStoryPreview,
   });
 
   @override
@@ -162,13 +164,35 @@ class ChatBubble extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 280),
             child: isCallHistory 
                 ? _buildCallHistoryCard(theme)
-                : Text(
-                    message ?? '',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (replyStoryPreview != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('📖 Đã reply story của bạn', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              const SizedBox(height: 4),
+                              Text(replyStoryPreview!, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      Text(
+                        message ?? '',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
           ),
         if (isBottom && !isCallHistory) ...[
@@ -247,13 +271,35 @@ class ChatBubble extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 280),
               child: isCallHistory 
                   ? _buildCallHistoryCard(theme)
-                  : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Text(
-                      message ?? '',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
+                  : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (replyStoryPreview != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('📖 Đã reply story của bạn', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                                const SizedBox(height: 4),
+                                Text(replyStoryPreview!, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                        Text(
+                          message ?? '',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ))),
             ),
           ],
