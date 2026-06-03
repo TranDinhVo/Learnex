@@ -3,6 +3,7 @@ import { AppError } from '../utils/AppError';
 import { Post, Comment as CommentType } from '../models/types';
 import { PaginationParams } from '../utils/pagination';
 import { notificationService } from './notification.service';
+import { webSocketService } from './websocket.service';
 
 export const postService = {
   async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
@@ -31,6 +32,13 @@ export const postService = {
         }
       }
     }
+
+    const fullPost = await this.getById(post.id, userId);
+
+    webSocketService.broadcastToAll({
+      type: 'feed_new_post',
+      data: { post: fullPost }
+    });
 
     return post;
   },
@@ -104,6 +112,11 @@ export const postService = {
     }
 
     await db('posts').where({ id: postId }).update({ is_deleted: true });
+
+    webSocketService.broadcastToAll({
+      type: 'feed_post_deleted',
+      data: { postId }
+    });
   },
 
   async getFeed(
@@ -253,11 +266,13 @@ export const postService = {
 
     const existingLike = await db('likes').where({ post_id: postId, user_id: userId }).first();
 
+    let isLiked = false;
     if (existingLike) {
       await db('likes').where({ id: existingLike.id }).del();
-      return { liked: false };
+      isLiked = false;
     } else {
       await db('likes').insert({ post_id: postId, user_id: userId });
+      isLiked = true;
 
       // Create notification for post owner (if not self-like)
       if (post.user_id !== userId) {
@@ -271,9 +286,15 @@ export const postService = {
           ref_id: postId,
         });
       }
-
-      return { liked: true };
     }
+
+    const [{ count }] = await db('likes').where({ post_id: postId }).count('* as count');
+    webSocketService.broadcastToAll({
+      type: 'feed_post_liked',
+      data: { postId, likedBy: userId, liked: isLiked, likeCount: parseInt(count as string, 10) }
+    });
+
+    return { liked: isLiked };
   },
 
   async toggleSave(postId: string, userId: string): Promise<{ saved: boolean }> {
@@ -379,7 +400,7 @@ export const postService = {
       });
     }
 
-    return {
+    const newCommentData = {
       ...comment,
       author_name: commenter.full_name,
       author_username: commenter.username,
@@ -388,6 +409,16 @@ export const postService = {
       is_liked: false,
       replies: []
     };
+
+    webSocketService.broadcastToAll({
+      type: 'feed_comment_added',
+      data: {
+        postId,
+        comment: newCommentData
+      }
+    });
+
+    return newCommentData;
   },
 
   async getComments(
@@ -528,5 +559,10 @@ export const postService = {
     }
 
     await db('comments').where({ id: commentId }).del();
+
+    webSocketService.broadcastToAll({
+      type: 'feed_comment_deleted',
+      data: { postId: comment.post_id, commentId }
+    });
   },
 };

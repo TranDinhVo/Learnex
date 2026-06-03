@@ -36,6 +36,7 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   int _unreadNotificationsCount = 0;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -55,6 +56,12 @@ class _FeedScreenState extends State<FeedScreen> {
         });
       }
     } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _showLikersBottomSheet(BuildContext context, String postId) async {
@@ -166,6 +173,7 @@ class _FeedScreenState extends State<FeedScreen> {
               }
 
               return CustomScrollView(
+                controller: _scrollController,
                 slivers: [
                   // Top App Bar implementation using SliverAppBar
                   SliverAppBar(
@@ -434,6 +442,68 @@ class _FeedScreenState extends State<FeedScreen> {
             },
           ),
 
+          // Banner: New Posts
+          BlocBuilder<FeedBloc, FeedState>(
+            builder: (context, state) {
+              int pendingCount = 0;
+              if (state is FeedLoaded) {
+                pendingCount = state.pendingNewPosts.length;
+              }
+              if (pendingCount == 0) return const SizedBox.shrink();
+
+              return Positioned(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight + 16,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        context.read<FeedBloc>().add(MergePendingPostsEvent());
+                        _scrollController.animateTo(
+                          0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_upward, size: 16, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Có $pendingCount bài viết mới',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
           // Bottom Navigation overlay
           Positioned(
             bottom: 0,
@@ -450,14 +520,10 @@ class _FeedScreenState extends State<FeedScreen> {
                 );
               },
               onAddTap: () async {
-                final feedBloc = context.read<FeedBloc>();
                 await Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
-                // Reload feed
-                if (mounted) {
-                  feedBloc.add(LoadFeedEvent());
-                }
+                // WS feed_new_post will handle adding the new post to the list automatically
               },
               onChatTap: () {
                 Navigator.of(context).pushReplacement(

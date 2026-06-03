@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/websocket_service.dart';
 import '../../../../app/di.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
@@ -35,16 +37,57 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   String? _replyingToCommentId;
   String? _replyingToName;
   String? _actualReplyToCommentId;
+  StreamSubscription? _wsSubscription;
 
   @override
   void initState() {
     super.initState();
     _post = Map<String, dynamic>.from(widget.post);
     _loadComments();
+    
+    _wsSubscription = getIt<WebSocketService>().messages.listen((message) {
+      if (!mounted) return;
+      final type = message['type'];
+      final data = message['data'] ?? {};
+      final postId = data['postId']?.toString();
+
+      if (postId == _post['id'].toString()) {
+        if (type == 'feed_comment_added') {
+          final comment = data['comment'];
+          if (comment != null) {
+            final exists = _comments.any((c) => c['id'].toString() == comment['id'].toString());
+            if (!exists) {
+              setState(() {
+                _post['comment_count'] = (_post['comment_count'] as int? ?? 0) + 1;
+                _comments.add({
+                  ...comment, 
+                  'is_reply': comment['parent_id'] != null, 
+                  'depth': comment['parent_id'] != null ? 1 : 0
+                });
+              });
+            }
+          }
+        } else if (type == 'feed_comment_deleted') {
+          final commentId = data['commentId']?.toString();
+          if (commentId != null) {
+            setState(() {
+              _comments.removeWhere((c) => c['id'].toString() == commentId);
+              final currentCount = _post['comment_count'] as int? ?? 1;
+              _post['comment_count'] = currentCount > 0 ? currentCount - 1 : 0;
+            });
+          }
+        } else if (type == 'feed_post_liked') {
+          setState(() {
+            _post['like_count'] = data['likeCount'] ?? 0;
+          });
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _wsSubscription?.cancel();
     _commentController.dispose();
     _commentFocusNode.dispose();
     super.dispose();

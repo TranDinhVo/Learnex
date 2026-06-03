@@ -98,3 +98,49 @@ class UploadImagesEvent extends FeedEvent {
   final List<XFile> files;
   UploadImagesEvent({required this.files});
 }
+
+// --- Realtime WebSocket Events ---
+
+/// Nhận bài đăng mới qua WebSocket
+class WsNewPostReceivedEvent extends FeedEvent {
+  final Map<String, dynamic> post;
+  final bool isLocal;
+  WsNewPostReceivedEvent({required this.post, this.isLocal = false});
+}
+
+/// Nhận cập nhật like từ WebSocket
+class WsPostLikeUpdatedEvent extends FeedEvent {
+  final String postId;
+  final String likedBy;
+  final bool liked;
+  final int likeCount;
+  WsPostLikeUpdatedEvent({
+    required this.postId,
+    required this.likedBy,
+    required this.liked,
+    required this.likeCount,
+  });
+}
+
+/// Nhận bình luận mới từ WebSocket
+class WsCommentAddedEvent extends FeedEvent {
+  final String postId;
+  final Map<String, dynamic> comment;
+  WsCommentAddedEvent({required this.postId, required this.comment});
+}
+
+/// Nhận xóa bình luận từ WebSocket
+class WsCommentDeletedEvent extends FeedEvent {
+  final String postId;
+  final String commentId;
+  WsCommentDeletedEvent({required this.postId, required this.commentId});
+}
+
+/// Nhận xóa bài viết từ WebSocket
+class WsPostDeletedEvent extends FeedEvent {
+  final String postId;
+  WsPostDeletedEvent({required this.postId});
+}
+
+/// Trộn các bài đăng mới vào danh sách hiện tại
+class MergePendingPostsEvent extends FeedEvent {}

@@ -106,7 +106,10 @@ void setupDependencies() {
     () => AuthBloc(repository: getIt<AuthRepositoryImpl>()),
   );
   getIt.registerFactory<FeedBloc>(
-    () => FeedBloc(repository: getIt<FeedRepositoryImpl>()),
+    () => FeedBloc(
+      repository: getIt<FeedRepositoryImpl>(),
+      wsService: getIt<WebSocketService>(),
+    ),
   );
   getIt.registerFactory<DocumentBloc>(
     () => DocumentBloc(repository: getIt<DocumentRepositoryImpl>()),
