@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../bloc/chat_bloc.dart';
 import '../bloc/chat_event.dart';
 import '../bloc/chat_state.dart';
 import '../widgets/chat_bubble.dart';
+import '../widgets/typing_indicator.dart';
 import '../../../../app/di.dart';
 import '../../../../core/services/websocket_service.dart';
 import '../../../../core/services/webrtc_service.dart';
@@ -34,6 +36,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isLoadingMore = false;
   bool _isUploading = false;
+  Timer? _typingTimer;
+  bool _isTyping = false;
 
   @override
   void initState() {
@@ -42,6 +46,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           LoadMessagesEvent(conversationId: widget.conversationId),
         );
     _scrollController.addListener(_onScroll);
+    _messageController.addListener(_onMessageChanged);
+  }
+
+  void _onMessageChanged() {
+    if (_messageController.text.isNotEmpty && !_isTyping) {
+      _isTyping = true;
+      context.read<ChatBloc>().add(SendTypingEvent(targetId: widget.conversationId));
+    }
+    
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 2), () {
+      if (_isTyping) {
+        _isTyping = false;
+        context.read<ChatBloc>().add(SendStopTypingEvent(targetId: widget.conversationId));
+      }
+    });
   }
 
   void _onScroll() {
@@ -59,6 +79,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      context.read<ChatBloc>().add(SendStopTypingEvent(targetId: widget.conversationId));
+    }
+    _messageController.removeListener(_onMessageChanged);
     _scrollController.removeListener(_onScroll);
     _messageController.dispose();
     _scrollController.dispose();
@@ -122,6 +147,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     ));
 
     _messageController.clear();
+    _typingTimer?.cancel();
+    if (_isTyping) {
+      _isTyping = false;
+      context.read<ChatBloc>().add(SendStopTypingEvent(targetId: widget.conversationId));
+    }
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
@@ -163,6 +193,117 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
 
+
+  void _showMessageContextMenu(BuildContext context, String messageId, bool isMe, String? currentContent) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ['❤️', '👍', '😆', '😮', '😢', '😡'].map((emoji) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        context.read<ChatBloc>().add(
+                          ToggleReactionEvent(messageId: messageId, emoji: emoji),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const Divider(height: 1),
+              if (isMe && currentContent != null)
+                ListTile(
+                  leading: const Icon(Icons.edit, color: Colors.blue),
+                  title: const Text('Chỉnh sửa tin nhắn'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showEditDialog(context, messageId, currentContent);
+                  },
+                ),
+              if (isMe)
+                ListTile(
+                  leading: const Icon(Icons.delete_forever, color: Colors.red),
+                  title: const Text('Thu hồi với mọi người', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.read<ChatBloc>().add(
+                      DeleteMessageEvent(messageId: messageId, type: 'for_everyone'),
+                    );
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.grey),
+                title: const Text('Gỡ ở phía tôi', style: TextStyle(color: Colors.grey)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.read<ChatBloc>().add(
+                    DeleteMessageEvent(messageId: messageId, type: 'for_me'),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditDialog(BuildContext context, String messageId, String currentContent) {
+    final TextEditingController editController = TextEditingController(text: currentContent);
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Chỉnh sửa tin nhắn'),
+          content: TextField(
+            controller: editController,
+            autofocus: true,
+            maxLines: null,
+            decoration: const InputDecoration(
+              hintText: 'Nhập nội dung mới...',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newContent = editController.text.trim();
+                if (newContent.isNotEmpty && newContent != currentContent) {
+                  context.read<ChatBloc>().add(
+                    EditMessageEvent(messageId: messageId, content: newContent),
+                  );
+                }
+                Navigator.pop(ctx);
+              },
+              child: const Text('Lưu'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -172,77 +313,81 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ? widget.partnerName[0].toUpperCase()
         : 'U';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: _buildAppBar(context, theme, initials),
-      body: Column(
-        children: [
-          Expanded(
-            child: BlocConsumer<ChatBloc, ChatState>(
-              listener: (context, state) {
-                if (state is MessagesLoaded) {
-                  setState(() => _isLoadingMore = false);
-                }
-                // Chỉ tự động cuộn xuống đáy nếu đang ở trang 1 
-                // (VD: vừa mới gửi tin nhắn hoặc vừa load xong lần đầu)
-                if (state is MessagesLoaded && state.currentPage == 1) {
-                  Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-                }
-              },
-              builder: (context, state) {
-                if (state is ChatLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+    return BlocBuilder<ChatBloc, ChatState>(
+      builder: (context, state) {
+        bool isOnline = false;
+        bool isPeerTyping = false;
 
-                if (state is ChatError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(state.message, style: const TextStyle(color: Colors.red)),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<ChatBloc>().add(
-                              LoadMessagesEvent(conversationId: widget.conversationId),
-                            );
-                          },
-                          child: const Text('Thử lại'),
+        if (state is MessagesLoaded) {
+          isOnline = state.onlineUserIds.contains(widget.conversationId);
+          isPeerTyping = state.typingUsers.contains(widget.conversationId);
+        }
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8FAFC),
+          appBar: _buildAppBar(context, theme, initials, isOnline),
+          body: Column(
+            children: [
+              Expanded(
+                child: BlocConsumer<ChatBloc, ChatState>(
+                  listener: (context, state) {
+                    if (state is MessagesLoaded) {
+                      Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+                    }
+                  },
+                  builder: (context, state) {
+                    if (state is ChatInitial || state is ChatLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (state is ChatError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(state.message, style: const TextStyle(color: Colors.red)),
+                            const SizedBox(height: 12),
+                            ElevatedButton(
+                              onPressed: () {
+                                context.read<ChatBloc>().add(
+                                  LoadMessagesEvent(conversationId: widget.conversationId),
+                                );
+                              },
+                              child: const Text('Thử lại'),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                List<dynamic> messages = [];
-                bool hasMore = false;
-                if (state is MessagesLoaded) {
-                  messages = state.messages;
-                  hasMore = state.hasMore;
-                }
+                    List<dynamic> messages = [];
+                    bool hasMore = false;
+                    if (state is MessagesLoaded) {
+                      messages = state.messages;
+                      hasMore = state.hasMore;
+                    }
 
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline, size: 64, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Chưa có tin nhắn nào',
-                          style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.chat_bubble_outline, size: 64, color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Chưa có tin nhắn nào',
+                              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện!',
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Hãy gửi tin nhắn đầu tiên để bắt đầu cuộc trò chuyện!',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                return ListView.builder(
+                    return ListView.builder(
                   controller: _scrollController,
                   reverse: true, // Display latest messages at the bottom
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -302,23 +447,39 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         callHistoryType = parts.length > 1 ? parts[1] : 'VOICE';
                       }
 
-                      final bubble = ChatBubble(
-                        isMe: isMe,
-                        message: content,
-                        time: timeStr,
-                        isRead: msg['is_read'] == true,
-                        isFile: hasFile,
-                        fileUrl: fileUrl,
-                        fileName: hasFile ? fileUrl.split('/').last : null,
-                        fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
-                        isTop: isTop,
-                        isBottom: isBottom,
-                        showAvatar: !isMe && isBottom,
-                        avatarInitials: initials,
-                        replyStoryPreview: msg['reply_story_preview']?.toString(),
-                        onCallPressed: isCallHistory
-                            ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
-                            : null,
+                      final isDeleted = msg['is_deleted'] == true;
+                      final isEdited = msg['edited_at'] != null;
+                      final messageId = msg['id']?.toString() ?? '';
+
+                      final bubble = GestureDetector(
+                        onLongPress: () {
+                          if (isDeleted) return;
+                          _showMessageContextMenu(context, messageId, isMe, content);
+                        },
+                        onSecondaryTapDown: (details) {
+                          if (isDeleted) return;
+                          _showMessageContextMenu(context, messageId, isMe, content);
+                        },
+                        child: ChatBubble(
+                          isMe: isMe,
+                          message: content,
+                          time: timeStr,
+                          isRead: msg['is_read'] == true,
+                          isFile: hasFile,
+                          fileUrl: fileUrl,
+                          fileName: hasFile ? fileUrl.split('/').last : null,
+                          fileSizeAndType: hasFile ? 'Tập tin đính kèm' : null,
+                          isTop: isTop,
+                          isBottom: isBottom,
+                          showAvatar: !isMe && isBottom,
+                          avatarInitials: initials,
+                          isDeleted: isDeleted,
+                          isEdited: isEdited,
+                          reactions: msg['reactions'],
+                          onCallPressed: isCallHistory
+                              ? () => _startCall(callHistoryType == 'VIDEO' ? 'video' : 'voice')
+                              : null,
+                        ),
                       );
 
                       if (index == messages.length - 1) {
@@ -355,14 +516,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
 
+          // Typing Indicator
+          if (isPeerTyping)
+            TypingIndicatorBubble(initials: initials),
+
           // Input Bar
           _buildInputBar(theme),
         ],
       ),
     );
+  });
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, ThemeData theme, String initials) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, ThemeData theme, String initials, bool isOnline) {
     return AppBar(
       backgroundColor: const Color(0xCCF8FAFC), // slate-50/80
       surfaceTintColor: Colors.transparent,
@@ -404,19 +570,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade500,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+              if (isOnline)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade500,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(width: 12),
@@ -432,10 +599,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ),
                 Text(
-                  'Đang online',
+                  isOnline ? 'Đang online' : 'Ngoại tuyến',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.green.shade500,
+                    color: isOnline ? Colors.green.shade500 : Colors.grey,
                     fontWeight: FontWeight.normal,
                   ),
                 ),

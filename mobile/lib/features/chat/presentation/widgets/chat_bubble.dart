@@ -14,7 +14,9 @@ class ChatBubble extends StatelessWidget {
   final bool showAvatar;
   final String? avatarInitials;
   final VoidCallback? onCallPressed;
-  final String? replyStoryPreview;
+  final bool isDeleted;
+  final bool isEdited;
+  final Map<String, dynamic>? reactions;
 
   const ChatBubble({
     super.key,
@@ -31,7 +33,9 @@ class ChatBubble extends StatelessWidget {
     this.showAvatar = false,
     this.avatarInitials,
     this.onCallPressed,
-    this.replyStoryPreview,
+    this.isDeleted = false,
+    this.isEdited = false,
+    this.reactions,
   });
 
   @override
@@ -141,7 +145,7 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           )
-        else
+        else if (isCallHistory)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -152,49 +156,71 @@ class ChatBubble extends StatelessWidget {
                 bottomLeft: const Radius.circular(16),
                 bottomRight: const Radius.circular(4),
               ),
-              boxShadow: [
-                if (isBottom)
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
+            ),
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: _buildCallHistoryCard(theme),
+          )
+        else if (isDeleted)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(color: const Color(0xFFC7C6D3), width: 1),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: Radius.circular(isTop ? 18 : 4),
+                bottomLeft: const Radius.circular(18),
+                bottomRight: Radius.circular(isBottom ? 18 : 4),
+              ),
+            ),
+            child: const Text(
+              'Tin nhắn đã thu hồi',
+              style: TextStyle(
+                color: Color(0xFF777587),
+                fontStyle: FontStyle.italic,
+                fontSize: 15,
+              ),
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3730A3),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: Radius.circular(isTop ? 18 : 4),
+                bottomLeft: const Radius.circular(18),
+                bottomRight: Radius.circular(isBottom ? 18 : 4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  message ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                  ),
+                ),
+                if (isEdited)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4.0),
+                    child: Text(
+                      '(đã chỉnh sửa)',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
                   ),
               ],
             ),
-            constraints: const BoxConstraints(maxWidth: 280),
-            child: isCallHistory 
-                ? _buildCallHistoryCard(theme)
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (replyStoryPreview != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('📖 Đã reply story của bạn', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                              const SizedBox(height: 4),
-                              Text(replyStoryPreview!, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                      Text(
-                        message ?? '',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
           ),
+        if (reactions != null && reactions!.isNotEmpty)
+          _buildReactionsWidget(),
         if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Row(
@@ -271,39 +297,48 @@ class ChatBubble extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 280),
               child: isCallHistory 
                   ? _buildCallHistoryCard(theme)
-                  : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (replyStoryPreview != null)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('📖 Đã reply story của bạn', style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
-                                const SizedBox(height: 4),
-                                Text(replyStoryPreview!, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        Text(
-                          message ?? '',
+                  : isDeleted
+                      ? const Text(
+                          'Tin nhắn đã thu hồi',
                           style: TextStyle(
-                            color: theme.colorScheme.onSurface,
+                            color: Color(0xFF777587),
+                            fontStyle: FontStyle.italic,
                             fontSize: 14,
-                            height: 1.4,
                           ),
-                        ),
-                      ],
-                    ))),
+                        )
+                      : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              message ?? '',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
+                            ),
+                            if (isEdited)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  '(đã chỉnh sửa)',
+                                  style: TextStyle(
+                                    color: Color(0xFF777587),
+                                    fontSize: 11,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ))),
             ),
           ],
         ),
+        if (reactions != null && reactions!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 36.0),
+            child: _buildReactionsWidget(),
+          ),
         if (isBottom && !isCallHistory) ...[
           const SizedBox(height: 4),
           Padding(
@@ -478,5 +513,46 @@ class ChatBubble extends StatelessWidget {
     return lower.endsWith('.jpg') || lower.endsWith('.jpeg') ||
         lower.endsWith('.png') || lower.endsWith('.gif') ||
         lower.endsWith('.webp');
+  }
+
+  Widget _buildReactionsWidget() {
+    if (reactions == null || reactions!.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 2,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: reactions!.entries.map((e) {
+          final count = (e.value as List).length;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(e.key, style: const TextStyle(fontSize: 12)),
+                if (count > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 2),
+                    child: Text('$count', style: const TextStyle(fontSize: 10, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }

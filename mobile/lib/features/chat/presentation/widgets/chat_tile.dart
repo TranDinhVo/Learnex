@@ -9,6 +9,7 @@ class ChatTile extends StatelessWidget {
   final int unreadCount;
   final Color avatarColor;
   final Color avatarTextColor;
+  final bool isOnline;
   final VoidCallback? onTap;
 
   const ChatTile({
@@ -21,6 +22,7 @@ class ChatTile extends StatelessWidget {
     this.unreadCount = 0,
     required this.avatarColor,
     required this.avatarTextColor,
+    this.isOnline = false,
     this.onTap,
   });
 
@@ -39,22 +41,41 @@ class ChatTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: avatarColor,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                initials,
-                style: TextStyle(
-                  color: avatarTextColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: avatarColor,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      color: avatarTextColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ),
-              ),
+                if (isOnline)
+                  Positioned(
+                    bottom: 2,
+                    right: 2,
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade500,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 16),
             Expanded(

@@ -63,6 +63,9 @@ class ApiEndpoints {
       '/chat/conversations/$conversationId/messages';
   static String sendMessage(String conversationId) =>
       '/chat/conversations/$conversationId/messages';
+  static String deleteMessage(String messageId) => '/chat/messages/$messageId';
+  static String editMessage(String messageId) => '/chat/messages/$messageId';
+  static String toggleReaction(String messageId) => '/chat/messages/$messageId/reactions';
 
   // ── Rooms (Study Groups) ────────────────────────────────────────
   static const String rooms = '/rooms';

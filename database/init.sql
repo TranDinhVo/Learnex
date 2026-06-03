@@ -131,13 +131,17 @@ CREATE TABLE friendships (
 -- [FIX] Tách riêng khỏi room messages
 -- ============================================================
 CREATE TABLE direct_messages (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sender_id   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  receiver_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  content     TEXT,
-  file_url    TEXT,
-  is_read     BOOLEAN     DEFAULT FALSE,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT,
+    file_url TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_for_sender BOOLEAN DEFAULT FALSE,
+    deleted_for_receiver BOOLEAN DEFAULT FALSE,
+    edited_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================
