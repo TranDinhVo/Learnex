@@ -213,6 +213,20 @@ CREATE TABLE document_views (
 );
 
 -- ============================================================
+-- 15. REPORTS (Báo cáo vi phạm)
+-- ============================================================
+CREATE TABLE reports (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type VARCHAR(50) NOT NULL,                        -- 'user' | 'post' | 'comment' | 'room'
+  target_id   UUID        NOT NULL,
+  reason      TEXT        NOT NULL,
+  status      VARCHAR(20) DEFAULT 'pending',               -- 'pending' | 'resolved' | 'dismissed'
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -275,4 +289,8 @@ CREATE TRIGGER trg_users_updated_at
 
 CREATE TRIGGER trg_posts_updated_at
   BEFORE UPDATE ON posts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_reports_updated_at
+  BEFORE UPDATE ON reports
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

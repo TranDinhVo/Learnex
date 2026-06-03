@@ -12,6 +12,7 @@ router.get('/dashboard/stats', adminController.getDashboardStats);
 router.get('/users', adminController.getAllUsers);
 router.put('/users/:id/ban', adminController.banUser);
 router.put('/users/:id/unban', adminController.unbanUser);
+router.put('/users/:id/role', adminController.updateUserRole);
 router.delete('/users/:id', adminController.deleteUser);
 
 // Posts Moderation

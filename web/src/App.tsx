@@ -6,6 +6,7 @@ import Posts from './pages/Posts';
 import Documents from './pages/Documents';
 import Rooms from './pages/Rooms';
 import Notifications from './pages/Notifications';
+import Reports from './pages/Reports';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/Layout/AdminLayout';
 
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="documents" element={<Documents />} />
           <Route path="rooms" element={<Rooms />} />
           <Route path="notifications" element={<Notifications />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
 
         {/* Fallback to dashboard */}

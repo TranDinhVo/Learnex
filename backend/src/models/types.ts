@@ -154,6 +154,17 @@ export interface DocumentView {
   viewed_at: Date;
 }
 
+export interface Report {
+  id: string;
+  reporter_id: string;
+  target_type: 'user' | 'post' | 'comment' | 'room';
+  target_id: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  created_at: Date;
+  updated_at: Date;
+}
+
 // ============================================================
 // Auth Types
 // ============================================================

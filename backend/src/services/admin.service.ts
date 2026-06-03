@@ -103,6 +103,20 @@ export const adminService = {
     await db('users').where({ id }).del();
   },
 
+  async updateUserRole(id: string, role: string) {
+    if (role !== 'admin' && role !== 'user') {
+      throw new AppError('Invalid role specified.', 400);
+    }
+    const user = await db('users').where({ id }).first();
+    if (!user) throw new AppError('User not found.', 404);
+
+    const [updated] = await db('users')
+      .where({ id })
+      .update({ role })
+      .returning('*');
+    return updated;
+  },
+
   // ── Posts Moderation ──
   async getAllPosts(pagination: PaginationParams) {
     let query = db('posts as p')

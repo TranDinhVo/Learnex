@@ -11,6 +11,7 @@ import {
   Menu,
   ChevronLeft,
   GraduationCap,
+  ShieldAlert
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/posts', icon: FileText, label: 'Bài viết' },
   { to: '/documents', icon: FolderOpen, label: 'Tài liệu' },
   { to: '/rooms', icon: MessageSquare, label: 'Phòng học' },
+  { to: '/reports', icon: ShieldAlert, label: 'Báo cáo vi phạm' },
   { to: '/notifications', icon: Bell, label: 'Thông báo' },
 ];
 

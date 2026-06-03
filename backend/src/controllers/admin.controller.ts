@@ -73,6 +73,17 @@ export const adminController = {
     }
   },
 
+  async updateUserRole(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const { role } = req.body;
+      const user = await adminService.updateUserRole(id, role);
+      sendResponse(res, 200, user, 'User role updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // ── Posts Moderation ──
   async getAllPosts(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
