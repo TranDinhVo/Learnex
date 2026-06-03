@@ -323,20 +323,23 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                       if (index == messages.length - 1) {
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE7E8E9), // surface-container-high
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'Hôm nay',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF464555), // on-surface-variant
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE7E8E9), // surface-container-high
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Hôm nay',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Color(0xFF464555), // on-surface-variant
+                                  ),
                                 ),
                               ),
                             ),
