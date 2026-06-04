@@ -99,7 +99,16 @@ export interface Room {
   owner_id: string;
   name: string;
   description: string | null;
-  is_private: boolean;
+  avatar_url: string | null;
+  privacy_mode: 'public' | 'private' | 'approval';
+  created_at: Date;
+}
+
+export interface RoomJoinRequest {
+  id: string;
+  room_id: string;
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected';
   created_at: Date;
 }
 
@@ -120,6 +129,13 @@ export interface RoomMessage {
   created_at: Date;
 }
 
+export interface RoomMessageRead {
+  id: string;
+  message_id: string;
+  user_id: string;
+  read_at: Date;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
@@ -137,6 +153,56 @@ export interface DocumentView {
   user_id: string;
   document_id: string;
   viewed_at: Date;
+}
+
+export interface Story {
+  id: string;
+  user_id: string;
+  media_url: string | null;
+  media_type: string;
+  text_content: string | null;
+  text_color: string | null;
+  bg_color: string | null;
+  bg_gradient: string | null;
+  duration_sec: number;
+  visibility: string;
+  is_active: boolean;
+  is_archived: boolean;
+  created_at: Date;
+  expires_at: Date;
+  archived_at: Date | null;
+}
+
+export interface StoryView {
+  id: string;
+  story_id: string;
+  viewer_id: string;
+  viewed_at: Date;
+}
+
+export interface StoryReaction {
+  id: string;
+  story_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: Date;
+}
+export interface Report {
+  id: string;
+  reporter_id: string;
+  target_type: 'user' | 'post' | 'comment' | 'room';
+  target_id: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SystemSetting {
+  key: string;
+  value: string;
+  description: string | null;
+  updated_at: Date;
 }
 
 // ============================================================
@@ -191,6 +257,18 @@ export interface CreateRoomRequest {
 export interface SendMessageRequest {
   content?: string;
   file_url?: string;
+}
+
+export interface CreateStoryRequest {
+  media_url?: string;
+  media_type?: string;
+  text_content?: string;
+  text_color?: string;
+  bg_color?: string;
+  bg_gradient?: string;
+  duration_sec?: number;
+  visibility?: string;
+  excluded_user_ids?: string[];
 }
 
 // ============================================================

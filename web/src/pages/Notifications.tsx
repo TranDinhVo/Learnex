@@ -1,16 +1,30 @@
-import { useEffect, useState, useRef } from 'react';
-import { notificationsApi } from '../api/notifications.api';
-import { usersApi } from '../api/users.api';
-import type { Notification, SendNotificationRequest, User } from '../types';
-import PageHeader from '../components/ui/PageHeader';
-import DataTable, { type Column } from '../components/ui/DataTable';
-import Pagination from '../components/ui/Pagination';
-import StatusBadge from '../components/ui/StatusBadge';
-import ConfirmModal from '../components/ui/ConfirmModal';
-import { Bell, Send, History, Search, X, User as UserIcon, Users } from 'lucide-react';
+import { useEffect, useState, useRef } from "react";
+import { notificationsApi } from "../api/notifications.api";
+import { usersApi } from "../api/users.api";
+import type { Notification, SendNotificationRequest, User } from "../types";
+import PageHeader from "../components/ui/PageHeader";
+import DataTable, { type Column } from "../components/ui/DataTable";
+import Pagination from "../components/ui/Pagination";
+import StatusBadge from "../components/ui/StatusBadge";
+import ConfirmModal from "../components/ui/ConfirmModal";
+import {
+  Bell,
+  Send,
+  History,
+  Search,
+  X,
+  User as UserIcon,
+  Users,
+} from "lucide-react";
 
-function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], onChange: (users: User[]) => void }) {
-  const [query, setQuery] = useState('');
+function UserSearchSelect({
+  selectedUsers,
+  onChange,
+}: {
+  selectedUsers: User[];
+  onChange: (users: User[]) => void;
+}) {
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -18,12 +32,15 @@ function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], 
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -34,9 +51,13 @@ function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], 
       }
       setLoading(true);
       try {
-        const res = await usersApi.getAll({ search: query, limit: 10, page: 1 });
+        const res = await usersApi.getAll({
+          search: query,
+          limit: 10,
+          page: 1,
+        });
         // The API returns paginated array
-        setResults((res.data || res as any) || []);
+        setResults(res.data || (res as any) || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -50,27 +71,34 @@ function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], 
 
   const handleSelect = (user: User) => {
     const userId = (user as any).id || user._id;
-    if (!selectedUsers.find(u => ((u as any).id || u._id) === userId)) {
+    if (!selectedUsers.find((u) => ((u as any).id || u._id) === userId)) {
       onChange([...selectedUsers, user]);
     }
-    setQuery('');
+    setQuery("");
     setOpen(false);
   };
 
   const handleRemove = (id: string) => {
-    onChange(selectedUsers.filter(u => ((u as any).id || u._id) !== id));
+    onChange(selectedUsers.filter((u) => ((u as any).id || u._id) !== id));
   };
 
   return (
     <div className="relative mt-2" ref={wrapperRef}>
       <div className="flex flex-wrap gap-2 mb-3">
-        {selectedUsers.map(u => {
+        {selectedUsers.map((u) => {
           const id = (u as any).id || u._id;
           return (
-            <div key={id} className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow">
+            <div
+              key={id}
+              className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:shadow"
+            >
               <UserIcon className="w-3 h-3 opacity-70" />
               <span>{u.username}</span>
-              <button type="button" onClick={() => handleRemove(id)} className="ml-1 hover:text-red-500 cursor-pointer transition-colors">
+              <button
+                type="button"
+                onClick={() => handleRemove(id)}
+                className="ml-1 hover:text-red-500 cursor-pointer transition-colors"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -91,18 +119,20 @@ function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], 
           className="w-full pl-10 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
         />
       </div>
-      
+
       {open && query.trim() && (
         <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
           {loading ? (
-            <div className="p-4 text-center text-sm text-slate-500 font-medium">Đang tìm kiếm...</div>
+            <div className="p-4 text-center text-sm text-slate-500 font-medium">
+              Đang tìm kiếm...
+            </div>
           ) : results.length > 0 ? (
-            results.map(u => {
+            results.map((u) => {
               const id = (u as any).id || u._id;
               const name = u.name || (u as any).full_name;
               return (
-                <div 
-                  key={id} 
+                <div
+                  key={id}
                   onClick={() => handleSelect(u)}
                   className="flex items-center gap-3 p-3 hover:bg-indigo-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
                 >
@@ -110,14 +140,20 @@ function UserSearchSelect({ selectedUsers, onChange }: { selectedUsers: User[], 
                     {u.username.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-slate-800">{name}</div>
-                    <div className="text-xs text-slate-500 font-medium">@{u.username}</div>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {name}
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium">
+                      @{u.username}
+                    </div>
                   </div>
                 </div>
               );
             })
           ) : (
-            <div className="p-4 text-center text-sm text-slate-500 font-medium">Không tìm thấy học viên nào</div>
+            <div className="p-4 text-center text-sm text-slate-500 font-medium">
+              Không tìm thấy học viên nào
+            </div>
           )}
         </div>
       )}
@@ -133,16 +169,20 @@ export default function Notifications() {
   const [limit] = useState(5);
 
   // Form state
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [type, setType] = useState<'info' | 'warning' | 'success' | 'error'>('info');
-  const [targetAudience, setTargetAudience] = useState<'all' | 'specific'>('all');
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const [type, setType] = useState<"info" | "warning" | "success" | "error">(
+    "info",
+  );
+  const [targetAudience, setTargetAudience] = useState<"all" | "specific">(
+    "all",
+  );
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
-  
+
   const [submitLoading, setSubmitLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  
+
   const [showConfirm, setShowConfirm] = useState(false);
 
   const fetchHistory = async () => {
@@ -152,7 +192,7 @@ export default function Notifications() {
       setHistory(res.data);
       setTotal(res.total);
     } catch (err) {
-      console.error('Không thể lấy lịch sử thông báo:', err);
+      console.error("Không thể lấy lịch sử thông báo:", err);
     } finally {
       setLoading(false);
     }
@@ -160,13 +200,14 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
-    if (targetAudience === 'specific' && selectedUsers.length === 0) {
-      setErrorMessage('Vui lòng tìm và chọn ít nhất 1 học viên.');
+    if (targetAudience === "specific" && selectedUsers.length === 0) {
+      setErrorMessage("Vui lòng tìm và chọn ít nhất 1 học viên.");
       setSuccessMessage(null);
       return;
     }
@@ -185,21 +226,26 @@ export default function Notifications() {
       message: message.trim(),
       type,
       targetAudience,
-      targetUsers: targetAudience === 'specific' ? selectedUsers.map(u => (u as any).id || u._id) : undefined,
+      targetUsers:
+        targetAudience === "specific"
+          ? selectedUsers.map((u) => (u as any).id || u._id)
+          : undefined,
     };
 
     try {
       await notificationsApi.send(payload);
-      setSuccessMessage(`Đã gửi thông báo thành công tới ${targetAudience === 'all' ? 'tất cả học viên' : `${selectedUsers.length} học viên`}!`);
-      setTitle('');
-      setMessage('');
+      setSuccessMessage(
+        `Đã gửi thông báo thành công tới ${targetAudience === "all" ? "tất cả học viên" : `${selectedUsers.length} học viên`}!`,
+      );
+      setTitle("");
+      setMessage("");
       setSelectedUsers([]);
-      setTargetAudience('all');
+      setTargetAudience("all");
       setPage(1);
       fetchHistory();
     } catch (err) {
-      setErrorMessage('Gửi thông báo thất bại. Vui lòng thử lại.');
-      console.error('Send notification error', err);
+      setErrorMessage("Gửi thông báo thất bại. Vui lòng thử lại.");
+      console.error("Send notification error", err);
     } finally {
       setSubmitLoading(false);
     }
@@ -207,8 +253,8 @@ export default function Notifications() {
 
   const columns: Column<Notification>[] = [
     {
-      key: 'title',
-      header: 'Tiêu đề thông báo',
+      key: "title",
+      header: "Tiêu đề thông báo",
       render: (n) => (
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 shadow-sm">
@@ -216,47 +262,54 @@ export default function Notifications() {
           </div>
           <div>
             <p className="font-semibold text-slate-800">{n.title}</p>
-            <p className="text-xs text-slate-500 line-clamp-1" title={n.message}>{n.message}</p>
+            <p
+              className="text-xs text-slate-500 line-clamp-1"
+              title={n.message}
+            >
+              {n.message}
+            </p>
           </div>
         </div>
       ),
     },
     {
-      key: 'type',
-      header: 'Loại',
+      key: "type",
+      header: "Loại",
       render: (n) => {
-        let status: 'active' | 'pending' | 'banned' = 'active';
-        let label = 'Thông tin';
+        let status: "active" | "pending" | "banned" = "active";
+        let label = "Thông tin";
 
-        if (n.type === 'warning') {
-          status = 'pending';
-          label = 'Cảnh báo';
-        } else if (n.type === 'error') {
-          status = 'banned';
-          label = 'Lỗi hệ thống';
-        } else if (n.type === 'success') {
-          status = 'active';
-          label = 'Thành công';
+        if (n.type === "warning") {
+          status = "pending";
+          label = "Cảnh báo";
+        } else if (n.type === "error") {
+          status = "banned";
+          label = "Lỗi hệ thống";
+        } else if (n.type === "success") {
+          status = "active";
+          label = "Thành công";
         }
 
         return <StatusBadge status={status} label={label} />;
       },
     },
     {
-      key: 'targetAudience',
-      header: 'Đối tượng nhận',
+      key: "targetAudience",
+      header: "Đối tượng nhận",
       render: (n) => (
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${n.targetAudience === 'specific' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
-          {n.targetAudience === 'specific' ? 'Nhóm cụ thể' : 'Tất cả'}
+        <span
+          className={`text-xs font-bold px-2.5 py-1 rounded-md ${n.targetAudience === "specific" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}
+        >
+          {n.targetAudience === "specific" ? "Nhóm cụ thể" : "Tất cả"}
         </span>
       ),
     },
     {
-      key: 'createdAt',
-      header: 'Thời gian gửi',
+      key: "createdAt",
+      header: "Thời gian gửi",
       render: (n) => (
         <span className="text-xs font-medium text-slate-500">
-          {new Date(n.createdAt).toLocaleString('vi-VN')}
+          {new Date(n.createdAt).toLocaleString("vi-VN")}
         </span>
       ),
     },
@@ -264,7 +317,10 @@ export default function Notifications() {
 
   return (
     <div className="space-y-10">
-      <PageHeader title="Gửi thông báo hệ thống" description="Phát sóng thông báo hoặc cảnh báo thời gian thực tới toàn bộ học viên LearnEx" />
+      <PageHeader
+        title="Gửi thông báo hệ thống"
+        description="Phát sóng thông báo hoặc cảnh báo thời gian thực tới toàn bộ học viên LearnEx"
+      />
 
       {/* Composition Form */}
       <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-xl shadow-slate-200/30">
@@ -272,7 +328,9 @@ export default function Notifications() {
           <div className="p-2 bg-indigo-50 rounded-lg">
             <Send className="h-5 w-5 text-indigo-600" />
           </div>
-          <h2 className="text-lg font-bold text-slate-800">Soạn thông báo mới</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            Soạn thông báo mới
+          </h2>
         </div>
 
         <form onSubmit={handlePreSubmit} className="space-y-6">
@@ -289,7 +347,9 @@ export default function Notifications() {
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Tiêu đề</label>
+              <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">
+                Tiêu đề
+              </label>
               <input
                 type="text"
                 required
@@ -300,7 +360,9 @@ export default function Notifications() {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Loại thông báo</label>
+              <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">
+                Loại thông báo
+              </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as any)}
@@ -313,16 +375,18 @@ export default function Notifications() {
               </select>
             </div>
           </div>
-          
+
           <div className="bg-slate-50/50 p-5 rounded-xl border border-slate-100">
-            <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-3">Đối tượng nhận thông báo</label>
+            <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-3">
+              Đối tượng nhận thông báo
+            </label>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <label className="flex items-center gap-3 cursor-pointer group">
-                <input 
-                  type="radio" 
-                  name="audience" 
-                  checked={targetAudience === 'all'} 
-                  onChange={() => setTargetAudience('all')}
+                <input
+                  type="radio"
+                  name="audience"
+                  checked={targetAudience === "all"}
+                  onChange={() => setTargetAudience("all")}
                   className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                 />
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
@@ -330,11 +394,11 @@ export default function Notifications() {
                 </div>
               </label>
               <label className="flex items-center gap-3 cursor-pointer group">
-                <input 
-                  type="radio" 
-                  name="audience" 
-                  checked={targetAudience === 'specific'} 
-                  onChange={() => setTargetAudience('specific')}
+                <input
+                  type="radio"
+                  name="audience"
+                  checked={targetAudience === "specific"}
+                  onChange={() => setTargetAudience("specific")}
                   className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
                 />
                 <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">
@@ -343,16 +407,23 @@ export default function Notifications() {
               </label>
             </div>
 
-            {targetAudience === 'specific' && (
+            {targetAudience === "specific" && (
               <div className="mt-4 pt-4 border-t border-slate-200/60 animate-in fade-in slide-in-from-top-2">
-                <label className="block text-xs font-bold text-slate-500 mb-1">Tìm và chọn học viên</label>
-                <UserSearchSelect selectedUsers={selectedUsers} onChange={setSelectedUsers} />
+                <label className="block text-xs font-bold text-slate-500 mb-1">
+                  Tìm và chọn học viên
+                </label>
+                <UserSearchSelect
+                  selectedUsers={selectedUsers}
+                  onChange={setSelectedUsers}
+                />
               </div>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Nội dung thông điệp</label>
+            <label className="block text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">
+              Nội dung thông điệp
+            </label>
             <textarea
               required
               rows={4}
@@ -370,7 +441,7 @@ export default function Notifications() {
               className="flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 font-bold text-white transition-all hover:bg-indigo-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed cursor-pointer hover:shadow-lg hover:shadow-indigo-500/30 active:scale-95 duration-200"
             >
               <Send className="h-4 w-4" />
-              <span>{submitLoading ? 'Đang gửi...' : 'Gửi thông báo'}</span>
+              <span>{submitLoading ? "Đang gửi..." : "Gửi thông báo"}</span>
             </button>
           </div>
         </form>
@@ -382,7 +453,9 @@ export default function Notifications() {
           <div className="p-2 bg-slate-100 rounded-lg">
             <History className="h-5 w-5 text-slate-600" />
           </div>
-          <h2 className="text-lg font-bold text-slate-800">Lịch sử gửi thông báo</h2>
+          <h2 className="text-lg font-bold text-slate-800">
+            Lịch sử gửi thông báo
+          </h2>
         </div>
 
         <div className="shadow-xl shadow-slate-200/40 rounded-2xl overflow-hidden border border-slate-200/60 bg-white">
@@ -416,7 +489,10 @@ export default function Notifications() {
               <div className="font-semibold text-slate-700">{title}</div>
               <div className="text-slate-500 line-clamp-2 mt-1">{message}</div>
               <div className="mt-2 pt-2 border-t border-slate-200 text-indigo-600 font-medium">
-                👉 Gửi tới: {targetAudience === 'all' ? 'Tất cả hệ thống' : `${selectedUsers.length} học viên`}
+                👉 Gửi tới:{" "}
+                {targetAudience === "all"
+                  ? "Tất cả hệ thống"
+                  : `${selectedUsers.length} học viên`}
               </div>
             </div>
           </div>

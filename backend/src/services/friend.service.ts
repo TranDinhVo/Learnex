@@ -171,6 +171,95 @@ export const friendService = {
     return { data: requests, total };
   },
 
+  async getSuggestions(
+    userId: string,
+    pagination: PaginationParams
+  ): Promise<{ data: any[]; total: number }> {
+    const currentUser = await db('users').where({ id: userId }).select('school', 'major').first();
+
+    // Collect IDs to exclude (self + existing relations)
+    const existingRelations = await db('friendships').where(function () {
+      this.where({ requester_id: userId }).orWhere({ addressee_id: userId });
+    });
+
+    const excludeIds = new Set<string>([userId]);
+    existingRelations.forEach((f: any) => {
+      excludeIds.add(f.requester_id);
+      excludeIds.add(f.addressee_id);
+    });
+
+    // Friends-of-friends (2nd degree connections)
+    const myFriends = await db('friendships')
+      .where(function () {
+        this.where({ requester_id: userId }).orWhere({ addressee_id: userId });
+      })
+      .andWhere({ status: 'accepted' });
+
+    const friendIds = myFriends.map((f: any) =>
+      f.requester_id === userId ? f.addressee_id : f.requester_id
+    );
+
+    let suggestions: any[] = [];
+
+    if (friendIds.length > 0) {
+      const fofRelations = await db('friendships')
+        .where(function () {
+          this.whereIn('requester_id', friendIds).orWhereIn('addressee_id', friendIds);
+        })
+        .andWhere({ status: 'accepted' });
+
+      const fofIds = new Set<string>();
+      fofRelations.forEach((f: any) => {
+        if (!excludeIds.has(f.requester_id)) fofIds.add(f.requester_id);
+        if (!excludeIds.has(f.addressee_id)) fofIds.add(f.addressee_id);
+      });
+
+      if (fofIds.size > 0) {
+        suggestions = await db('users')
+          .select('id', 'full_name', 'username', 'avatar_url', 'bio', 'school', 'major')
+          .whereIn('id', [...fofIds])
+          .andWhere('is_banned', false)
+          .limit(pagination.limit)
+          .offset((pagination.page - 1) * pagination.limit);
+      }
+    }
+
+    // Fill with same school/major
+    if (suggestions.length < pagination.limit) {
+      const existingSuggestionIds = suggestions.map((s: any) => s.id);
+      const remaining = pagination.limit - suggestions.length;
+      const fillQuery = db('users')
+        .select('id', 'full_name', 'username', 'avatar_url', 'bio', 'school', 'major')
+        .whereNotIn('id', [...excludeIds, ...existingSuggestionIds])
+        .andWhere('is_banned', false);
+
+      if (currentUser?.school || currentUser?.major) {
+        fillQuery.andWhere(function () {
+          if (currentUser.school) this.orWhere('school', currentUser.school);
+          if (currentUser.major) this.orWhere('major', currentUser.major);
+        });
+      }
+
+      const fillSuggestions = await fillQuery.limit(remaining);
+      suggestions = [...suggestions, ...fillSuggestions];
+    }
+
+    // Fall back to newest users
+    if (suggestions.length < pagination.limit) {
+      const existingSuggestionIds = suggestions.map((s: any) => s.id);
+      const remaining = pagination.limit - suggestions.length;
+      const randomSuggestions = await db('users')
+        .select('id', 'full_name', 'username', 'avatar_url', 'bio', 'school', 'major')
+        .whereNotIn('id', [...excludeIds, ...existingSuggestionIds])
+        .andWhere('is_banned', false)
+        .orderBy('created_at', 'desc')
+        .limit(remaining);
+      suggestions = [...suggestions, ...randomSuggestions];
+    }
+
+    return { data: suggestions, total: suggestions.length };
+  },
+
   async getFriendshipStatus(userId: string, otherUserId: string): Promise<any> {
     const friendship = await db('friendships')
       .where(function () {

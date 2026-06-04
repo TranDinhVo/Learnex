@@ -20,6 +20,7 @@ router.put(
 );
 router.put("/users/:id/ban", adminController.banUser);
 router.put("/users/:id/unban", adminController.unbanUser);
+router.put("/users/:id/role", adminController.updateUserRole);
 router.delete("/users/:id", adminController.deleteUser);
 
 // Posts Moderation
@@ -40,6 +41,10 @@ router.delete("/rooms/:id", adminController.deleteRoom);
 
 // System Notifications
 router.post("/notifications", adminController.sendNotification);
-router.get("/notifications", adminController.getNotificationHistory);
+router.get("/notifications/history", adminController.getNotificationHistory);
+
+// System Settings
+router.get("/settings", adminController.getSettings);
+router.put("/settings", adminController.updateSettings);
 
 export default router;

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { messageService } from '../services/message.service';
 import { sendResponse } from '../utils/response';
 import { getPaginationParams, buildPaginationInfo } from '../utils/pagination';
+import { webSocketService } from '../services/websocket.service';
 
 export const chatController = {
   async getConversations(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -63,9 +64,55 @@ export const chatController = {
         req.params.conversationId as string,
         { content, file_url }
       );
+
+      // Phát realtime
+      webSocketService.sendToUser(req.params.conversationId as string, {
+        type: 'chat_message',
+        data: message,
+      });
+
+      // Echo lại cho sender nếu họ có các thiết bị khác đang online
+      webSocketService.sendToUser(req.user!.userId, {
+        type: 'chat_message',
+        data: message,
+      });
+
       sendResponse(res, 201, message, 'Message sent');
     } catch (error) {
       next(error);
     }
   },
+
+  async deleteMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const type = req.body.type === 'for_everyone' ? 'for_everyone' : 'for_me';
+      const result = await messageService.deleteMessage(req.params.messageId as string, req.user!.userId, type);
+      sendResponse(res, 200, result, 'Message deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async editMessage(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await messageService.editMessage(req.params.messageId as string, req.user!.userId, req.body.content);
+      sendResponse(res, 200, result, 'Message edited successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async toggleReaction(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { emoji } = req.body;
+      if (!emoji) {
+        res.status(400).json({ status: 'error', message: 'Emoji is required' });
+        return;
+      }
+      const result = await messageService.toggleReaction(req.params.messageId as string, req.user!.userId, emoji);
+      sendResponse(res, 200, result, 'Reaction toggled successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 };

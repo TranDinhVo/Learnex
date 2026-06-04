@@ -9,15 +9,16 @@ import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/feed/presentation/screens/feed_screen.dart';
 import '../features/feed/presentation/screens/create_post_screen.dart';
 import '../features/feed/presentation/screens/notification_screen.dart';
-import '../features/feed/presentation/screens/post_detail_screen.dart';
 import '../features/folder/presentation/screens/folder_overview_screen.dart';
-import '../features/folder/presentation/screens/folder_screen.dart';
 import '../features/folder/presentation/screens/add_document_screen.dart';
 import '../features/chat/presentation/screens/chat_list_screen.dart';
 import '../features/chat/presentation/screens/chat_detail_screen.dart';
 import '../features/room/presentation/screens/room_list_screen.dart';
-// import '../features/video_call/presentation/screens/video_call_screen.dart';
-// import '../features/video_call/presentation/screens/incoming_call_screen.dart';
+import '../features/room/presentation/screens/room_detail_screen.dart';
+import '../features/room/presentation/screens/call_screen.dart';
+import '../features/friends/presentation/screens/friends_screen.dart';
+import '../app/di.dart';
+import '../core/services/webrtc_service.dart';
 import '../shared/widgets/app_bottom_nav_bar.dart';
 
 /// Các route path constants
@@ -205,13 +206,25 @@ GoRouter createRouter({
         builder: (context, state) => const AddDocumentScreen(),
       ),
       GoRoute(
+        path: RoutePaths.roomDetail,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return RoomDetailScreen(
+             roomId: id,
+             roomName: extra['roomName'] as String? ?? 'Phòng Học',
+          );
+        },
+      ),
+      GoRoute(
         path: RoutePaths.videoCall,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
-          return VideoCallScreen(
-            roomId: extra['roomId'] as String? ?? '',
-            calleeName: extra['calleeName'] as String? ?? '',
+          return CallScreen(
+            webrtcService: getIt<WebRTCService>(),
+            roomId: extra['roomId'] as String? ?? "room_demo",
           );
         },
       ),
@@ -227,25 +240,16 @@ GoRouter createRouter({
           );
         },
       ),
+      GoRoute(
+        path: RoutePaths.friends,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FriendsScreen(),
+      ),
     ],
   );
 }
 
-// ── WebRTC & Video Call Placeholder Screens ──
-
-class VideoCallScreen extends StatelessWidget {
-  final String roomId;
-  final String calleeName;
-  const VideoCallScreen({super.key, required this.roomId, required this.calleeName});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Cuộc gọi video')),
-      body: Center(child: Text('Đang kết nối cuộc gọi đến $calleeName...')),
-    );
-  }
-}
+// ── (Incoming Call screen omitted for simplicity) ──
 
 class IncomingCallScreen extends StatelessWidget {
   final String callerName;

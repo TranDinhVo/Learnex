@@ -44,4 +44,25 @@ class ChatRemoteDatasource {
     );
     return response.data as Map<String, dynamic>;
   }
+
+  Future<void> deleteMessage(String messageId, {required String type}) async {
+    await _dio.delete(
+      ApiEndpoints.deleteMessage(messageId),
+      data: {'type': type},
+    );
+  }
+
+  Future<void> editMessage(String messageId, String content) async {
+    await _dio.put(
+      ApiEndpoints.editMessage(messageId),
+      data: {'content': content},
+    );
+  }
+
+  Future<void> toggleReaction(String messageId, String emoji) async {
+    await _dio.post(
+      ApiEndpoints.toggleReaction(messageId),
+      data: {'emoji': emoji},
+    );
+  }
 }

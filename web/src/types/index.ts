@@ -92,6 +92,18 @@ export interface SendNotificationRequest {
   targetUsers?: string[];
 }
 
+// ==================== Report ====================
+export interface Report {
+  _id: string;
+  reporter: Pick<User, '_id' | 'name' | 'avatar'>;
+  targetType: 'user' | 'post' | 'comment' | 'room';
+  targetId: string;
+  targetInfo: Record<string, unknown>;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: string;
+}
+
 // ==================== Dashboard ====================
 export interface DashboardStats {
   totalUsers: number;
