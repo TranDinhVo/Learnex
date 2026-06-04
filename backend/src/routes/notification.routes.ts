@@ -11,5 +11,6 @@ router.get('/unread-count', notificationController.getUnreadCount);
 router.post('/read-all', notificationController.markAllRead);
 router.post('/fcm-token', notificationController.registerFcmToken);
 router.post('/:id/read', notificationController.markRead);
+router.delete('/:id', notificationController.delete);
 
 export default router;

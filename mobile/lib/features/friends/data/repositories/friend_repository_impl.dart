@@ -36,4 +36,8 @@ class FriendRepositoryImpl implements FriendRepository {
   @override
   Future<Map<String, dynamic>> searchUsers(String query) =>
       _datasource.searchUsers(query);
+
+  @override
+  Future<Map<String, dynamic>> getSuggestions({int page = 1, int limit = 20}) =>
+      _datasource.getSuggestions(page: page, limit: limit);
 }

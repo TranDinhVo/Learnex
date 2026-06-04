@@ -160,6 +160,7 @@ export default function Notifications() {
 
   useEffect(() => {
     fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const handlePreSubmit = (e: React.FormEvent) => {

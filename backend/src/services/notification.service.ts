@@ -64,4 +64,13 @@ export const notificationService = {
       .where({ id: userId })
       .update({ fcm_token: token });
   },
+  async delete(notificationId: string, userId: string): Promise<void> {
+    const result = await db('notifications')
+      .where({ id: notificationId, user_id: userId })
+      .del();
+      
+    if (!result) {
+      throw new AppError('Notification not found.', 404);
+    }
+  }
 };

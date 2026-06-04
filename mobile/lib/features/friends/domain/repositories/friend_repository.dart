@@ -8,4 +8,5 @@ abstract class FriendRepository {
   Future<void> rejectRequest(String requestId);
   Future<void> unfriend(String userId);
   Future<Map<String, dynamic>> searchUsers(String query);
+  Future<Map<String, dynamic>> getSuggestions({int page, int limit});
 }

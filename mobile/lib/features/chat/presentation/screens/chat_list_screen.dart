@@ -14,7 +14,7 @@ import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
-import '../../../profile/presentation/screens/user_profile_screen.dart';
+import '../../../friends/presentation/screens/friends_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -32,11 +32,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
     context.read<ChatBloc>().add(LoadConversationsEvent());
   }
 
-  void _goRooms(BuildContext context) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const RoomListScreen()),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,37 +39,83 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.white.withValues(alpha: 0.9),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.menu, color: theme.colorScheme.primary),
-          onPressed: () {},
-        ),
-        title: Text(
-          'Tin nhắn',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.edit_square, color: theme.colorScheme.primary),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Search Bar
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: Colors.white.withValues(alpha: 0.9),
+                elevation: 0,
+                pinned: true,
+                title: Row(
+                  children: [
+                    Icon(Icons.school, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Learnex',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  IconButton(
+                    icon: Icon(Icons.people_outline, color: theme.colorScheme.onSurfaceVariant),
+                    tooltip: 'Bạn bè',
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const FriendsScreen()),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
+                    onPressed: () {},
+                  ),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.notifications_none, color: theme.colorScheme.onSurfaceVariant),
+                        onPressed: () {},
+                      ),
+                      Positioned(
+                        top: 12,
+                        right: 12,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.error,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Tin nhắn',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      color: Color(0xFF312E81), // indigo-900
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: TextField(
                     decoration: InputDecoration(
                       hintText: 'Tìm kiếm...',
@@ -90,9 +131,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ),
                   ),
                 ),
-
-                // Online Friends Section
-                BlocBuilder<FriendBloc, FriendState>(
+              ),
+              SliverToBoxAdapter(
+                child: BlocBuilder<FriendBloc, FriendState>(
                   builder: (context, friendState) {
                     List<dynamic> friendsList = [];
                     if (friendState is FriendsLoaded) {
@@ -144,7 +185,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           if (friendId != null) {
                                             Navigator.of(context).push(
                                               MaterialPageRoute(
-                                                builder: (_) => UserProfileScreen(userId: friendId),
+                                                builder: (_) => ChatDetailScreen(
+                                                  conversationId: friendId,
+                                                  partnerName: name,
+                                                ),
                                               ),
                                             );
                                           }
@@ -164,20 +208,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     );
                   },
                 ),
+              ),
 
-                const SizedBox(height: 24),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: 24),
+              ),
 
-                // Conversation List
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              // Conversation List
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 0.0).copyWith(bottom: 120),
+                sliver: SliverToBoxAdapter(
                   child: BlocBuilder<ChatBloc, ChatState>(
                     builder: (context, chatState) {
                       List<dynamic> conversations = [];
+                      List<String> onlineUserIds = [];
                       final isLoading = chatState is ChatLoading;
                       final errorMsg = chatState is ChatError ? chatState.message : null;
 
                       if (chatState is ConversationsLoaded) {
                         conversations = chatState.conversations;
+                        onlineUserIds = chatState.onlineUserIds;
                       }
 
                       if (isLoading) {
@@ -215,20 +265,44 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           final otherUser = c['other_user'] ?? {};
                           final name = otherUser['full_name'] ?? 'Người dùng';
                           final initials = name.isNotEmpty ? name[0].toUpperCase() : 'U';
-                          final lastMsg = c['last_message']?['content'] ?? 'Tệp tin đính kèm';
+                          final lastMsgData = c['last_message'] as Map<String, dynamic>?;
+                          String lastMsg = lastMsgData?['content'] ?? 'Tệp tin đính kèm';
+                          
+                          if (lastMsg.startsWith('[CALL_HISTORY]:')) {
+                            final parts = lastMsg.split(':');
+                            final type = parts.length > 1 ? parts[1] : 'VOICE';
+                            final isVideo = type == 'VIDEO';
+                            lastMsg = isVideo ? '📞 Cuộc gọi video' : '📞 Cuộc gọi thoại';
+                          }
+
+                          final String? createdAt = lastMsgData?['created_at']?.toString();
                           final unreadCount = c['unread_count'] ?? 0;
+
+                          String displayTime = 'Vừa xong';
+                          if (createdAt != null) {
+                            try {
+                              final dateTime = DateTime.parse(createdAt).toLocal();
+                              final min = dateTime.minute.toString().padLeft(2, '0');
+                              final period = dateTime.hour >= 12 ? 'CH' : 'SA';
+                              final displayHour = dateTime.hour > 12 
+                                  ? dateTime.hour - 12 
+                                  : (dateTime.hour == 0 ? 12 : dateTime.hour);
+                              displayTime = '$displayHour:$min $period';
+                            } catch (_) {}
+                          }
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4.0),
                             child: ChatTile(
                               name: name,
                               initials: initials,
-                              time: 'Vừa xong',
+                              time: displayTime,
                               lastMessage: lastMsg,
                               isUnread: unreadCount > 0,
                               unreadCount: unreadCount,
                               avatarColor: Colors.indigo.shade600,
                               avatarTextColor: Colors.white,
+                              isOnline: onlineUserIds.contains(otherUser['id']?.toString()),
                               onTap: () {
                                 final otherUserId = otherUser['id']?.toString() ?? '';
                                 Navigator.of(context).push(
@@ -247,28 +321,39 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     },
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AppBottomNavBar(
+              currentIndex: 3,
+              onHomeTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const FeedScreen()),
+                );
+              },
+              onFolderTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
+                );
+              },
+              onAddTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                );
+              },
+              onChatTap: () {},
+              onMeetingTap: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const RoomListScreen()),
+                );
+              },
             ),
-      ),
-      bottomNavigationBar: AppBottomNavBar(
-        currentIndex: 3,
-        onHomeTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const FeedScreen()),
-          );
-        },
-        onFolderTap: () {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const FolderOverviewScreen()),
-          );
-        },
-        onAddTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CreatePostScreen()),
-          );
-        },
-        onChatTap: () {},
-        onMeetingTap: () => _goRooms(context),
+          ),
+        ],
       ),
     );
   }

@@ -60,8 +60,10 @@ CREATE TABLE posts (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content     TEXT,
-  image_urls  JSONB,
-  document_id UUID        REFERENCES documents(id) ON DELETE SET NULL,  -- [FIX] có FK
+  image_urls      JSONB,
+  document_id     UUID        REFERENCES documents(id) ON DELETE SET NULL,
+  visibility      VARCHAR(20) DEFAULT 'public',
+  tagged_user_ids JSONB,
   is_deleted  BOOLEAN     DEFAULT FALSE,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
@@ -86,7 +88,21 @@ CREATE TABLE comments (
   post_id    UUID        NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content    TEXT        NOT NULL,
+  is_edited  BOOLEAN     DEFAULT FALSE,
+  parent_id  UUID        REFERENCES comments(id) ON DELETE CASCADE,
+  reply_to_comment_id UUID REFERENCES comments(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 6.5. COMMENT LIKES
+-- ============================================================
+CREATE TABLE comment_likes (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  comment_id UUID        NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(comment_id, user_id)
 );
 
 -- ============================================================
@@ -117,25 +133,30 @@ CREATE TABLE friendships (
 -- [FIX] Tách riêng khỏi room messages
 -- ============================================================
 CREATE TABLE direct_messages (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  sender_id   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  receiver_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  content     TEXT,
-  file_url    TEXT,
-  is_read     BOOLEAN     DEFAULT FALSE,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT,
+    file_url TEXT,
+    is_read BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    deleted_for_sender BOOLEAN DEFAULT FALSE,
+    deleted_for_receiver BOOLEAN DEFAULT FALSE,
+    edited_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================
 -- 10. ROOMS (Phòng học nhóm)
 -- ============================================================
 CREATE TABLE rooms (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  owner_id    UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name        VARCHAR(255) NOT NULL,
-  description TEXT,
-  is_private  BOOLEAN      DEFAULT FALSE,
-  created_at  TIMESTAMPTZ  DEFAULT NOW()
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  owner_id     UUID         NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name         VARCHAR(255) NOT NULL,
+  description  TEXT,
+  avatar_url   TEXT,
+  privacy_mode VARCHAR(20)  DEFAULT 'public', -- 'public' | 'private' | 'approval'
+  created_at   TIMESTAMPTZ  DEFAULT NOW()
 );
 
 -- ============================================================
@@ -151,6 +172,18 @@ CREATE TABLE room_members (
 );
 
 -- ============================================================
+-- 11.5. ROOM JOIN REQUESTS
+-- ============================================================
+CREATE TABLE room_join_requests (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  room_id    UUID        NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status     VARCHAR(20) DEFAULT 'pending', -- 'pending' | 'approved' | 'rejected'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(room_id, user_id)
+);
+
+-- ============================================================
 -- 12. ROOM MESSAGES (Chat nhóm trong room)
 -- [FIX] Tách riêng khỏi direct messages
 -- ============================================================
@@ -161,6 +194,17 @@ CREATE TABLE room_messages (
   content    TEXT,
   file_url   TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 12.5. ROOM MESSAGE READS (Read receipts cho tin nhắn nhóm)
+-- ============================================================
+CREATE TABLE room_message_reads (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  message_id  UUID        NOT NULL REFERENCES room_messages(id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  read_at     TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
 );
 
 -- ============================================================
@@ -191,6 +235,36 @@ CREATE TABLE document_views (
 );
 
 -- ============================================================
+-- 15. REPORTS (Báo cáo vi phạm)
+-- ============================================================
+CREATE TABLE reports (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type VARCHAR(50) NOT NULL,                        -- 'user' | 'post' | 'comment' | 'room'
+  target_id   UUID        NOT NULL,
+  reason      TEXT        NOT NULL,
+  status      VARCHAR(20) DEFAULT 'pending',               -- 'pending' | 'resolved' | 'dismissed'
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 16. SYSTEM SETTINGS
+-- ============================================================
+CREATE TABLE system_settings (
+  key         VARCHAR(50) PRIMARY KEY,
+  value       TEXT NOT NULL,
+  description TEXT,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert default settings
+INSERT INTO system_settings (key, value, description) VALUES
+('maintenance_mode', 'false', 'Bật chế độ bảo trì toàn hệ thống'),
+('allow_registrations', 'true', 'Cho phép người dùng mới đăng ký'),
+('auto_approve_documents', 'false', 'Tự động duyệt tài liệu mà không cần admin');
+
+-- ============================================================
 -- INDEXES
 -- ============================================================
 
@@ -211,6 +285,8 @@ CREATE INDEX idx_documents_created   ON documents(created_at DESC);
 -- Likes & Comments & Saved
 CREATE INDEX idx_likes_post_id       ON likes(post_id);
 CREATE INDEX idx_comments_post_id    ON comments(post_id);
+CREATE INDEX idx_comments_parent_id  ON comments(parent_id);
+CREATE INDEX idx_comment_likes_cid   ON comment_likes(comment_id);
 CREATE INDEX idx_saved_posts_user    ON saved_posts(user_id);
 
 -- Friendships
@@ -253,4 +329,12 @@ CREATE TRIGGER trg_users_updated_at
 
 CREATE TRIGGER trg_posts_updated_at
   BEFORE UPDATE ON posts
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_reports_updated_at
+  BEFORE UPDATE ON reports
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER trg_system_settings_updated_at
+  BEFORE UPDATE ON system_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

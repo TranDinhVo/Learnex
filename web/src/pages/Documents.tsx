@@ -40,6 +40,7 @@ export default function Documents() {
 
   useEffect(() => {
     fetchDocuments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search]);
 
   const handleApprove = async () => {

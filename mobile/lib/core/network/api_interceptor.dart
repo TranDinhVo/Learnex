@@ -25,6 +25,11 @@ class AuthInterceptor extends Interceptor {
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
+    // Chỉ set Content-Type = application/json cho request KHÔNG phải FormData.
+    // Với FormData (upload file), để Dio tự set 'multipart/form-data; boundary=...'
+    if (options.data is! FormData) {
+      options.headers['Content-Type'] = 'application/json';
+    }
     handler.next(options);
   }
 

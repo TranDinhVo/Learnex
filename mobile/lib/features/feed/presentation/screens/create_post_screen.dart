@@ -1,9 +1,18 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../folder/presentation/screens/add_document_screen.dart';
+import 'package:image_picker/image_picker.dart';
+import '../widgets/document_picker_bottom_sheet.dart';
+import '../widgets/attached_document_card.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../domain/enums/post_visibility.dart';
+import '../widgets/post_visibility_bottom_sheet.dart';
+import '../widgets/tag_user_bottom_sheet.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -14,6 +23,87 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final TextEditingController _contentController = TextEditingController();
+  final List<XFile> _selectedImages = [];
+  bool _isSubmitting = false;
+  PostVisibility _selectedVisibility = PostVisibility.public;
+  Map<String, dynamic>? _attachedDocument;
+  List<Map<String, dynamic>> _taggedUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController.addListener(() {
+      setState(() {}); // Rebuild để cập nhật character count & button state
+    });
+  }
+
+  bool get _canSubmit {
+    final content = _contentController.text.trim();
+    final hasContent = content.isNotEmpty || _selectedImages.isNotEmpty || _attachedDocument != null;
+    final isUnderLimit = content.length <= 2000;
+    return hasContent && isUnderLimit && !_isSubmitting;
+  }
+
+  Future<void> _pickImages() async {
+    if (_selectedImages.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
+      );
+      return;
+    }
+    final picker = ImagePicker();
+    final pickedFiles = await picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
+      for (final xFile in pickedFiles) {
+        if (_selectedImages.length >= 5) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Chỉ được chọn tối đa 5 ảnh')),
+          );
+          break;
+        }
+        
+        final sizeBytes = await xFile.length();
+        final sizeMB = sizeBytes / (1024 * 1024);
+        if (sizeMB > 10) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ảnh ${xFile.name} vượt quá 10MB và đã bị bỏ qua')),
+          );
+          continue;
+        }
+        
+        setState(() {
+          _selectedImages.add(xFile);
+        });
+      }
+    }
+  }
+
+  void _submit() {
+    final content = _contentController.text.trim();
+    if (content.isEmpty && _selectedImages.isEmpty && _attachedDocument == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng thêm nội dung, ảnh hoặc tài liệu trước khi đăng')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    if (_selectedImages.isNotEmpty) {
+      context.read<FeedBloc>().add(
+        UploadImagesEvent(files: _selectedImages),
+      );
+    } else {
+      context.read<FeedBloc>().add(
+        CreatePostEvent(
+          content: content.isEmpty ? null : content,
+          documentId: _attachedDocument?['id']?.toString(),
+          visibility: _selectedVisibility,
+          taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -24,18 +114,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authState = context.read<AuthBloc>().state;
+    final currentUser = authState is Authenticated ? authState.user : null;
+    final displayName = currentUser?.fullName ?? 'Bạn';
+    final initials = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+    final avatarUrl = currentUser?.avatarUrl;
     
     return BlocListener<FeedBloc, FeedState>(
       listener: (context, state) {
         if (state is PostCreated) {
+          setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('🎉 Đăng bài thành công!'), backgroundColor: Colors.green),
           );
           Navigator.of(context).pop();
         } else if (state is PostCreateError) {
+          setState(() => _isSubmitting = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
           );
+        } else if (state is ImagesUploaded) {
+          final content = _contentController.text.trim();
+          context.read<FeedBloc>().add(
+            CreatePostEvent(
+              content: content.isEmpty ? null : content,
+              imageUrls: state.urls,
+              documentId: _attachedDocument?['id']?.toString(),
+              visibility: _selectedVisibility,
+              taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
+            ),
+          );
+        } else if (state is ImagesUploadError) {
+          setState(() => _isSubmitting = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi tải ảnh: ${state.message}'), backgroundColor: Colors.red),
+          );
+        } else if (state is PostCreating || state is ImagesUploading) {
+          if (!_isSubmitting) setState(() => _isSubmitting = true);
         }
       },
       child: Scaffold(
@@ -67,19 +182,47 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: TextButton(
-                onPressed: () {
-                  final content = _contentController.text.trim();
-                  if (content.isNotEmpty) {
-                    context.read<FeedBloc>().add(
-                      CreatePostEvent(content: content),
-                    );
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                },
+              child: _isSubmitting
+                ? BlocBuilder<FeedBloc, FeedState>(
+                    builder: (context, state) {
+                      String loadingText = 'Đang đăng...';
+                      if (state is ImagesUploading) {
+                        loadingText = 'Đang up ảnh...';
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 14, 
+                              height: 14, 
+                              child: CircularProgressIndicator(strokeWidth: 2)
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              loadingText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                : TextButton(
+                    onPressed: _canSubmit ? _submit : null,
                 style: TextButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                  backgroundColor: _canSubmit 
+                      ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                      : theme.colorScheme.surfaceContainerHighest,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   minimumSize: Size.zero,
                   shape: RoundedRectangleBorder(
@@ -89,7 +232,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 child: Text(
                   'Đăng',
                   style: TextStyle(
-                    color: theme.colorScheme.primary,
+                    color: _canSubmit ? theme.colorScheme.primary : theme.colorScheme.outline,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -108,24 +251,30 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        'B',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
+                    if (avatarUrl != null)
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundImage: NetworkImage(avatarUrl),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          initials,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -146,7 +295,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Bạn',
+                      displayName,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -154,27 +303,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.public, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Công khai',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+                    InkWell(
+                      onTap: () async {
+                        final result = await showModalBottomSheet<PostVisibility>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => PostVisibilityBottomSheet(
+                            currentVisibility: _selectedVisibility,
                           ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.expand_more, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                        ],
+                        );
+                        if (result != null) {
+                          setState(() => _selectedVisibility = result);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_selectedVisibility.icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              _selectedVisibility.label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.expand_more, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -182,20 +347,42 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ],
             ),
             
-            const SizedBox(height: 24),
+            if (_taggedUsers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  Text('— cùng với', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                  ..._taggedUsers.map((user) => Chip(
+                    label: Text(user['full_name'] ?? user['username'] ?? 'User', style: const TextStyle(fontSize: 12)),
+                    onDeleted: () => setState(() => _taggedUsers.remove(user)),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: theme.colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                  )),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 16),
             
             // Text Input
             TextField(
               controller: _contentController,
               maxLines: null,
               minLines: 5,
+              maxLength: 2000,
+              buildCounter: (context, {required currentLength, required isFocused, maxLength}) => null, // Ẩn counter mặc định
               style: TextStyle(
                 fontSize: 18,
                 color: theme.colorScheme.onSurface,
                 height: 1.5,
               ),
               decoration: InputDecoration(
-                hintText: 'Bạn đang nghĩ gì?',
+                hintText: _selectedImages.isEmpty && _attachedDocument == null 
+                    ? 'Bạn đang nghĩ gì?' 
+                    : 'Thêm mô tả...',
                 hintStyle: TextStyle(
                   color: theme.colorScheme.outline,
                 ),
@@ -203,57 +390,35 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ),
             
-            const SizedBox(height: 16),
-            
-            // Upload Zone (navigates to AddDocumentScreen)
-            InkWell(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
-              ),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant,
-                    width: 2,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.cloud_upload, size: 32, color: theme.colorScheme.primary),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Thêm tài liệu PDF',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'PDF, DOCX... Max 50MB',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                  ],
+            // Character counter custom
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${_contentController.text.length}/2000',
+                style: TextStyle(
+                  color: _contentController.text.length > 1800 
+                      ? theme.colorScheme.error 
+                      : theme.colorScheme.outline,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
+            
+            if (_selectedImages.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildImageGrid(),
+            ],
+            
+            const SizedBox(height: 16),
+            
+            if (_attachedDocument != null) ...[
+              const SizedBox(height: 16),
+              AttachedDocumentCard(
+                document: _attachedDocument!,
+                onRemove: () => setState(() => _attachedDocument = null),
+              ),
+            ],
             
             const SizedBox(height: 32),
             
@@ -280,19 +445,51 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.image,
                   label: 'Ảnh',
                   color: theme.colorScheme.primary,
+                  onTap: _pickImages,
                 ),
                 _ActionBtn(
                   icon: Icons.description,
                   label: 'Tài liệu',
                   color: theme.colorScheme.tertiary,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
-                  ),
+                  onTap: () async {
+                    if (_attachedDocument != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Chỉ được đính kèm 1 tài liệu')),
+                      );
+                      return;
+                    }
+                    final doc = await showModalBottomSheet<Map<String, dynamic>>(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const DocumentPickerBottomSheet(),
+                    );
+                    if (doc != null) {
+                      setState(() => _attachedDocument = doc);
+                    }
+                  },
                 ),
                 _ActionBtn(
                   icon: Icons.person_add,
                   label: 'Tag',
                   color: theme.colorScheme.secondary,
+                  onTap: () async {
+                    final result = await showModalBottomSheet<List<Map<String, dynamic>>>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => const TagUserBottomSheet(),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        // Tránh trùng lặp
+                        for (var user in result) {
+                          if (!_taggedUsers.any((e) => e['id'] == user['id'])) {
+                            _taggedUsers.add(user);
+                          }
+                        }
+                      });
+                    }
+                  },
                 ),
                 _ActionBtn(
                   icon: Icons.location_on,
@@ -308,6 +505,153 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     ),
   );
 }
+
+  Widget _buildImageGrid() {
+    if (_selectedImages.isEmpty) return const SizedBox();
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: Stack(
+        children: [
+          _buildGridContent(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridContent() {
+    final count = _selectedImages.length;
+    final h = 300.0; // Fixed height for grid
+
+    if (count == 1) {
+      return SizedBox(
+        height: h,
+        width: double.infinity,
+        child: _buildImageItem(0),
+      );
+    } else if (count == 2) {
+      return SizedBox(
+        height: h,
+        child: Row(
+          children: [
+            Expanded(child: _buildImageItem(0)),
+            const SizedBox(width: 2),
+            Expanded(child: _buildImageItem(1)),
+          ],
+        ),
+      );
+    } else if (count == 3) {
+      return SizedBox(
+        height: h,
+        child: Row(
+          children: [
+            Expanded(flex: 2, child: _buildImageItem(0)),
+            const SizedBox(width: 2),
+            Expanded(
+              flex: 1,
+              child: Column(
+                children: [
+                  Expanded(child: _buildImageItem(1)),
+                  const SizedBox(height: 2),
+                  Expanded(child: _buildImageItem(2)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (count == 4) {
+      return SizedBox(
+        height: h,
+        child: Column(
+          children: [
+            Expanded(flex: 2, child: _buildImageItem(0)),
+            const SizedBox(height: 2),
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(1)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(2)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(3)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // 5 images
+      return SizedBox(
+        height: h,
+        child: Column(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(0)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(1)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 2),
+            Expanded(
+              flex: 1,
+              child: Row(
+                children: [
+                  Expanded(child: _buildImageItem(2)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(3)),
+                  const SizedBox(width: 2),
+                  Expanded(child: _buildImageItem(4)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildImageItem(int index) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        kIsWeb
+            ? Image.network(
+                _selectedImages[index].path,
+                fit: BoxFit.cover,
+              )
+            : Image.file(
+                File(_selectedImages[index].path),
+                fit: BoxFit.cover,
+              ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedImages.removeAt(index)),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ActionBtn extends StatelessWidget {

@@ -53,6 +53,10 @@ export const notificationController = {
         await notificationService.saveFcmToken(req.user!.userId, fcm_token);
       }
       sendResponse(res, 200, null, 'FCM token registered successfully');
+  async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await notificationService.delete(req.params.id as string, req.user!.userId);
+      sendResponse(res, 200, null, 'Notification deleted');
     } catch (error) {
       next(error);
     }

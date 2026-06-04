@@ -25,6 +25,8 @@ export default function Users() {
   const [banModalOpen, setBanModalOpen] = useState(false);
   const [unbanModalOpen, setUnbanModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [targetRole, setTargetRole] = useState<'admin' | 'user'>('user');
   const [actionLoading, setActionLoading] = useState(false);
   // Create / Edit modal state
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -59,7 +61,30 @@ export default function Users() {
 
   useEffect(() => {
     fetchUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search]);
+
+  const handleExportCSV = async () => {
+    try {
+      // Lấy toàn bộ user để xuất thay vì chỉ trang hiện tại (tùy chỉnh limit lớn)
+      const res = await usersApi.getAll({ page: 1, limit: 1000, search });
+      
+      const formatData = res.data.map(u => ({
+        ID: u._id,
+        Họ_Tên: u.name,
+        Username: u.username,
+        Email: u.email,
+        Vai_trò: u.role,
+        Trạng_thái: u.isBanned ? 'Bị khóa' : 'Hoạt động',
+        Ngày_tham_gia: new Date(u.createdAt).toLocaleString('vi-VN')
+      }));
+      
+      exportToCSV(formatData, 'Danh_sach_nguoi_dung');
+    } catch (err) {
+      console.error('Lỗi khi xuất file:', err);
+      alert('Có lỗi xảy ra khi xuất dữ liệu.');
+    }
+  };
 
   const handleBan = async () => {
     if (!selectedUser) return;
@@ -206,6 +231,20 @@ export default function Users() {
     }
   };
 
+  const handleRoleChange = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      await usersApi.updateRole(selectedUser._id, targetRole);
+      setRoleModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      console.error('Role update error', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const columns: Column<User>[] = [
     {
       key: "avatar",
@@ -332,7 +371,7 @@ export default function Users() {
         </div>
       </div>
 
-      <div className="shadow-xl shadow-slate-200/40 rounded-2xl overflow-hidden border border-slate-200/60">
+      <div className="shadow-xl shadow-slate-200/40 rounded-2xl overflow-hidden border border-slate-200/60 bg-white">
         <DataTable
           columns={columns}
           data={users}
@@ -396,6 +435,20 @@ export default function Users() {
         message={`Bạn có chắc muốn XÓA VĨNH VIỄN tài khoản của ${selectedUser?.name}? Hành động này KHÔNG THỂ khôi phục và sẽ xóa sạch mọi thông tin liên quan.`}
         confirmLabel="Xóa vĩnh viễn"
         variant="danger"
+        loading={actionLoading}
+      />
+
+      {/* Role Change Modal */}
+      <ConfirmModal
+        open={roleModalOpen}
+        onCancel={() => setRoleModalOpen(false)}
+        onConfirm={handleRoleChange}
+        title={targetRole === 'admin' ? "Cấp quyền Admin" : "Thu hồi quyền Admin"}
+        message={targetRole === 'admin' 
+          ? `Bạn có chắc muốn cấp quyền Quản trị viên (Admin) cho tài khoản ${selectedUser?.name}? Người này sẽ có toàn quyền kiểm duyệt bài viết và quản lý người dùng.`
+          : `Bạn có chắc muốn hạ cấp tài khoản ${selectedUser?.name} xuống người dùng thường?`}
+        confirmLabel={targetRole === 'admin' ? "Cấp quyền" : "Hạ quyền"}
+        variant={targetRole === 'admin' ? "info" : "danger"}
         loading={actionLoading}
       />
     </div>

@@ -1,4 +1,3 @@
-import '../../domain/entities/user.dart';
 
 /// Tất cả các event cho AuthBloc
 abstract class AuthEvent {}

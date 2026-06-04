@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 /// Abstract repository cho Feed feature.
 /// Định nghĩa contract giữa domain và data layer.
 abstract class FeedRepository {
@@ -12,13 +14,22 @@ abstract class FeedRepository {
     String? content,
     List<String>? imageUrls,
     String? documentId,
+    String visibility = 'public',
+    List<String>? taggedUserIds,
   });
 
   /// Lấy chi tiết bài viết
   Future<Map<String, dynamic>> getPostById(String id);
 
   /// Cập nhật bài viết
-  Future<Map<String, dynamic>> updatePost(String id, {String? content, List<String>? imageUrls});
+  Future<Map<String, dynamic>> updatePost(
+    String id, {
+    String? content,
+    List<String>? imageUrls,
+    String? documentId,
+    String? visibility,
+    List<String>? taggedUserIds,
+  });
 
   /// Xoá bài viết
   Future<void> deletePost(String id);
@@ -33,8 +44,18 @@ abstract class FeedRepository {
   Future<Map<String, dynamic>> getComments(String postId, {int page = 1, int limit = 20});
 
   /// Thêm bình luận
-  Future<Map<String, dynamic>> addComment(String postId, String content);
+  Future<Map<String, dynamic>> addComment(String postId, String content, {String? parentId, String? replyToCommentId});
+  Future<Map<String, dynamic>> updateComment(String postId, String commentId, String content);
 
   /// Xoá bình luận
   Future<void> deleteComment(String postId, String commentId);
+
+  /// Toggle like bình luận
+  Future<Map<String, dynamic>> toggleCommentLike(String postId, String commentId);
+
+  /// Lấy danh sách người đã like
+  Future<List<dynamic>> getLikers(String postId);
+
+  /// Upload ảnh
+  Future<List<String>> uploadImages(List<XFile> files);
 }

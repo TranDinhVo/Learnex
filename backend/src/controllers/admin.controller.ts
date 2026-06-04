@@ -148,6 +148,17 @@ export const adminController = {
     }
   },
 
+  async updateUserRole(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id as string;
+      const { role } = req.body;
+      const user = await adminService.updateUserRole(id, role);
+      sendResponse(res, 200, user, 'User role updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // ── Posts Moderation ──
   async getAllPosts(
     req: Request,
@@ -332,4 +343,24 @@ export const adminController = {
       next(error);
     }
   },
+
+  // ── System Settings ──
+  async getSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const settings = await adminService.getSettings();
+      sendResponse(res, 200, settings, 'Settings retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { settings } = req.body;
+      const updatedSettings = await adminService.updateSettings(settings);
+      sendResponse(res, 200, updatedSettings, 'Settings updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 };
