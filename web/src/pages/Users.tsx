@@ -9,7 +9,15 @@ import StatusBadge from "../components/ui/StatusBadge";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import UserModal from "../components/ui/UserModal";
 import { useToast } from "../stores/toastStore";
-import { Shield, ShieldAlert, Trash2, Edit2 } from "lucide-react";
+import {
+  Shield,
+  ShieldAlert,
+  Trash2,
+  Edit2,
+  Key,
+  ArrowDownToLine,
+} from "lucide-react";
+import { exportToCSV } from "../utils/export";
 
 export default function Users() {
   const { addToast } = useToast();
@@ -129,6 +137,22 @@ export default function Users() {
     } catch (err) {
       console.error("Delete error", err);
       addToast({ type: "error", message: "Xóa người dùng thất bại" });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRoleChange = async () => {
+    if (!selectedUser) return;
+    setActionLoading(true);
+    try {
+      await usersApi.updateRole(selectedUser._id, targetRole);
+      setRoleModalOpen(false);
+      fetchUsers();
+      addToast({ type: "success", message: "Cập nhật quyền thành công" });
+    } catch (err) {
+      console.error("Role change error", err);
+      addToast({ type: "error", message: "Cập nhật quyền thất bại" });
     } finally {
       setActionLoading(false);
     }
@@ -314,6 +338,31 @@ export default function Users() {
                 <ShieldAlert className="h-4 w-4" />
               </button>
             )}
+            {u.role === "admin" ? (
+              <button
+                onClick={() => {
+                  setSelectedUser(u);
+                  setTargetRole("user");
+                  setRoleModalOpen(true);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-purple-200/60 bg-purple-50/50 text-purple-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-purple-100 hover:border-purple-300 hover:shadow-sm cursor-pointer"
+                title="Hạ quyền Admin"
+              >
+                <ArrowDownToLine className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setSelectedUser(u);
+                  setTargetRole("admin");
+                  setRoleModalOpen(true);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-200/60 bg-indigo-50/50 text-indigo-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm cursor-pointer"
+                title="Cấp quyền Admin"
+              >
+                <Key className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={() => {
                 setSelectedUser(u);
@@ -338,6 +387,12 @@ export default function Users() {
           description="Kiểm duyệt và khóa/mở khóa tài khoản sinh viên"
         />
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+          >
+            Xuất CSV
+          </button>
           <button
             onClick={openCreateModal}
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:opacity-90 hover:-translate-y-0.5 hover:shadow-indigo-500/40 active:scale-95 cursor-pointer"

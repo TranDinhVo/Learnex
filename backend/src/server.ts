@@ -19,11 +19,10 @@ const PORT = process.env.PORT || 8080;
 const server = http.createServer(app);
 
 const startServer = async () => {
+  // 1. Connect to Database & Redis before starting server
+  await checkDatabaseConnection();
+  await connectRedis();
   try {
-    // 1. Connect to Database & Redis before starting server
-    await checkDatabaseConnection();
-    await connectRedis();
-
     // 2. Setup WebSocket
     webSocketService.initialize(server);
     // await authService.register("admin@gmail.com", "18082005", "Admin", "admin");
