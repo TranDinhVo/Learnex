@@ -58,6 +58,7 @@ export default function UserModal({
       return;
     }
     setPreview(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.avatar, open]);
 
   if (!open) return null;

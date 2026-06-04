@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuthStore } from "../stores/authStore";
 import { authApi } from "../api/auth.api";
 import { GraduationCap, Lock, Mail, Loader2 } from "lucide-react";
@@ -29,11 +30,13 @@ export default function Login() {
 
       // Redirect to dashboard
       navigate("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Login Error]", err);
-      setError(
-        err.response?.data?.message || "Email hoặc mật khẩu không hợp lệ.",
-      );
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data && typeof err.response.data === "object" && "message" in err.response.data
+          ? (err.response.data as { message?: string }).message
+          : null;
+      setError(errorMessage || "Email hoặc mật khẩu không hợp lệ.");
     } finally {
       setLoading(false);
     }

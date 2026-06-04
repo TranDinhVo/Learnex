@@ -49,16 +49,16 @@ export const usersApi = {
     avatar?: File | null;
   }) => {
     // Support file upload via FormData
-    let payload: any = data;
+    let payload: Record<string, unknown> | FormData = data as unknown as Record<string, unknown>;
     let config = {};
-    if ((data as any).avatar) {
+    if (data.avatar) {
       payload = new FormData();
-      payload.append("email", (data as any).email);
-      payload.append("password", (data as any).password);
-      payload.append("full_name", (data as any).full_name);
-      payload.append("username", (data as any).username);
-      if ((data as any).role) payload.append("role", (data as any).role);
-      payload.append("avatar", (data as any).avatar);
+      payload.append("email", data.email);
+      payload.append("password", data.password);
+      payload.append("full_name", data.full_name);
+      payload.append("username", data.username);
+      if (data.role) payload.append("role", data.role);
+      payload.append("avatar", data.avatar);
       config = { headers: { "Content-Type": "multipart/form-data" } };
     }
 
@@ -83,21 +83,21 @@ export const usersApi = {
       avatar?: File | null;
     }>,
   ) => {
-    let payload: any = data;
+    let payload: Record<string, unknown> | FormData = data as unknown as Record<string, unknown>;
     let config = {};
-    if ((data as any).avatar) {
+    if (data.avatar) {
       payload = new FormData();
-      if ((data as any).email) payload.append("email", (data as any).email);
-      if ((data as any).username)
-        payload.append("username", (data as any).username);
-      if ((data as any).full_name)
-        payload.append("full_name", (data as any).full_name);
-      if ((data as any).role) payload.append("role", (data as any).role);
-      if ((data as any).is_banned !== undefined)
-        payload.append("is_banned", String((data as any).is_banned));
-      if ((data as any).password)
-        payload.append("password", (data as any).password);
-      payload.append("avatar", (data as any).avatar);
+      if (data.email) payload.append("email", data.email);
+      if (data.username)
+        payload.append("username", data.username);
+      if (data.full_name)
+        payload.append("full_name", data.full_name);
+      if (data.role) payload.append("role", data.role);
+      if (data.is_banned !== undefined)
+        payload.append("is_banned", String(data.is_banned));
+      if (data.password)
+        payload.append("password", data.password);
+      payload.append("avatar", data.avatar);
       config = { headers: { "Content-Type": "multipart/form-data" } };
     }
 

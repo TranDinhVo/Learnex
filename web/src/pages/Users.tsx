@@ -218,7 +218,14 @@ export default function Users() {
     try {
       if (isEditMode && selectedUser) {
         // Only include avatar when it's a File (new upload). If it's a URL, backend will keep existing.
-        const updatePayload: any = {
+        const updatePayload: {
+          email: string;
+          username: string;
+          full_name: string;
+          role?: string;
+          password?: string;
+          avatar?: File | null;
+        } = {
           email: formData.email,
           username: formData.username,
           full_name: formData.full_name,
@@ -233,7 +240,14 @@ export default function Users() {
           message: "Cập nhật người dùng thành công",
         });
       } else {
-        const createPayload: any = {
+        const createPayload: {
+          email: string;
+          password: string;
+          full_name: string;
+          username: string;
+          role?: string;
+          avatar?: File | null;
+        } = {
           email: formData.email,
           password: formData.password,
           full_name: formData.full_name,

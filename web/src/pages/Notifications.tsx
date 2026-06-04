@@ -17,6 +17,8 @@ import {
   Users,
 } from "lucide-react";
 
+type SearchUser = User & { id?: string; full_name?: string };
+
 function UserSearchSelect({
   selectedUsers,
   onChange,
@@ -57,7 +59,7 @@ function UserSearchSelect({
           page: 1,
         });
         // The API returns paginated array
-        setResults(res.data || (res as any) || []);
+        setResults(res.data || (res as unknown as User[]) || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -70,8 +72,8 @@ function UserSearchSelect({
   }, [query]);
 
   const handleSelect = (user: User) => {
-    const userId = (user as any).id || user._id;
-    if (!selectedUsers.find((u) => ((u as any).id || u._id) === userId)) {
+    const userId = (user as SearchUser).id || user._id;
+    if (!selectedUsers.find((u) => ((u as SearchUser).id || u._id) === userId)) {
       onChange([...selectedUsers, user]);
     }
     setQuery("");
@@ -79,14 +81,14 @@ function UserSearchSelect({
   };
 
   const handleRemove = (id: string) => {
-    onChange(selectedUsers.filter((u) => ((u as any).id || u._id) !== id));
+    onChange(selectedUsers.filter((u) => ((u as SearchUser).id || u._id) !== id));
   };
 
   return (
     <div className="relative mt-2" ref={wrapperRef}>
       <div className="flex flex-wrap gap-2 mb-3">
         {selectedUsers.map((u) => {
-          const id = (u as any).id || u._id;
+          const id = (u as SearchUser).id || u._id;
           return (
             <div
               key={id}
@@ -128,8 +130,8 @@ function UserSearchSelect({
             </div>
           ) : results.length > 0 ? (
             results.map((u) => {
-              const id = (u as any).id || u._id;
-              const name = u.name || (u as any).full_name;
+              const id = (u as SearchUser).id || u._id;
+              const name = u.name || (u as SearchUser).full_name;
               return (
                 <div
                   key={id}
@@ -228,7 +230,7 @@ export default function Notifications() {
       targetAudience,
       targetUsers:
         targetAudience === "specific"
-          ? selectedUsers.map((u) => (u as any).id || u._id)
+          ? selectedUsers.map((u) => (u as SearchUser).id || u._id)
           : undefined,
     };
 
@@ -365,7 +367,7 @@ export default function Notifications() {
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => setType(e.target.value as "info" | "warning" | "success" | "error")}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10"
               >
                 <option value="info">Thông tin (Info)</option>

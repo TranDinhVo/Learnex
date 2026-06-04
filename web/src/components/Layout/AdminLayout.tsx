@@ -16,6 +16,8 @@ import clsx from "clsx";
 import { useAuthStore } from "../../stores/authStore";
 import ToastContainer from "../ui/ToastContainer";
 
+import type { User } from "../../types";
+
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Tổng quan" },
   { to: "/users", icon: Users, label: "Người dùng" },
@@ -24,6 +26,89 @@ const navItems = [
   { to: "/rooms", icon: MessageSquare, label: "Phòng học" },
   { to: "/notifications", icon: Bell, label: "Thông báo" },
 ];
+
+interface SidebarProps {
+  collapsed: boolean;
+  setMobileOpen: (open: boolean) => void;
+  user: User | null;
+  handleLogout: () => void;
+}
+
+const SidebarContent = ({ collapsed, setMobileOpen, user, handleLogout }: SidebarProps) => (
+  <div className="flex h-full flex-col bg-white">
+    {/* Logo */}
+    <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-5">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/10">
+        <GraduationCap className="h-5 w-5 text-white" />
+      </div>
+      {!collapsed && (
+        <span className="text-lg font-bold tracking-tight text-slate-800">
+          Learnex{" "}
+          <span className="text-xs font-semibold text-indigo-600">Admin</span>
+        </span>
+      )}
+    </div>
+
+    {/* Navigation */}
+    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          onClick={() => setMobileOpen(false)}
+          className={({ isActive }) =>
+            clsx(
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border border-transparent",
+              collapsed && "justify-center",
+              isActive
+                ? "bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 shadow-sm border-indigo-500/10"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <item.icon
+                className={clsx(
+                  "h-5 w-5 shrink-0 transition-colors",
+                  isActive
+                    ? "text-indigo-600"
+                    : "text-slate-400 group-hover:text-slate-600",
+                )}
+              />
+              {!collapsed && <span>{item.label}</span>}
+              {isActive && !collapsed && (
+                <div className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              )}
+            </>
+          )}
+        </NavLink>
+      ))}
+    </nav>
+
+    {/* User section */}
+    <div className="border-t border-slate-100 p-3">
+      {!collapsed && user && (
+        <div className="mb-3 rounded-xl bg-slate-50 px-3 py-2.5">
+          <p className="truncate text-sm font-bold text-slate-800">
+            {user.name}
+          </p>
+          <p className="truncate text-xs text-slate-500">{user.email}</p>
+        </div>
+      )}
+      <button
+        onClick={handleLogout}
+        className={clsx(
+          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-red-50 hover:text-red-600 cursor-pointer",
+          collapsed && "justify-center",
+        )}
+      >
+        <LogOut className="h-5 w-5 shrink-0" />
+        {!collapsed && <span>Đăng xuất</span>}
+      </button>
+    </div>
+  </div>
+);
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -35,81 +120,7 @@ export default function AdminLayout() {
     logout();
     navigate("/login");
   };
-  const SidebarContent = () => (
-    <div className="flex h-full flex-col bg-white">
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-slate-100 px-5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/10">
-          <GraduationCap className="h-5 w-5 text-white" />
-        </div>
-        {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-slate-800">
-            Learnex{" "}
-            <span className="text-xs font-semibold text-indigo-600">Admin</span>
-          </span>
-        )}
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={() => setMobileOpen(false)}
-            className={({ isActive }) =>
-              clsx(
-                "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border border-transparent",
-                collapsed && "justify-center",
-                isActive
-                  ? "bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 shadow-sm border-indigo-500/10"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon
-                  className={clsx(
-                    "h-5 w-5 shrink-0 transition-colors",
-                    isActive
-                      ? "text-indigo-600"
-                      : "text-slate-400 group-hover:text-slate-600",
-                  )}
-                />
-                {!collapsed && <span>{item.label}</span>}
-                {isActive && !collapsed && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* User section */}
-      <div className="border-t border-slate-100 p-3">
-        {!collapsed && user && (
-          <div className="mb-3 rounded-xl bg-slate-50 px-3 py-2.5">
-            <p className="truncate text-sm font-bold text-slate-800">
-              {user.name}
-            </p>
-            <p className="truncate text-xs text-slate-500">{user.email}</p>
-          </div>
-        )}
-        <button
-          onClick={handleLogout}
-          className={clsx(
-            "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-red-50 hover:text-red-600 cursor-pointer",
-            collapsed && "justify-center",
-          )}
-        >
-          <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Đăng xuất</span>}
-        </button>
-      </div>
-    </div>
-  );
   return (
     <div className="flex h-screen bg-[#f8fafc]">
       {/* Desktop sidebar */}
@@ -119,7 +130,7 @@ export default function AdminLayout() {
           collapsed ? "w-[72px]" : "w-64",
         )}
       >
-        <SidebarContent />
+        <SidebarContent collapsed={collapsed} setMobileOpen={setMobileOpen} user={user} handleLogout={handleLogout} />
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="absolute -right-3 top-20 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:text-slate-600 lg:flex cursor-pointer"
@@ -141,7 +152,7 @@ export default function AdminLayout() {
             onClick={() => setMobileOpen(false)}
           />
           <aside className="relative z-50 flex h-full w-64 flex-col border-r border-slate-200 bg-white">
-            <SidebarContent />
+            <SidebarContent collapsed={collapsed} setMobileOpen={setMobileOpen} user={user} handleLogout={handleLogout} />
           </aside>
         </div>
       )}
