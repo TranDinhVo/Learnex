@@ -19,7 +19,7 @@ export interface User {
   username: string;
   email: string;
   avatar?: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
   isBanned: boolean;
   createdAt: string;
   updatedAt: string;
@@ -29,7 +29,7 @@ export interface User {
 export interface Post {
   _id: string;
   content: string;
-  author: Pick<User, '_id' | 'name' | 'email' | 'avatar'>;
+  author: Pick<User, "_id" | "name" | "email" | "avatar">;
   images?: string[];
   likes: string[];
   comments: Comment[];
@@ -41,7 +41,7 @@ export interface Post {
 export interface Comment {
   _id: string;
   content: string;
-  author: Pick<User, '_id' | 'name' | 'avatar'>;
+  author: Pick<User, "_id" | "name" | "avatar">;
   createdAt: string;
 }
 
@@ -52,8 +52,8 @@ export interface Document {
   description?: string;
   fileUrl: string;
   fileType: string;
-  uploadedBy: Pick<User, '_id' | 'name' | 'email' | 'avatar'>;
-  status: 'pending' | 'approved' | 'rejected';
+  uploadedBy: Pick<User, "_id" | "name" | "email" | "avatar">;
+  status: "pending" | "approved" | "rejected";
   downloads: number;
   createdAt: string;
   updatedAt: string;
@@ -64,10 +64,11 @@ export interface Room {
   _id: string;
   name: string;
   description?: string;
-  creator: Pick<User, '_id' | 'name' | 'email' | 'avatar'>;
-  members: Pick<User, '_id' | 'name' | 'avatar'>[];
+  creator: Pick<User, "_id" | "name" | "email" | "avatar">;
+  members: Pick<User, "_id" | "name" | "avatar">[];
   maxMembers: number;
   isActive: boolean;
+  privacy_mode: "public" | "private";
   createdAt: string;
   updatedAt: string;
 }
@@ -77,30 +78,30 @@ export interface Notification {
   _id: string;
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  targetAudience: 'all' | 'specific';
+  type: "info" | "warning" | "success" | "error";
+  targetAudience: "all" | "specific";
   targetUsers?: string[];
-  sentBy: Pick<User, '_id' | 'name'>;
+  sentBy: Pick<User, "_id" | "name">;
   createdAt: string;
 }
 
 export interface SendNotificationRequest {
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  targetAudience: 'all' | 'specific';
+  type: "info" | "warning" | "success" | "error";
+  targetAudience: "all" | "specific";
   targetUsers?: string[];
 }
 
 // ==================== Report ====================
 export interface Report {
   _id: string;
-  reporter: Pick<User, '_id' | 'name' | 'avatar'>;
-  targetType: 'user' | 'post' | 'comment' | 'room';
+  reporter: Pick<User, "_id" | "name" | "avatar">;
+  targetType: "user" | "post" | "comment" | "room";
   targetId: string;
   targetInfo: Record<string, unknown>;
   reason: string;
-  status: 'pending' | 'resolved' | 'dismissed';
+  status: "pending" | "resolved" | "dismissed";
   createdAt: string;
 }
 
@@ -152,5 +153,5 @@ export interface PaginationParams {
   limit?: number;
   search?: string;
   sort?: string;
-  order?: 'asc' | 'desc';
+  order?: "asc" | "desc";
 }

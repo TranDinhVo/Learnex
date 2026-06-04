@@ -7,8 +7,8 @@ export const postsApi = {
     return res.data.data;
   },
 
-  hide: async (id: string): Promise<Post> => {
-    const res = await apiClient.put<ApiResponse<Post>>(`/admin/posts/${id}/hide`);
+  hide: async (id: string, reason?: string): Promise<Post> => {
+    const res = await apiClient.put<ApiResponse<Post>>(`/admin/posts/${id}/hide`, { reason });
     return res.data.data;
   },
 
@@ -17,7 +17,7 @@ export const postsApi = {
     return res.data.data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/admin/posts/${id}`);
+  delete: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.delete(`/admin/posts/${id}`, { data: { reason } });
   },
 };

@@ -4,6 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/network/dio_client.dart';
 import '../core/services/websocket_service.dart';
+import '../core/services/notification_service.dart';
+import '../core/services/notification_service.dart';
 import '../core/services/webrtc_service.dart';
 import '../core/services/media_upload_service.dart';
 
@@ -59,6 +61,10 @@ void setupDependencies() {
 
   getIt.registerSingleton<WebSocketService>(
     WebSocketService(storage: getIt<FlutterSecureStorage>()),
+  );
+
+  getIt.registerSingleton<NotificationService>(
+    NotificationService(dio: getIt<Dio>()),
   );
 
   getIt.registerSingleton<WebRTCService>(

@@ -14,6 +14,7 @@ export interface User {
   major: string | null;
   role: 'user' | 'admin';
   is_banned: boolean;
+  fcm_token?: string | null;
   created_at: Date;
   updated_at: Date;
 }

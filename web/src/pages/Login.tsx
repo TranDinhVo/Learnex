@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { authApi } from '../api/auth.api';
-import { GraduationCap, Lock, Mail, Loader2 } from 'lucide-react';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuthStore } from "../stores/authStore";
+import { authApi } from "../api/auth.api";
+import { GraduationCap, Lock, Mail, Loader2 } from "lucide-react";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
 
@@ -23,18 +24,19 @@ export default function Login() {
     try {
       // Call authApi.login directly
       const response = await authApi.login({ email, password });
-      
+
       // Save to Zustand auth store
       setAuth(response.tokens.accessToken, response.user);
-      
+
       // Redirect to dashboard
-      navigate('/dashboard');
-    } catch (err) {
-      console.error('[Login Error]', err);
-      const errorMessage = err instanceof Error 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message || err.message
-        : 'Email hoặc mật khẩu không hợp lệ.';
-      setError(errorMessage);
+      navigate("/dashboard");
+    } catch (err: unknown) {
+      console.error("[Login Error]", err);
+      const errorMessage =
+        axios.isAxiosError(err) && err.response?.data && typeof err.response.data === "object" && "message" in err.response.data
+          ? (err.response.data as { message?: string }).message
+          : null;
+      setError(errorMessage || "Email hoặc mật khẩu không hợp lệ.");
     } finally {
       setLoading(false);
     }
@@ -52,8 +54,12 @@ export default function Login() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md shadow-indigo-500/20">
             <GraduationCap className="h-6 w-6 text-white" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-800">LearnEx Admin</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">Đăng nhập vào hệ thống quản trị cộng đồng</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-800">
+            LearnEx Admin
+          </h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            Đăng nhập vào hệ thống quản trị cộng đồng
+          </p>
         </div>
 
         {error && (
@@ -64,7 +70,9 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Email quản trị</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Email quản trị
+            </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -79,7 +87,9 @@ export default function Login() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Mật khẩu</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Mật khẩu
+            </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -104,7 +114,7 @@ export default function Login() {
                 Đang đăng nhập...
               </>
             ) : (
-              'Đăng nhập'
+              "Đăng nhập"
             )}
           </button>
         </form>

@@ -1,10 +1,10 @@
-import knex from 'knex';
-import dotenv from 'dotenv';
+import knex from "knex";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 export const db = knex({
-  client: 'pg',
+  client: "pg",
   connection: process.env.DATABASE_URL,
   pool: {
     min: 2,
@@ -15,14 +15,18 @@ export const db = knex({
 // Helper function to test connection on startup
 export const checkDatabaseConnection = async () => {
   try {
-    await db.raw('SELECT 1');
-    console.log('✅ PostgreSQL connected successfully');
+    await db.raw("SELECT 1");
+    console.log("✅ PostgreSQL connected successfully");
 
     // Run migration checks
-    await db.raw('ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT NULL');
-    await db.raw('ALTER TABLE posts ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT \'[]\'::jsonb');
-    await db.raw('ALTER TABLE stories ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT \'[]\'::jsonb');
-    
+    await db.raw(
+      "ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT NULL",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT '[]'::jsonb",
+    );
+
+
     // Stories tables
     await db.raw(`
       CREATE TABLE IF NOT EXISTS stories (
@@ -43,6 +47,10 @@ export const checkDatabaseConnection = async () => {
         archived_at TIMESTAMPTZ
       )
     `);
+
+    await db.raw(
+      "ALTER TABLE stories ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT '[]'::jsonb",
+    );
 
     await db.raw(`
       CREATE TABLE IF NOT EXISTS story_views (
@@ -66,16 +74,22 @@ export const checkDatabaseConnection = async () => {
 
     // Drop constraint if it existed to allow multiple reactions
     try {
-      await db.raw('ALTER TABLE story_reactions DROP CONSTRAINT IF EXISTS story_reactions_story_id_user_id_key');
-    } catch(e) {}
+      await db.raw(
+        "ALTER TABLE story_reactions DROP CONSTRAINT IF EXISTS story_reactions_story_id_user_id_key",
+      );
+    } catch (e) {}
 
     // Add support for story replies in direct_messages
-    await db.raw(`ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_to_story_id UUID REFERENCES stories(id) ON DELETE SET NULL`);
-    await db.raw(`ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_story_preview TEXT`);
+    await db.raw(
+      `ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_to_story_id UUID REFERENCES stories(id) ON DELETE SET NULL`,
+    );
+    await db.raw(
+      `ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_story_preview TEXT`,
+    );
 
-    console.log('✅ PostgreSQL migrations checked successfully');
+    console.log("✅ PostgreSQL migrations checked successfully");
   } catch (error) {
-    console.error('❌ PostgreSQL connection failed:', error);
+    console.error("❌ PostgreSQL connection failed:", error);
     process.exit(1);
   }
 };

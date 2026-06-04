@@ -415,6 +415,10 @@ export class WebSocketService {
     }
   }
 
+  public emitToUsers(userIds: string[], payload: any): void {
+    userIds.forEach(userId => this.sendToUser(userId, payload));
+  }
+
   private broadcastOnlineStatus(): void {
     const onlineUserIds = Array.from(this.connections.keys());
     const payload = {

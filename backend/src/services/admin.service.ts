@@ -1,6 +1,10 @@
 import { db } from '../config/database';
 import { AppError } from '../utils/AppError';
 import { PaginationParams } from '../utils/pagination';
+import { fcmService } from './fcm.service';
+import { notificationService } from './notification.service';
+import { cloudinaryService } from './cloudinary.service';
+import { webSocketService } from './websocket.service';
 
 export const adminService = {
   async getDashboardStats() {
@@ -198,12 +202,27 @@ export const adminService = {
     return { data, total };
   },
 
-  async hidePost(id: string) {
+  async hidePost(id: string, reason?: string) {
     const post = await db('posts').where({ id }).first();
     if (!post) throw new AppError('Post not found.', 404);
 
     await db('posts').where({ id }).update({ is_deleted: true });
     
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Vi phạm Tiêu chuẩn cộng đồng';
+    await notificationService.create({
+      user_id: post.user_id,
+      type: 'system',
+      title: 'Bài viết bị ẩn',
+      body: `Bài viết của bạn đã bị ẩn khỏi cộng đồng. Lý do: ${finalReason}`,
+      ref_type: 'post',
+      ref_id: id,
+    });
+
+    const user = await db('users').where({ id: post.user_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Bài viết bị ẩn', `Bài viết của bạn đã bị ẩn khỏi cộng đồng. Lý do: ${finalReason}`, { type: 'system', ref_type: 'post', ref_id: id }).catch(console.error);
+    }
+
     // Fetch and return the updated post
     const updated = await db('posts').where({ id }).first();
     return updated;
@@ -220,11 +239,25 @@ export const adminService = {
     return updated;
   },
 
-  async deletePost(id: string) {
+  async deletePost(id: string, reason?: string) {
     const post = await db('posts').where({ id }).first();
     if (!post) throw new AppError('Post not found.', 404);
 
     await db('posts').where({ id }).del();
+
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Vi phạm Tiêu chuẩn cộng đồng';
+    await notificationService.create({
+      user_id: post.user_id,
+      type: 'system',
+      title: 'Bài viết đã bị xóa',
+      body: `Bài đăng của bạn đã bị xóa vĩnh viễn khỏi hệ thống. Lý do: ${finalReason}`,
+      ref_type: 'post',
+    });
+
+    const user = await db('users').where({ id: post.user_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Bài viết đã bị xóa', `Bài đăng của bạn đã bị xóa vĩnh viễn khỏi hệ thống. Lý do: ${finalReason}`, { type: 'system' }).catch(console.error);
+    }
   },
 
   // ── Documents Management ──
@@ -292,26 +325,81 @@ export const adminService = {
     if (!doc) throw new AppError('Document not found.', 404);
 
     await db('documents').where({ id }).update({ is_approved: true });
+
+    await notificationService.create({
+      user_id: doc.user_id,
+      type: 'system',
+      title: 'Tài liệu đã được duyệt',
+      body: `Tài liệu "${doc.title}" của bạn đã được phê duyệt và hiển thị công khai.`,
+      ref_type: 'document',
+      ref_id: id,
+    });
+
+    const user = await db('users').where({ id: doc.user_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Tài liệu đã được duyệt', `Tài liệu "${doc.title}" của bạn đã được phê duyệt và hiển thị công khai.`, { type: 'system', ref_type: 'document', ref_id: id }).catch(console.error);
+    }
     
     const updated = await db('documents').where({ id }).first();
     return updated;
   },
 
-  async rejectDocument(id: string) {
+  async rejectDocument(id: string, reason?: string) {
     const doc = await db('documents').where({ id }).first();
     if (!doc) throw new AppError('Document not found.', 404);
 
     await db('documents').where({ id }).update({ is_approved: false });
 
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Không đạt chất lượng chuyên môn';
+    await notificationService.create({
+      user_id: doc.user_id,
+      type: 'system',
+      title: 'Tài liệu bị từ chối',
+      body: `Tài liệu "${doc.title}" của bạn đã bị từ chối. Lý do: ${finalReason}`,
+      ref_type: 'document',
+      ref_id: id,
+    });
+
+    const user = await db('users').where({ id: doc.user_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Tài liệu bị từ chối', `Tài liệu "${doc.title}" của bạn đã bị từ chối. Lý do: ${finalReason}`, { type: 'system', ref_type: 'document', ref_id: id }).catch(console.error);
+    }
+
     const updated = await db('documents').where({ id }).first();
     return updated;
   },
 
-  async deleteDocument(id: string) {
+  async deleteDocument(id: string, reason?: string) {
     const doc = await db('documents').where({ id }).first();
     if (!doc) throw new AppError('Document not found.', 404);
 
+    // Delete from Cloudinary if valid url
+    if (doc.file_url) {
+      try {
+        const match = doc.file_url.match(/learnex\/(.*?)(?:\.[a-zA-Z0-9]+)?$/);
+        if (match && match[1]) {
+          await cloudinaryService.deleteFile(`learnex/${match[1]}`);
+        }
+      } catch (err) {
+        console.error('Failed to delete document from Cloudinary:', err);
+      }
+    }
+
     await db('documents').where({ id }).del();
+
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Vi phạm quy định nền tảng';
+    await notificationService.create({
+      user_id: doc.user_id,
+      type: 'system',
+      title: 'Tài liệu đã bị xóa',
+      body: `Tài liệu "${doc.title}" của bạn đã bị xóa vĩnh viễn khỏi hệ thống. Lý do: ${finalReason}`,
+      ref_type: 'document',
+    });
+
+    const user = await db('users').where({ id: doc.user_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Tài liệu đã bị xóa', `Tài liệu "${doc.title}" của bạn đã bị xóa vĩnh viễn khỏi hệ thống. Lý do: ${finalReason}`, { type: 'system' }).catch(console.error);
+    }
   },
 
   // ── Rooms Moderation ──
@@ -361,6 +449,7 @@ export const adminService = {
         name: r.name,
         description: r.description || '',
         isActive: true,
+        isPrivate: r.is_private || false,
         maxMembers: 50,
         createdAt: r.created_at,
         updatedAt: r.created_at,
@@ -377,16 +466,49 @@ export const adminService = {
     return { data, total };
   },
 
-  async deleteRoom(id: string) {
+  async deleteRoom(id: string, reason?: string) {
     const room = await db('rooms').where({ id }).first();
     if (!room) throw new AppError('Room not found.', 404);
 
+    const members = await db('room_members').where({ room_id: id });
+    const memberIds = members.map(m => m.user_id);
+
+    const finalReason = reason && reason.trim() ? reason.trim() : 'Vi phạm tiêu chuẩn cộng đồng';
+
+    webSocketService.emitToUsers(memberIds, {
+      type: 'room_closed',
+      data: {
+        roomId: id,
+        roomName: room.name,
+        reason: finalReason
+      }
+    });
+
     await db('rooms').where({ id }).del();
+
+    await notificationService.create({
+      user_id: room.owner_id,
+      type: 'system',
+      title: 'Phòng học đã bị giải tán',
+      body: `Phòng học "${room.name}" của bạn đã bị Admin giải tán. Lý do: ${finalReason}`,
+      ref_type: 'room',
+    });
+
+    const user = await db('users').where({ id: room.owner_id }).first();
+    if (user && user.fcm_token) {
+      fcmService.sendMultiplePush([user.fcm_token], 'Phòng học đã bị giải tán', `Phòng học "${room.name}" của bạn đã bị Admin giải tán. Lý do: ${finalReason}`, { type: 'system' }).catch(console.error);
+    }
   },
 
   // ── System Notifications ──
   async sendNotification(senderId: string, data: { title: string; message: string; type: string; targetAudience: string; targetUsers?: string[] }) {
-    const users = await db('users').select('id');
+    let query = db('users').select('id', 'fcm_token');
+    
+    if (data.targetAudience === 'specific' && data.targetUsers && data.targetUsers.length > 0) {
+      query = query.whereIn('id', data.targetUsers);
+    }
+    
+    const users = await query;
     
     const notifications = users.map(u => ({
       user_id: u.id,
@@ -399,6 +521,13 @@ export const adminService = {
 
     if (notifications.length > 0) {
       await db('notifications').insert(notifications);
+    }
+
+    const tokens = users.map(u => u.fcm_token).filter(t => t != null && t.trim() !== '');
+    if (tokens.length > 0) {
+      fcmService.sendMultiplePush(tokens, data.title, data.message, { type: 'system' }).catch(err => {
+        console.error('Lỗi khi gửi Push Notification trong Admin Service:', err);
+      });
     }
 
     return {

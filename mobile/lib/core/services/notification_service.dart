@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import '../network/api_endpoints.dart';
 
 /// Dịch vụ Firebase Cloud Messaging:
@@ -8,24 +9,29 @@ import '../network/api_endpoints.dart';
 /// - Lắng nghe thông báo khi app ở foreground, background, terminated
 /// - Lấy và đăng ký FCM token với server
 class NotificationService {
-  final FirebaseMessaging _messaging;
+  FirebaseMessaging? _messaging;
   final Dio _dio;
 
-  final _foregroundController =
-      StreamController<RemoteMessage>.broadcast();
+  final _foregroundController = StreamController<RemoteMessage>.broadcast();
 
   /// Stream nhận thông báo khi app đang mở (foreground)
-  Stream<RemoteMessage> get onForegroundMessage =>
-      _foregroundController.stream;
+  Stream<RemoteMessage> get onForegroundMessage => _foregroundController.stream;
 
   NotificationService({
     required Dio dio,
     FirebaseMessaging? messaging,
-  })  : _messaging = messaging ?? FirebaseMessaging.instance,
+  })  : _messaging = messaging,
         _dio = dio;
 
   /// Khởi tạo dịch vụ: xin quyền, lắng nghe message, đăng ký token
   Future<void> initialize() async {
+    if (kIsWeb) {
+      debugPrint("FCM is disabled on Web to prevent Firebase crash.");
+      return;
+    }
+
+    _messaging ??= FirebaseMessaging.instance;
+
     // 1. Yêu cầu quyền thông báo
     await requestPermission();
 
@@ -44,14 +50,15 @@ class NotificationService {
     await _registerToken();
 
     // 5. Theo dõi khi token thay đổi
-    _messaging.onTokenRefresh.listen((newToken) {
+    _messaging?.onTokenRefresh.listen((newToken) {
       _sendTokenToServer(newToken);
     });
   }
 
   /// Xin quyền thông báo từ người dùng
-  Future<NotificationSettings> requestPermission() async {
-    return await _messaging.requestPermission(
+  Future<NotificationSettings?> requestPermission() async {
+    if (_messaging == null) return null;
+    return await _messaging!.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -61,7 +68,8 @@ class NotificationService {
 
   /// Lấy FCM token hiện tại
   Future<String?> getToken() async {
-    return await _messaging.getToken();
+    if (_messaging == null) return null;
+    return await _messaging!.getToken();
   }
 
   Future<void> _registerToken() async {

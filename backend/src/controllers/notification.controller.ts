@@ -1,14 +1,23 @@
-import { Request, Response, NextFunction } from 'express';
-import { notificationService } from '../services/notification.service';
-import { sendResponse } from '../utils/response';
-import { getPaginationParams, buildPaginationInfo } from '../utils/pagination';
+import { Request, Response, NextFunction } from "express";
+import { notificationService } from "../services/notification.service";
+import { sendResponse } from "../utils/response";
+import { getPaginationParams, buildPaginationInfo } from "../utils/pagination";
 
 export const notificationController = {
-  async getMyNotifications(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getMyNotifications(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
-      const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
-      const { data, total } = await notificationService.getByUser(req.user!.userId, pagination);
-      
+      const pagination = getPaginationParams(
+        req.query as { page?: string; limit?: string },
+      );
+      const { data, total } = await notificationService.getByUser(
+        req.user!.userId,
+        pagination,
+      );
+
       res.status(200).json({
         success: true,
         data,
@@ -19,28 +28,59 @@ export const notificationController = {
     }
   },
 
-  async markRead(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async markRead(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
-      await notificationService.markRead(req.params.id as string, req.user!.userId);
-      sendResponse(res, 200, null, 'Notification marked as read');
+      await notificationService.markRead(
+        req.params.id as string,
+        req.user!.userId,
+      );
+      sendResponse(res, 200, null, "Notification marked as read");
     } catch (error) {
       next(error);
     }
   },
 
-  async markAllRead(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async markAllRead(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       await notificationService.markAllRead(req.user!.userId);
-      sendResponse(res, 200, null, 'All notifications marked as read');
+      sendResponse(res, 200, null, "All notifications marked as read");
     } catch (error) {
       next(error);
     }
   },
 
-  async getUnreadCount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getUnreadCount(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     try {
       const count = await notificationService.getUnreadCount(req.user!.userId);
-      sendResponse(res, 200, { count }, 'Unread count retrieved');
+      sendResponse(res, 200, { count }, "Unread count retrieved");
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async registerFcmToken(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      const { fcm_token } = req.body;
+      if (fcm_token) {
+        await notificationService.saveFcmToken(req.user!.userId, fcm_token);
+      }
+      sendResponse(res, 200, null, "FCM token registered successfully");
     } catch (error) {
       next(error);
     }
@@ -48,8 +88,11 @@ export const notificationController = {
 
   async delete(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      await notificationService.delete(req.params.id as string, req.user!.userId);
-      sendResponse(res, 200, null, 'Notification deleted');
+      await notificationService.delete(
+        req.params.id as string,
+        req.user!.userId,
+      );
+      sendResponse(res, 200, null, "Notification deleted");
     } catch (error) {
       next(error);
     }
