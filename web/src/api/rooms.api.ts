@@ -7,7 +7,7 @@ export const roomsApi = {
     return res.data.data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/admin/rooms/${id}`);
+  delete: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.delete(`/admin/rooms/${id}`, { data: { reason } });
   },
 };

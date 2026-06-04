@@ -21,6 +21,7 @@ export default function Rooms() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [reason, setReason] = useState('');
 
   const fetchRooms = async () => {
     setLoading(true);
@@ -43,8 +44,9 @@ export default function Rooms() {
     if (!selectedRoom) return;
     setActionLoading(true);
     try {
-      await roomsApi.delete(selectedRoom._id);
+      await roomsApi.delete(selectedRoom._id, reason);
       setDeleteModalOpen(false);
+      setReason('');
       fetchRooms();
     } catch (err) {
       console.error('Xóa phòng học thất bại:', err);
@@ -105,8 +107,8 @@ export default function Rooms() {
       header: 'Loại phòng',
       render: (r) => (
         <StatusBadge
-          status={r.creator._id ? 'active' : 'banned'}
-          label={r.creator._id ? 'Công khai' : 'Riêng tư'}
+          status={r.isPrivate ? 'banned' : 'active'}
+          label={r.isPrivate ? 'Riêng tư' : 'Công khai'}
         />
       ),
     },
@@ -128,6 +130,7 @@ export default function Rooms() {
           <button
             onClick={() => {
               setSelectedRoom(r);
+              setReason('');
               setDeleteModalOpen(true);
             }}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200/60 bg-red-50/50 text-red-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-red-100 hover:border-red-300 hover:shadow-sm cursor-pointer"
@@ -182,7 +185,22 @@ export default function Rooms() {
         onCancel={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Giải tán phòng học"
-        message={`Bạn có chắc chắn muốn GIẢI TÁN phòng học "${selectedRoom?.name}"? Mọi tin nhắn nhóm và danh sách thành viên sẽ bị xóa vĩnh viễn khỏi database.`}
+        message={
+          <div className="space-y-4 text-left">
+            <p className="text-slate-600">Bạn có chắc chắn muốn GIẢI TÁN phòng học "{selectedRoom?.name}"? Mọi tin nhắn nhóm và danh sách thành viên sẽ bị xóa vĩnh viễn khỏi database.</p>
+            <div className="bg-red-50/50 p-4 rounded-xl border border-red-100">
+              <label className="block text-xs font-bold uppercase tracking-wider text-red-800 mb-2">Lý do giải tán (Tùy chọn)</label>
+              <textarea 
+                rows={2} 
+                value={reason} 
+                onChange={(e) => setReason(e.target.value)} 
+                placeholder="VD: Phòng học không hoạt động, vi phạm quy định..."
+                className="w-full rounded-xl border border-red-200 bg-white p-3 text-sm focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/10 transition-all text-slate-700"
+              />
+              <p className="text-[11px] text-red-600/80 mt-1.5 font-medium">* Trưởng phòng và các thành viên đang tham gia sẽ nhận được thông báo này ngay lập tức</p>
+            </div>
+          </div>
+        }
         confirmLabel="Giải tán phòng"
         variant="danger"
         loading={actionLoading}

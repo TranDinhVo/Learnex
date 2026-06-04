@@ -58,4 +58,10 @@ export const notificationService = {
       .count('* as count');
     return parseInt(count as string, 10);
   },
+
+  async saveFcmToken(userId: string, token: string): Promise<void> {
+    await db('users')
+      .where({ id: userId })
+      .update({ fcm_token: token });
+  },
 };

@@ -45,4 +45,16 @@ export const notificationController = {
       next(error);
     }
   },
+
+  async registerFcmToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { fcm_token } = req.body;
+      if (fcm_token) {
+        await notificationService.saveFcmToken(req.user!.userId, fcm_token);
+      }
+      sendResponse(res, 200, null, 'FCM token registered successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
 };

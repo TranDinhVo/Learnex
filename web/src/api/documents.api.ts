@@ -12,12 +12,12 @@ export const documentsApi = {
     return res.data.data;
   },
 
-  reject: async (id: string): Promise<Document> => {
-    const res = await apiClient.put<ApiResponse<Document>>(`/admin/documents/${id}/reject`);
+  reject: async (id: string, reason?: string): Promise<Document> => {
+    const res = await apiClient.put<ApiResponse<Document>>(`/admin/documents/${id}/reject`, { reason });
     return res.data.data;
   },
 
-  delete: async (id: string): Promise<void> => {
-    await apiClient.delete(`/admin/documents/${id}`);
+  delete: async (id: string, reason?: string): Promise<void> => {
+    await apiClient.delete(`/admin/documents/${id}`, { data: { reason } });
   },
 };

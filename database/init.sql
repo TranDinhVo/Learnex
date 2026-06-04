@@ -17,6 +17,7 @@ CREATE TABLE users (
   major         VARCHAR(255),
   role          VARCHAR(20)  DEFAULT 'user',       -- 'user' | 'admin'
   is_banned     BOOLEAN      DEFAULT FALSE,
+  fcm_token     VARCHAR(255),                      -- Dùng cho Push Notification
   created_at    TIMESTAMPTZ  DEFAULT NOW(),
   updated_at    TIMESTAMPTZ  DEFAULT NOW()
 );
@@ -46,6 +47,7 @@ CREATE TABLE documents (
   subject        VARCHAR(100),
   tags           JSONB        DEFAULT '[]',
   summary        TEXT,                             -- AI tóm tắt tài liệu
+  is_approved    BOOLEAN      DEFAULT NULL,        -- NULL: pending, TRUE: approved, FALSE: rejected
   download_count INT          DEFAULT 0,
   view_count     INT          DEFAULT 0,           -- [FIX] thêm view_count
   created_at     TIMESTAMPTZ  DEFAULT NOW()

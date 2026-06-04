@@ -23,6 +23,7 @@ export default function Documents() {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [reason, setReason] = useState('');
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -59,8 +60,9 @@ export default function Documents() {
     if (!selectedDoc) return;
     setActionLoading(true);
     try {
-      await documentsApi.reject(selectedDoc._id);
+      await documentsApi.reject(selectedDoc._id, reason);
       setRejectModalOpen(false);
+      setReason('');
       fetchDocuments();
     } catch (err) {
       console.error('Từ chối tài liệu thất bại:', err);
@@ -73,8 +75,9 @@ export default function Documents() {
     if (!selectedDoc) return;
     setActionLoading(true);
     try {
-      await documentsApi.delete(selectedDoc._id);
+      await documentsApi.delete(selectedDoc._id, reason);
       setDeleteModalOpen(false);
+      setReason('');
       fetchDocuments();
     } catch (err) {
       console.error('Xóa tài liệu thất bại:', err);
@@ -176,6 +179,7 @@ export default function Documents() {
             <button
               onClick={() => {
                 setSelectedDoc(d);
+                setReason('');
                 setRejectModalOpen(true);
               }}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-200/60 bg-amber-50/50 text-amber-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm cursor-pointer"
@@ -187,6 +191,7 @@ export default function Documents() {
           <button
             onClick={() => {
               setSelectedDoc(d);
+              setReason('');
               setDeleteModalOpen(true);
             }}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200/60 bg-red-50/50 text-red-600 transition-all duration-300 hover:scale-110 active:scale-95 hover:bg-red-100 hover:border-red-300 hover:shadow-sm cursor-pointer"
@@ -253,9 +258,24 @@ export default function Documents() {
         onCancel={() => setRejectModalOpen(false)}
         onConfirm={handleReject}
         title="Từ chối tài liệu"
-        message={`Bạn có muốn TỪ CHỐI tài liệu "${selectedDoc?.title}"? Tài liệu này sẽ bị chuyển trạng thái bị loại và không xuất hiện trên kho chung.`}
+        message={
+          <div className="space-y-4 text-left">
+            <p className="text-slate-600">Bạn có muốn TỪ CHỐI tài liệu "{selectedDoc?.title}"? Tài liệu này sẽ bị chuyển trạng thái bị loại và không xuất hiện trên kho chung.</p>
+            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+              <label className="block text-xs font-bold uppercase tracking-wider text-amber-800 mb-2">Lý do từ chối (Tùy chọn)</label>
+              <textarea 
+                rows={2} 
+                value={reason} 
+                onChange={(e) => setReason(e.target.value)} 
+                placeholder="VD: Nội dung mờ, không đạt yêu cầu..."
+                className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/10 transition-all text-slate-700"
+              />
+              <p className="text-[11px] text-amber-600/80 mt-1.5 font-medium">* Lý do này sẽ được gửi thông báo đến người đăng</p>
+            </div>
+          </div>
+        }
         confirmLabel="Từ chối"
-        variant="danger"
+        variant="warning"
         loading={actionLoading}
       />
 
@@ -265,7 +285,22 @@ export default function Documents() {
         onCancel={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Xóa vĩnh viễn"
-        message={`Bạn có chắc muốn XÓA VĨNH VIỄN tài liệu "${selectedDoc?.title}"? Hành động này sẽ gỡ tệp khỏi hệ thống lưu trữ Cloudinary và cơ sở dữ liệu.`}
+        message={
+          <div className="space-y-4 text-left">
+            <p className="text-slate-600">Bạn có chắc muốn XÓA VĨNH VIỄN tài liệu "{selectedDoc?.title}"? Hành động này sẽ gỡ tệp khỏi hệ thống lưu trữ Cloudinary và cơ sở dữ liệu.</p>
+            <div className="bg-red-50/50 p-4 rounded-xl border border-red-100">
+              <label className="block text-xs font-bold uppercase tracking-wider text-red-800 mb-2">Lý do XÓA tài liệu (Tùy chọn)</label>
+              <textarea 
+                rows={2} 
+                value={reason} 
+                onChange={(e) => setReason(e.target.value)} 
+                placeholder="VD: Vi phạm bản quyền..."
+                className="w-full rounded-xl border border-red-200 bg-white p-3 text-sm focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-500/10 transition-all text-slate-700"
+              />
+              <p className="text-[11px] text-red-600/80 mt-1.5 font-medium">* Lý do này sẽ được gửi thông báo đến người đăng</p>
+            </div>
+          </div>
+        }
         confirmLabel="Xóa vĩnh viễn"
         variant="danger"
         loading={actionLoading}
