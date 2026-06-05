@@ -50,7 +50,7 @@ class MediaPickerSheet extends StatelessWidget {
       final platformFile = result.files.single;
       XFile xFile;
 
-      if (platformFile.path != null) {
+      if (!kIsWeb && platformFile.path != null) {
         // Mobile: dùng đường dẫn thực
         xFile = XFile(platformFile.path!, name: platformFile.name);
       } else if (platformFile.bytes != null) {

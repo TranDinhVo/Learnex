@@ -1,4 +1,3 @@
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -84,7 +83,9 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   void _onUpload() {
     if (_pickedFile == null) return;
-    if (_pickedFile!.path == null && _pickedFile!.bytes == null) {
+    final String? safePath = kIsWeb ? null : _pickedFile!.path;
+    
+    if (safePath == null && _pickedFile!.bytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lỗi: File không có đường dẫn hoặc dữ liệu byte.')),
       );
@@ -95,7 +96,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
     context.read<DocumentBloc>().add(
       UploadDocumentEvent(
-        filePath: _pickedFile!.path,
+        filePath: safePath,
         fileBytes: _pickedFile!.bytes?.toList(),
         fileName: _pickedFile!.name,
         title: _titleCtrl.text.trim(),
