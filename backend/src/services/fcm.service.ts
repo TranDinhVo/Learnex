@@ -1,20 +1,33 @@
 import * as admin from "firebase-admin";
 import path from "path";
+import fs from "fs";
 
-// 1. Đường dẫn trỏ tới file JSON (Giả định file này nằm ở src/services/fcm.service.ts)
-// Nó sẽ lùi ra src -> lùi ra backend -> tìm file json
-const serviceAccountPath = path.resolve(
-  __dirname,
-  "../../firebase-service-account.json",
-);
+// 1. Xác định đường dẫn file JSON cấu hình Firebase
+const renderSecretPath = "/etc/secrets/firebase-service-account.json";
+const localPath = path.resolve(__dirname, "../../firebase-service-account.json");
+
+let serviceAccountPath = localPath;
+
+// Nếu chạy trên Render (Docker), file secret sẽ được mount tại /etc/secrets
+if (fs.existsSync(renderSecretPath)) {
+  serviceAccountPath = renderSecretPath;
+}
 
 // 2. Khởi tạo Firebase Admin (Chỉ khởi tạo 1 lần để tránh lỗi khi Nodemon reload)
 if (!admin.apps.length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert(require(serviceAccountPath)),
-    });
-    console.log("🔥 [FCM] Firebase Admin SDK initialized successfully");
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      const credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      admin.initializeApp({
+        credential: admin.credential.cert(credentials),
+      });
+      console.log("🔥 [FCM] Firebase Admin SDK initialized successfully via Environment Variable");
+    } else {
+      admin.initializeApp({
+        credential: admin.credential.cert(require(serviceAccountPath)),
+      });
+      console.log(`🔥 [FCM] Firebase Admin SDK initialized successfully via file: ${serviceAccountPath}`);
+    }
   } catch (error) {
     console.error("❌ [FCM] Lỗi khởi tạo Firebase:", error);
   }
