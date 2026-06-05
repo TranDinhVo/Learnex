@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 
 enum PostType { document, image, text }
 
@@ -19,6 +20,7 @@ class PostCard extends StatelessWidget {
   final String? documentUrl;
   final List<String>? imageUrls;
   final List<dynamic>? taggedUsers;
+  final String? location;
   final int likes;
   final int comments;
   final VoidCallback? onAuthorTap;
@@ -51,6 +53,7 @@ class PostCard extends StatelessWidget {
     this.documentUrl,
     this.imageUrls,
     this.taggedUsers,
+    this.location,
     this.authorAvatarUrl,
     this.visibility,
     required this.likes,
@@ -109,7 +112,7 @@ class PostCard extends StatelessWidget {
             ),
           ),
           if (postType == PostType.image && imageUrls != null && imageUrls!.isNotEmpty) ...[
-            _buildImageGrid(),
+            _buildImageGrid(context),
             const SizedBox(height: 0),
           ],
           Padding(
@@ -179,6 +182,22 @@ class PostCard extends StatelessWidget {
                             ),
                           ),
                           _buildTaggedTextSpans(context, theme),
+                        ],
+                        if (location != null && location!.isNotEmpty) ...[
+                          TextSpan(
+                            text: ' tại ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          TextSpan(
+                            text: location,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -358,6 +377,16 @@ class PostCard extends StatelessWidget {
   }
 
   Widget _buildDocumentAttachment(BuildContext context, ThemeData theme) {
+    // Derive file type label from URL or name
+    String fileExt = 'FILE';
+    final src = documentUrl ?? documentName ?? '';
+    final extMatch = RegExp(r'\.([a-zA-Z0-9]+)(?:\?|$)').firstMatch(src);
+    if (extMatch != null) fileExt = extMatch.group(1)!.toUpperCase();
+
+    final iconData = FileIconHelper.getIcon(documentUrl ?? documentName);
+    final iconColor = FileIconHelper.getColor(documentUrl ?? documentName);
+    final iconBg = FileIconHelper.getBackgroundColor(documentUrl ?? documentName);
+
     return InkWell(
       onTap: documentUrl != null
           ? () async {
@@ -367,56 +396,116 @@ class PostCard extends StatelessWidget {
               }
             }
           : null,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outlineVariant.withValues(alpha: 0.15)),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: iconColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          color: iconBg.withValues(alpha: 0.08),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.picture_as_pdf, color: Colors.red.shade600),
-                ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      documentName ?? 'Tài liệu',
+            // Top: file type accent strip
+            Container(
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: iconColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      fileExt,
                       style: const TextStyle(
-                        fontSize: 13,
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tài liệu học tập',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: iconColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Text(
-                      documentSize ?? '0 MB',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                  if (documentUrl != null)
+                    Icon(Icons.open_in_new_rounded, size: 14, color: iconColor),
+                ],
+              ),
             ),
-            Icon(
-              documentUrl != null ? Icons.open_in_new : Icons.chevron_right,
-              color: documentUrl != null
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 20,
+            // Bottom: file info row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(iconData, color: iconColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          documentName ?? 'Tài liệu đính kèm',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          documentSize != null ? '📎 $documentSize' : '📎 Nhấn để mở tài liệu',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.download_rounded,
+                      color: iconColor,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -424,45 +513,51 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImageGrid() {
+  Widget _buildImageGrid(BuildContext context) {
     final count = imageUrls!.length;
-    final h = count == 1 ? 250.0 : 300.0;
+    // Responsive aspect ratio based on image count
+    final ratio = count == 1 ? 4 / 3 : (count == 2 ? 2 / 1 : 1 / 1);
 
-    return SizedBox(
-      height: h,
-      child: Stack(
-        children: [
-          _buildGridContent(),
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxHeight: 500, // Limit maximum height on wide screens
+      ),
+      child: AspectRatio(
+        aspectRatio: ratio.toDouble(),
+        child: Stack(
+          children: [
+            _buildGridContent(context),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildGridContent() {
+  Widget _buildGridContent(BuildContext context) {
     final count = imageUrls!.length;
     
     if (count == 1) {
-      return SizedBox.expand(child: _buildImageItem(0));
+      return SizedBox.expand(child: _buildImageItem(context, 0));
     } else if (count == 2) {
       return Row(
         children: [
-          Expanded(child: _buildImageItem(0)),
+          Expanded(child: _buildImageItem(context, 0)),
           const SizedBox(width: 2),
-          Expanded(child: _buildImageItem(1)),
+          Expanded(child: _buildImageItem(context, 1)),
         ],
       );
     } else if (count == 3) {
       return Row(
         children: [
-          Expanded(flex: 2, child: _buildImageItem(0)),
+          Expanded(flex: 2, child: _buildImageItem(context, 0)),
           const SizedBox(width: 2),
           Expanded(
             flex: 1,
             child: Column(
               children: [
-                Expanded(child: _buildImageItem(1)),
+                Expanded(child: _buildImageItem(context, 1)),
                 const SizedBox(height: 2),
-                Expanded(child: _buildImageItem(2)),
+                Expanded(child: _buildImageItem(context, 2)),
               ],
             ),
           ),
@@ -471,17 +566,17 @@ class PostCard extends StatelessWidget {
     } else if (count == 4) {
       return Column(
         children: [
-          Expanded(flex: 2, child: _buildImageItem(0)),
+          Expanded(flex: 2, child: _buildImageItem(context, 0)),
           const SizedBox(height: 2),
           Expanded(
             flex: 1,
             child: Row(
               children: [
-                Expanded(child: _buildImageItem(1)),
+                Expanded(child: _buildImageItem(context, 1)),
                 const SizedBox(width: 2),
-                Expanded(child: _buildImageItem(2)),
+                Expanded(child: _buildImageItem(context, 2)),
                 const SizedBox(width: 2),
-                Expanded(child: _buildImageItem(3)),
+                Expanded(child: _buildImageItem(context, 3)),
               ],
             ),
           ),
@@ -495,9 +590,9 @@ class PostCard extends StatelessWidget {
             flex: 2,
             child: Row(
               children: [
-                Expanded(child: _buildImageItem(0)),
+                Expanded(child: _buildImageItem(context, 0)),
                 const SizedBox(width: 2),
-                Expanded(child: _buildImageItem(1)),
+                Expanded(child: _buildImageItem(context, 1)),
               ],
             ),
           ),
@@ -506,15 +601,15 @@ class PostCard extends StatelessWidget {
             flex: 1,
             child: Row(
               children: [
-                Expanded(child: _buildImageItem(2)),
+                Expanded(child: _buildImageItem(context, 2)),
                 const SizedBox(width: 2),
-                Expanded(child: _buildImageItem(3)),
+                Expanded(child: _buildImageItem(context, 3)),
                 const SizedBox(width: 2),
                 Expanded(
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      _buildImageItem(4),
+                      _buildImageItem(context, 4),
                       if (count > 5)
                         Container(
                           color: Colors.black54,
@@ -539,13 +634,33 @@ class PostCard extends StatelessWidget {
     }
   }
 
-  Widget _buildImageItem(int index) {
-    return Image.network(
-      imageUrls![index],
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: Colors.grey.shade200,
-        child: const Icon(Icons.broken_image, color: Colors.grey),
+  Widget _buildImageItem(BuildContext context, int index) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.black,
+                iconTheme: const IconThemeData(color: Colors.white),
+              ),
+              body: Center(
+                child: InteractiveViewer(
+                  child: Image.network(imageUrls![index]),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      child: Image.network(
+        imageUrls![index],
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.broken_image, color: Colors.grey),
+        ),
       ),
     );
   }

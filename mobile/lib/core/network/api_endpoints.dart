@@ -38,9 +38,12 @@ class ApiEndpoints {
   static const String documents = '/documents';
   static const String searchDocuments = '/documents/search';
   static const String documentRecommendations = '/documents/recommendations';
+  static const String documentSubjects = '/documents/subjects';
+  static const String savedDocuments = '/documents/saved';
   static String documentById(String id) => '/documents/$id';
   static String downloadDocument(String id) => '/documents/$id/download';
   static String viewDocument(String id) => '/documents/$id/view';
+  static String toggleSaveDocument(String id) => '/documents/$id/save';
 
   // ── Upload ───────────────────────────────────────────────────────
   static const String uploadFile = '/upload';

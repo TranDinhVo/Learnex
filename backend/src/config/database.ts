@@ -25,6 +25,27 @@ export const checkDatabaseConnection = async () => {
     await db.raw(
       "ALTER TABLE posts ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT '[]'::jsonb",
     );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public'",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS tagged_user_ids JSONB",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_urls JSONB",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS document_id UUID REFERENCES documents(id) ON DELETE SET NULL",
+    );
+    await db.raw(
+      "ALTER TABLE documents ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0",
+    );
+    await db.raw(
+      "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_type VARCHAR(50)",
+    );
+    await db.raw(
+      "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id UUID",
+    );
 
 
     // Stories tables
@@ -86,6 +107,42 @@ export const checkDatabaseConnection = async () => {
     await db.raw(
       `ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_story_preview TEXT`,
     );
+
+    // Subjects table
+    await db.raw(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Default subjects
+    const defaultSubjects = [
+      'Lập trình',
+      'Toán học',
+      'Vật lý',
+      'Triết học',
+      'Tiếng Anh',
+    ];
+    for (const subject of defaultSubjects) {
+      await db.raw(
+        `INSERT INTO subjects (name) VALUES (?) ON CONFLICT (name) DO NOTHING`,
+        [subject]
+      );
+    }
+
+    // Saved documents table
+    await db.raw(`
+      CREATE TABLE IF NOT EXISTS saved_documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, document_id)
+      )
+    `);
 
     console.log("✅ PostgreSQL migrations checked successfully");
   } catch (error) {

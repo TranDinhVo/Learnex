@@ -160,6 +160,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         imageUrls: event.imageUrls,
         documentId: event.documentId,
         visibility: event.visibility.value,
+        location: event.location,
         taggedUserIds: event.taggedUserIds,
       );
       final data = result['data'] ?? result;
@@ -197,6 +198,7 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
         imageUrls: event.imageUrls,
         documentId: event.documentId,
         visibility: event.visibility.value,
+        location: event.location,
         taggedUserIds: event.taggedUserIds,
       );
       final data = result['data'] ?? result;

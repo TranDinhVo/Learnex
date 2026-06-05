@@ -23,6 +23,7 @@ class FeedRepositoryImpl implements FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    String? location,
     List<String>? taggedUserIds,
   }) =>
       _datasource.createPost(
@@ -30,6 +31,7 @@ class FeedRepositoryImpl implements FeedRepository {
         imageUrls: imageUrls,
         documentId: documentId,
         visibility: visibility,
+        location: location,
         taggedUserIds: taggedUserIds,
       );
 
@@ -44,6 +46,7 @@ class FeedRepositoryImpl implements FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String? visibility,
+    String? location,
     List<String>? taggedUserIds,
   }) =>
       _datasource.updatePost(
@@ -52,6 +55,7 @@ class FeedRepositoryImpl implements FeedRepository {
         imageUrls: imageUrls,
         documentId: documentId,
         visibility: visibility,
+        location: location,
         taggedUserIds: taggedUserIds,
       );
 

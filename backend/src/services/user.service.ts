@@ -147,6 +147,8 @@ export const userService = {
   async searchUsers(
     query: string,
     pagination: PaginationParams,
+    userId?: string,
+    friendsOnly?: boolean
   ): Promise<{ data: UserPublic[]; total: number }> {
     const searchTerm = `%${query}%`;
 
@@ -157,6 +159,24 @@ export const userService = {
           .orWhereILike("username", searchTerm)
           .orWhereILike("email", searchTerm);
       });
+
+    if (friendsOnly && userId) {
+      const friendships = await db("friendships")
+        .where(function () {
+          this.where({ requester_id: userId }).orWhere({ addressee_id: userId });
+        })
+        .andWhere({ status: "accepted" });
+
+      const friendIds = friendships.map((f: any) =>
+        f.requester_id === userId ? f.addressee_id : f.requester_id
+      );
+
+      if (friendIds.length === 0) {
+        return { data: [], total: 0 };
+      }
+
+      baseQuery.whereIn("id", friendIds);
+    }
 
     const [{ count }] = await baseQuery
       .clone()

@@ -470,6 +470,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     postType: imageUrls.isNotEmpty
                         ? PostType.image
                         : (_post['document_id'] != null ? PostType.document : PostType.text),
+                    location: _post['location'] as String?,
                     imageUrls: imageUrls,
                     documentName: _post['document_title'] as String? ?? 'Tài liệu',
                     documentSize: _post['document_size'] != null

@@ -12,13 +12,14 @@ export async function uploadFile(
   buffer: Buffer,
   folder: string,
   filename: string,
+  resourceType: "auto" | "image" | "video" | "raw" = "auto",
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: `learnex/${folder}`,
         public_id: filename,
-        resource_type: "auto",
+        resource_type: resourceType,
       },
       (error, result) => {
         if (error) reject(error);

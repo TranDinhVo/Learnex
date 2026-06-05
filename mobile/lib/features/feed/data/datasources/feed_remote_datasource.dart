@@ -37,12 +37,12 @@ class FeedRemoteDatasource {
     return response.data as Map<String, dynamic>;
   }
 
-  /// Tạo bài viết mới
   Future<Map<String, dynamic>> createPost({
     String? content,
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    String? location,
     List<String>? taggedUserIds,
   }) async {
     final response = await _dio.post(
@@ -52,6 +52,7 @@ class FeedRemoteDatasource {
         if (imageUrls != null) 'image_urls': imageUrls,
         if (documentId != null) 'document_id': documentId,
         'visibility': visibility,
+        if (location != null) 'location': location,
         if (taggedUserIds != null && taggedUserIds.isNotEmpty) 'tagged_user_ids': taggedUserIds,
       },
     );
@@ -71,6 +72,7 @@ class FeedRemoteDatasource {
     List<String>? imageUrls,
     String? documentId,
     String? visibility,
+    String? location,
     List<String>? taggedUserIds,
   }) async {
     final response = await _dio.put(
@@ -80,6 +82,7 @@ class FeedRemoteDatasource {
         if (imageUrls != null) 'image_urls': imageUrls,
         if (documentId != null) 'document_id': documentId,
         if (visibility != null) 'visibility': visibility,
+        if (location != null) 'location': location,
         if (taggedUserIds != null) 'tagged_user_ids': taggedUserIds,
       },
     );
@@ -201,10 +204,13 @@ class FeedRemoteDatasource {
   }
 
   /// Tìm kiếm người dùng theo tên
-  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+  Future<List<Map<String, dynamic>>> searchUsers(String query, {bool friendsOnly = false}) async {
     final response = await _dio.get(
       '/users/search',
-      queryParameters: {'q': query},
+      queryParameters: {
+        'q': query,
+        if (friendsOnly) 'friends_only': 'true',
+      },
     );
     final data = response.data['data'];
     if (data is List) {

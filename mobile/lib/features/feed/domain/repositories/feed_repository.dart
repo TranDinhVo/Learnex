@@ -15,6 +15,7 @@ abstract class FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String visibility = 'public',
+    String? location,
     List<String>? taggedUserIds,
   });
 
@@ -28,6 +29,7 @@ abstract class FeedRepository {
     List<String>? imageUrls,
     String? documentId,
     String? visibility,
+    String? location,
     List<String>? taggedUserIds,
   });
 

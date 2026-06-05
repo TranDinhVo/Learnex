@@ -63,6 +63,7 @@ CREATE TABLE posts (
   image_urls      JSONB,
   document_id     UUID        REFERENCES documents(id) ON DELETE SET NULL,
   visibility      VARCHAR(20) DEFAULT 'public',
+  location        VARCHAR(255),
   tagged_user_ids JSONB,
   is_deleted  BOOLEAN     DEFAULT FALSE,
   created_at  TIMESTAMPTZ DEFAULT NOW(),

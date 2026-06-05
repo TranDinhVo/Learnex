@@ -6,7 +6,7 @@ import { notificationService } from './notification.service';
 import { webSocketService } from './websocket.service';
 
 export const postService = {
-  async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string; tagged_user_ids?: string[] }): Promise<Post> {
+    async create(userId: string, data: { content?: string; image_urls?: string[]; document_id?: string; visibility?: string; location?: string; tagged_user_ids?: string[] }): Promise<Post> {
     const [post] = await db('posts')
       .insert({
         user_id: userId,
@@ -14,6 +14,7 @@ export const postService = {
         image_urls: data.image_urls ? JSON.stringify(data.image_urls) : null,
         document_id: data.document_id || null,
         visibility: data.visibility || 'public',
+        location: data.location || null,
         tagged_user_ids: data.tagged_user_ids ? JSON.stringify(data.tagged_user_ids) : null,
       })
       .returning('*');
@@ -85,7 +86,7 @@ export const postService = {
     return post;
   },
 
-  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string; tagged_user_ids?: string[]; document_id?: string }): Promise<Post> {
+  async update(postId: string, userId: string, data: { content?: string; image_urls?: string[]; visibility?: string; location?: string; tagged_user_ids?: string[]; document_id?: string }): Promise<Post> {
     const post = await db('posts').where({ id: postId, user_id: userId, is_deleted: false }).first();
     if (!post) {
       throw new AppError('Post not found or you are not the author.', 404);
@@ -95,6 +96,7 @@ export const postService = {
     if (data.content !== undefined) updateData.content = data.content;
     if (data.image_urls !== undefined) updateData.image_urls = JSON.stringify(data.image_urls);
     if (data.visibility !== undefined) updateData.visibility = data.visibility;
+    if (data.location !== undefined) updateData.location = data.location;
     if (data.tagged_user_ids !== undefined) updateData.tagged_user_ids = JSON.stringify(data.tagged_user_ids);
     if (data.document_id !== undefined) updateData.document_id = data.document_id;
 

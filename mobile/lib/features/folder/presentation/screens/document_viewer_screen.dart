@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/folder_document.dart';
+import '../bloc/document_bloc.dart';
+import '../bloc/document_event.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
+
 
 class DocumentViewerScreen extends StatelessWidget {
   const DocumentViewerScreen({super.key, required this.document});
@@ -15,6 +21,26 @@ class DocumentViewerScreen extends StatelessWidget {
       barrierColor: Colors.black.withValues(alpha: 0.2),
       builder: (_) => _LearnexAiSheet(document: document),
     );
+  }
+
+  Future<void> _downloadFile(BuildContext context) async {
+    final url = Uri.tryParse(document.fileUrl);
+    if (url == null || document.fileUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không có đường dẫn file.')),
+      );
+      return;
+    }
+    context.read<DocumentBloc>().add(DownloadDocumentEvent(documentId: document.id));
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở file. Vui lòng thử lại.')),
+        );
+      }
+    }
   }
 
   @override
@@ -71,11 +97,42 @@ class DocumentViewerScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        _IconCircleButton(icon: Icons.download_rounded, onPressed: () {}),
+                        _IconCircleButton(icon: Icons.download_rounded, onPressed: () => _downloadFile(context)),
                         const SizedBox(width: 4),
                         _IconCircleButton(icon: Icons.share_rounded, onPressed: () {}),
-                        const SizedBox(width: 4),
-                        _IconCircleButton(icon: Icons.more_vert_rounded, onPressed: () {}),
+                        if (document.isMine) ...[
+                          const SizedBox(width: 4),
+                          _IconCircleButton(
+                            icon: Icons.delete_outline_rounded,
+                            iconColor: Colors.redAccent,
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Xoá tài liệu'),
+                                  content: const Text('Bạn có chắc chắn muốn xoá tài liệu này không? Hành động này không thể hoàn tác.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      child: const Text('Huỷ'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        context.read<DocumentBloc>().add(DeleteDocumentEvent(documentId: document.id));
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop(); // Go back to folder overview
+                                      },
+                                      child: const Text('Xoá', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 4),
+                          _IconCircleButton(icon: Icons.more_vert_rounded, onPressed: () {}),
+                        ],
                       ],
                     ),
                   ),
@@ -173,20 +230,36 @@ class DocumentViewerScreen extends StatelessWidget {
                                               top: BorderSide(color: Color(0xFFF1F5F9)),
                                             ),
                                           ),
-                                          child: const Column(
+                                          child: Column(
                                             children: [
-                                              _FormulaLine(left: '∫', right: 'f(x)dx = F(x) + C'),
-                                              SizedBox(height: 28),
-                                              _TextPlaceholderBar(widthFactor: 1.0),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.92),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.97),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.72),
-                                              SizedBox(height: 32),
-                                              _FormulaLine(left: '∫', right: 'u dv = uv - ∫v du'),
-                                              SizedBox(height: 24),
+                                              const SizedBox(height: 32),
+                                              Icon(
+                                                FileIconHelper.getIcon(document.fileUrl),
+                                                size: 64,
+                                                color: FileIconHelper.getColor(document.fileUrl).withValues(alpha: 0.5),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                'Bản xem trước trực tiếp chưa khả dụng trên trình duyệt web.',
+                                                textAlign: TextAlign.center,
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  color: const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 24),
+                                              ElevatedButton.icon(
+                                                onPressed: () => _downloadFile(context),
+                                                icon: const Icon(Icons.download_rounded, size: 20),
+                                                label: const Text('Tải xuống / Xem tài liệu'),
+                                                style: ElevatedButton.styleFrom(
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 32),
                                             ],
                                           ),
                                         ),
@@ -261,10 +334,11 @@ class DocumentViewerScreen extends StatelessWidget {
 }
 
 class _IconCircleButton extends StatelessWidget {
-  const _IconCircleButton({required this.icon, required this.onPressed});
+  const _IconCircleButton({required this.icon, required this.onPressed, this.iconColor});
 
   final IconData icon;
   final VoidCallback onPressed;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -275,7 +349,7 @@ class _IconCircleButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 22, color: const Color(0xFF6B7280)),
+          child: Icon(icon, size: 22, color: iconColor ?? const Color(0xFF6B7280)),
         ),
       ),
     );

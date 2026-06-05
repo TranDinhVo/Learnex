@@ -9,6 +9,7 @@ import '../widgets/post_card.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 import 'package:learnex/shared/utils/date_formatter.dart';
 import 'package:learnex/shared/utils/image_parser.dart';
+import 'package:learnex/shared/widgets/user_account_icon.dart';
 import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
@@ -244,7 +245,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(width: 8),
+                      const UserAccountIcon(),
                     ],
                   ),
 
@@ -317,113 +318,136 @@ class _FeedScreenState extends State<FeedScreen> {
                       ), // padding bottom for fab/nav
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate((context, index) {
-                          final post = rawPosts[index] as Map<String, dynamic>;
-                          final name =
-                              post['author_name'] ?? 'Học viên Learnex';
-                          final handle = post['author_username'] != null
-                              ? '@${post['author_username']}'
-                              : '@student';
-                          final content = post['content'] ?? '';
-                          final id = post['id']?.toString() ?? '0';
-                          final postUserId = post['user_id']?.toString();
-                          final authState = context.read<AuthBloc>().state;
-                          final currentUserId = authState is Authenticated ? authState.user.id : '';
-                          final isOwner = postUserId == currentUserId;
+                          try {
+                            final post = rawPosts[index] as Map<String, dynamic>;
+                            final name = post['author_name'] ?? 'Học viên Learnex';
+                            final handle = post['author_username'] != null
+                                ? '@${post['author_username']}'
+                                : '@student';
+                            final content = post['content'] ?? '';
+                            final id = post['id']?.toString() ?? '0';
+                            final postUserId = post['user_id']?.toString();
+                            final authState = context.read<AuthBloc>().state;
+                            final currentUserId = authState is Authenticated ? authState.user.id : '';
+                            final isOwner = postUserId == currentUserId;
 
-                          final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
+                            final imageUrls = ImageParser.parseImageUrls(post['image_urls']);
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: PostCard(
-                              authorName: name,
-                              authorHandle: handle,
-                              timeAgo: formatTimeAgo(post['created_at']?.toString()),
-                              authorInitials: name.isNotEmpty
-                                  ? name[0].toUpperCase()
-                                  : 'U',
-                              authorAvatarUrl: post['author_avatar'] as String?,
-                              avatarColor: Colors.indigo.shade100,
-                              avatarTextColor: Colors.indigo.shade700,
-                              content: content,
-                              postType: imageUrls.isNotEmpty
-                                  ? PostType.image
-                                  : (post['document_id'] != null
-                                        ? PostType.document
-                                        : PostType.text),
-                              imageUrls: imageUrls,
-                              taggedUsers: post['tagged_users'] as List<dynamic>?,
-                              documentName: post['document_title'] as String? ?? 'Tài liệu',
-                              documentSize: post['document_size'] != null
-                                  ? '${((post['document_size'] as num) / 1024).toStringAsFixed(0)} KB'
-                                  : null,
-                              documentUrl: post['document_url'] as String?,
-                              visibility: post['visibility']?.toString(),
-                              likes: post['like_count'] ?? 0,
-                              comments: post['comment_count'] ?? 0,
-                              isLiked: post['is_liked'] == true,
-                              isSaved: post['is_saved'] == true,
-                              onEditTap: isOwner ? () {
-                                _showPrivacyEditBottomSheet(context, id, post['visibility']?.toString() ?? 'friends', post);
-                              } : null,
-                              onDeleteTap: isOwner
-                                  ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
-                                  : null,
-                              onLikeTap: () {
-                                context.read<FeedBloc>().add(LikePostEvent(postId: id));
-                              },
-                              onSaveTap: () {
-                                context.read<FeedBloc>().add(SavePostEvent(postId: id));
-                              },
-                              onLikersTap: () => _showLikersBottomSheet(context, id),
-                              onCommentTap: () async {
-                                final updated = await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => PostDetailScreen(post: post),
-                                  ),
-                                );
-                                if (updated != null && context.mounted) {
-                                  context.read<FeedBloc>().add(UpdatePostInListEvent(updatedPost: updated));
-                                }
-                              },
-                              onAuthorTap: () {
-                                final postUserId = post['user_id']?.toString();
-                                if (postUserId != null) {
+                            // Safe parse document_size — server may return String or num
+                            String? docSize;
+                            final rawSize = post['document_size'];
+                            if (rawSize != null) {
+                              try {
+                                final sizeNum = rawSize is num ? rawSize : num.parse(rawSize.toString());
+                                docSize = '${(sizeNum / 1024).toStringAsFixed(0)} KB';
+                              } catch (_) {
+                                docSize = rawSize.toString();
+                              }
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: PostCard(
+                                authorName: name,
+                                authorHandle: handle,
+                                timeAgo: formatTimeAgo(post['created_at']?.toString()),
+                                authorInitials: name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                authorAvatarUrl: post['author_avatar'] as String?,
+                                avatarColor: Colors.indigo.shade100,
+                                avatarTextColor: Colors.indigo.shade700,
+                                content: content,
+                                postType: imageUrls.isNotEmpty
+                                    ? PostType.image
+                                    : (post['document_id'] != null
+                                          ? PostType.document
+                                          : PostType.text),
+                                location: post['location'] as String?,
+                                imageUrls: imageUrls,
+                                taggedUsers: post['tagged_users'] as List<dynamic>?,
+                                documentName: post['document_title']?.toString() ?? 'Tài liệu',
+                                documentSize: docSize,
+                                documentUrl: post['document_url']?.toString(),
+                                visibility: post['visibility']?.toString(),
+                                likes: post['like_count'] ?? 0,
+                                comments: post['comment_count'] ?? 0,
+                                isLiked: post['is_liked'] == true,
+                                isSaved: post['is_saved'] == true,
+                                onEditTap: isOwner ? () {
+                                  _showPrivacyEditBottomSheet(context, id, post['visibility']?.toString() ?? 'friends', post);
+                                } : null,
+                                onDeleteTap: isOwner
+                                    ? () => context.read<FeedBloc>().add(DeletePostEvent(postId: id))
+                                    : null,
+                                onLikeTap: () {
+                                  context.read<FeedBloc>().add(LikePostEvent(postId: id));
+                                },
+                                onSaveTap: () {
+                                  context.read<FeedBloc>().add(SavePostEvent(postId: id));
+                                },
+                                onLikersTap: () => _showLikersBottomSheet(context, id),
+                                onCommentTap: () async {
+                                  final updated = await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => PostDetailScreen(post: post),
+                                    ),
+                                  );
+                                  if (updated != null && context.mounted) {
+                                    context.read<FeedBloc>().add(UpdatePostInListEvent(updatedPost: updated));
+                                  }
+                                },
+                                onAuthorTap: () {
+                                  final postUserId = post['user_id']?.toString();
+                                  if (postUserId != null) {
+                                    final authState = context.read<AuthBloc>().state;
+                                    final currentUserId = authState is Authenticated ? authState.user.id : '';
+                                    if (postUserId == currentUserId) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                                      );
+                                    } else {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(builder: (_) => UserProfileScreen(userId: postUserId)),
+                                      );
+                                    }
+                                  }
+                                },
+                                onTaggedUserTap: (taggedUserId) {
                                   final authState = context.read<AuthBloc>().state;
                                   final currentUserId = authState is Authenticated ? authState.user.id : '';
-                                  if (postUserId == currentUserId) {
+                                  if (taggedUserId == currentUserId) {
                                     Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const ProfileScreen(),
-                                      ),
+                                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
                                     );
                                   } else {
                                     Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => UserProfileScreen(userId: postUserId),
-                                      ),
+                                      MaterialPageRoute(builder: (_) => UserProfileScreen(userId: taggedUserId)),
                                     );
                                   }
-                                }
-                              },
-                              onTaggedUserTap: (taggedUserId) {
-                                final authState = context.read<AuthBloc>().state;
-                                final currentUserId = authState is Authenticated ? authState.user.id : '';
-                                if (taggedUserId == currentUserId) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const ProfileScreen(),
-                                    ),
-                                  );
-                                } else {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => UserProfileScreen(userId: taggedUserId),
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                          );
+                                },
+                              ),
+                            );
+                          } catch (e) {
+                            // Nếu có lỗi khi render bài đăng, hiện placeholder thay vì crash
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_outline, color: Colors.grey.shade400),
+                                    const SizedBox(width: 12),
+                                    Text('Không thể hiển thị bài đăng này.',
+                                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
                         }, childCount: rawPosts.length),
                       ),
                     ),

@@ -16,6 +16,7 @@ class CreatePostEvent extends FeedEvent {
   final List<String>? imageUrls;
   final String? documentId;
   final PostVisibility visibility;
+  final String? location;
   final List<String>? taggedUserIds;
 
   CreatePostEvent({
@@ -23,6 +24,7 @@ class CreatePostEvent extends FeedEvent {
     this.imageUrls, 
     this.documentId,
     this.visibility = PostVisibility.public,
+    this.location,
     this.taggedUserIds,
   });
 }
@@ -34,6 +36,7 @@ class EditPostEvent extends FeedEvent {
   final List<String>? imageUrls;
   final String? documentId;
   final PostVisibility visibility;
+  final String? location;
   final List<String>? taggedUserIds;
 
   EditPostEvent({
@@ -42,6 +45,7 @@ class EditPostEvent extends FeedEvent {
     this.imageUrls, 
     this.documentId,
     this.visibility = PostVisibility.public,
+    this.location,
     this.taggedUserIds,
   });
 }

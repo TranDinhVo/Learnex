@@ -1,7 +1,8 @@
-
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
 import '../bloc/document_state.dart';
@@ -22,12 +23,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   final List<String> _tags = [];
   String? _subject;
 
-  final List<String> _subjects = [
-    'Toán cao cấp',
-    'Vật lý đại cương',
-    'Kinh tế vi mô',
-    'Lập trình hướng đối tượng',
-  ];
+  List<String> _subjects = [];
 
   final List<String> _availableTags = [
     'Giải tích',
@@ -41,16 +37,20 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   bool get _canUpload {
     return _pickedFile != null &&
-        _titleCtrl.text.trim().isNotEmpty &&
-        _subject != null &&
-        _subject!.isNotEmpty;
+        _titleCtrl.text.trim().isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<DocumentBloc>().add(LoadSubjectsEvent());
   }
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'docx', 'pptx'],
-      withData: true,
+      withData: kIsWeb,
     );
     if (result == null) return;
     final file = result.files.first;
@@ -80,11 +80,26 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     });
   }
 
+  bool _isUploading = false;
+
   void _onUpload() {
-    if (_pickedFile == null || _pickedFile!.path == null) return;
+    if (_pickedFile == null) return;
+    final String? safePath = kIsWeb ? null : _pickedFile!.path;
+    
+    if (safePath == null && _pickedFile!.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: File không có đường dẫn hoặc dữ liệu byte.')),
+      );
+      return;
+    }
+    
+    setState(() => _isUploading = true);
+
     context.read<DocumentBloc>().add(
       UploadDocumentEvent(
-        filePath: _pickedFile!.path!,
+        filePath: safePath,
+        fileBytes: _pickedFile!.bytes?.toList(),
+        fileName: _pickedFile!.name,
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         subject: _subject,
@@ -108,14 +123,22 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
       body: BlocListener<DocumentBloc, DocumentState>(
         listener: (context, state) {
           if (state is DocumentUploaded) {
+            setState(() => _isUploading = false);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('🎉 Tài liệu đã được tải lên thành công!'), backgroundColor: Colors.green),
             );
-            Navigator.of(context).maybePop();
+            Navigator.of(context).maybePop(state.document);
           } else if (state is DocumentUploadError) {
+            setState(() => _isUploading = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
             );
+          } else if (state is DocumentUploading) {
+            setState(() => _isUploading = true);
+          } else if (state is SubjectsLoaded) {
+            setState(() {
+              _subjects = state.subjects.map((e) => e['name'].toString()).toList();
+            });
           }
         },
         child: SafeArea(
@@ -163,7 +186,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: _canUpload ? _onUpload : null,
+                              onPressed: (_canUpload && !_isUploading) ? _onUpload : null,
                               style: ElevatedButton.styleFrom(
                                 shape: const StadiumBorder(),
                                 backgroundColor: theme.primaryColor,
@@ -173,7 +196,12 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text('Đăng'),
+                              child: _isUploading 
+                                  ? const SizedBox(
+                                      width: 20, height: 20, 
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                    )
+                                  : const Text('Đăng'),
                             ),
                           ],
                         ),
@@ -219,10 +247,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(
-                                            Icons.cloud_upload,
+                                          child: Icon(
+                                            _pickedFile == null ? Icons.cloud_upload : FileIconHelper.getIcon(_pickedFile!.name),
                                             size: 32,
-                                            color: Colors.blue,
+                                            color: _pickedFile == null ? Colors.blue : FileIconHelper.getColor(_pickedFile!.name),
                                           ),
                                         ),
                                         const SizedBox(height: 10),
@@ -314,7 +342,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               const SizedBox(height: 14),
                               // Subject
                               Text(
-                                'Môn học *',
+                                'Môn học (tùy chọn)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),

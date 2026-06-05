@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
@@ -9,8 +11,13 @@ import '../../../room/presentation/screens/room_list_screen.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
 import '../bloc/document_state.dart';
+import '../../../../shared/widgets/user_account_icon.dart';
 import 'folder_screen.dart';
 import 'add_document_screen.dart';
+import 'document_viewer_screen.dart';
+import 'document_search_screen.dart';
+import '../../domain/entities/folder_document.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 
 class FolderOverviewScreen extends StatefulWidget {
   const FolderOverviewScreen({super.key});
@@ -20,6 +27,8 @@ class FolderOverviewScreen extends StatefulWidget {
 }
 
 class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
+  List<dynamic> _cachedDocs = [];
+
   @override
   void initState() {
     super.initState();
@@ -74,16 +83,17 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
             builder: (context, state) {
               final isLoading = state is DocumentLoading;
               final errorMsg = state is DocumentError ? state.message : null;
-              List<dynamic> rawDocs = [];
-
               if (state is DocumentsLoaded) {
-                rawDocs = state.documents;
+                _cachedDocs = state.documents;
+              } else if (state is DocumentInitial) {
+                _cachedDocs = [];
               }
 
               // Group documents by subject dynamically
               final Map<String, List<Map<String, dynamic>>> subjectGroups = {};
-              for (var d in rawDocs) {
-                final sub = d['subject'] ?? 'Khác';
+              for (var d in _cachedDocs) {
+                final rawSub = d['subject'] as String?;
+                final sub = (rawSub != null && rawSub.trim().isNotEmpty) ? rawSub : 'Khác';
                 if (!subjectGroups.containsKey(sub)) {
                   subjectGroups[sub] = [];
                 }
@@ -143,18 +153,25 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                             ),
                           );
                           if (mounted) {
-                            docBloc.add(LoadDocumentsEvent());
+                            // Load user's own docs so new upload appears immediately
+                            docBloc.add(LoadMyDocumentsEvent());
                           }
                         },
                       ),
-                      const SizedBox(width: 8),
+                      const UserAccountIcon(),
                     ],
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
                     sliver: SliverToBoxAdapter(
                       child: _SearchBar(
-                        onTap: () => _showComingSoon(context, 'Tìm kiếm'),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DocumentSearchScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -171,47 +188,49 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     sliver: SliverToBoxAdapter(
-                      child: isLoading
-                          ? const Padding(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (isLoading)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 16.0),
+                              child: LinearProgressIndicator(),
+                            ),
+                          if (!isLoading && subjectGroups.isEmpty)
+                            const Padding(
                               padding: EdgeInsets.symmetric(vertical: 24.0),
-                              child: Center(child: CircularProgressIndicator()),
+                              child: Center(
+                                child: Text(
+                                  'Không có môn học nào.',
+                                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                                ),
+                              ),
                             )
-                          : (subjectGroups.isEmpty
-                                ? const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 24.0,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'Không có môn học nào.',
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : GridView.count(
-                                    crossAxisCount: 2,
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
-                                    childAspectRatio: 1.02,
-                                    children: subjectGroups.entries.map((
-                                      entry,
-                                    ) {
-                                      return _FolderMiniCard(
-                                        title: entry.key,
-                                        countLabel:
-                                            '${entry.value.length} tài liệu',
-                                        icon: Icons.folder_rounded,
-                                        accent: const Color(0xFFE2DFFF),
-                                        iconColor: const Color(0xFF3525CD),
-                                      );
-                                    }).toList(),
-                                  )),
+                          else if (subjectGroups.isNotEmpty)
+                            GridView.extent(
+                              maxCrossAxisExtent: 200,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 1.02,
+                              children: subjectGroups.entries.map((entry) {
+                                return _FolderMiniCard(
+                                  title: entry.key,
+                                  countLabel: '${entry.value.length} tài liệu',
+                                  icon: Icons.folder_rounded,
+                                  accent: const Color(0xFFE2DFFF),
+                                  iconColor: const Color(0xFF3525CD),
+                                  onTap: () {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(builder: (_) => FolderScreen(initialSubject: entry.key)),
+                                    );
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   SliverPadding(
@@ -247,7 +266,7 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                     ),
                                   ),
                                 )
-                              : (rawDocs.isEmpty
+                              : (_cachedDocs.isEmpty
                                     ? const SliverToBoxAdapter(
                                         child: Center(
                                           child: Text(
@@ -264,13 +283,17 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                           index,
                                         ) {
                                           final doc =
-                                              rawDocs[index]
+                                              _cachedDocs[index]
                                                   as Map<String, dynamic>;
                                           final title =
                                               doc['title'] ??
                                               'Tài liệu không tên';
-                                          final size = doc['file_size'] != null
-                                              ? '${(doc['file_size'] / 1024).toStringAsFixed(0)} KB'
+                                          final rawSize = doc['file_size'];
+                                          final sizeNum = rawSize is num
+                                              ? rawSize
+                                              : (rawSize is String ? num.tryParse(rawSize) : null);
+                                          final size = sizeNum != null
+                                              ? '${(sizeNum / 1024).toStringAsFixed(0)} KB'
                                               : '1.5 MB';
 
                                           return Padding(
@@ -281,17 +304,20 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                               title: title,
                                               sizeLabel: size,
                                               dateLabel: 'Vừa xong',
-                                              icon:
-                                                  Icons.picture_as_pdf_rounded,
-                                              iconBackground: const Color(
-                                                0xFFFFE4E6,
-                                              ),
-                                              iconColor: const Color(
-                                                0xFFBA1A1A,
-                                              ),
+                                              icon: FileIconHelper.getIcon(doc['file_url']),
+                                              iconBackground: FileIconHelper.getBackgroundColor(doc['file_url']),
+                                              iconColor: FileIconHelper.getColor(doc['file_url']),
+                                              onTap: () {
+                                                final authState = context.read<AuthBloc>().state;
+                                                final currentUserId = authState is Authenticated ? authState.user.id : null;
+                                                final folderDoc = FolderDocument.fromJson(doc, currentUserId: currentUserId);
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: folderDoc)),
+                                                );
+                                              },
                                             ),
                                           );
-                                        }, childCount: rawDocs.length),
+                                        }, childCount: _cachedDocs.length),
                                       ))),
                   ),
                 ],
@@ -464,6 +490,7 @@ class _FolderMiniCard extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.iconColor,
+    required this.onTap,
   });
 
   final String title;
@@ -471,6 +498,7 @@ class _FolderMiniCard extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final Color iconColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -478,7 +506,7 @@ class _FolderMiniCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -541,6 +569,7 @@ class _RecentDocumentCard extends StatelessWidget {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    required this.onTap,
   });
 
   final String title;
@@ -549,6 +578,7 @@ class _RecentDocumentCard extends StatelessWidget {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -556,7 +586,7 @@ class _RecentDocumentCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
