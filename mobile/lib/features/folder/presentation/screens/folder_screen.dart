@@ -25,6 +25,8 @@ class FolderScreen extends StatefulWidget {
 }
 
 class _FolderScreenState extends State<FolderScreen> {
+  List<FolderDocument> _cachedDocs = [];
+  bool _hasMore = false;
   List<String> _subjects = ['Tất cả'];
   final List<String> _tabs = const ['Tất cả', 'Của tôi', 'Đã lưu'];
 
@@ -305,13 +307,23 @@ class _FolderScreenState extends State<FolderScreen> {
                 ),
                 BlocBuilder<DocumentBloc, DocumentState>(
                   builder: (context, state) {
-                    if (state is DocumentLoading) {
+                    if (state is DocumentsLoaded) {
+                      final authState = context.read<AuthBloc>().state;
+                      final currentUserId = authState is Authenticated ? authState.user.id : null;
+                      _cachedDocs = state.documents.map((e) => FolderDocument.fromJson(e, currentUserId: currentUserId)).toList();
+                      _hasMore = state.hasMore;
+                    } else if (state is DocumentInitial) {
+                      _cachedDocs = [];
+                      _hasMore = false;
+                    }
+
+                    if (state is DocumentLoading && _cachedDocs.isEmpty) {
                       return const SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    if (state is DocumentError) {
+                    if (state is DocumentError && _cachedDocs.isEmpty) {
                       return SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
@@ -323,17 +335,7 @@ class _FolderScreenState extends State<FolderScreen> {
                       );
                     }
 
-                    List<FolderDocument> documents = [];
-                    bool hasMore = false;
-
-                    if (state is DocumentsLoaded) {
-                      final authState = context.read<AuthBloc>().state;
-                      final currentUserId = authState is Authenticated ? authState.user.id : null;
-                      documents = state.documents.map((e) => FolderDocument.fromJson(e, currentUserId: currentUserId)).toList();
-                      hasMore = state.hasMore;
-                    }
-
-                    if (documents.isEmpty && state is! DocumentLoading && state is! DocumentInitial) {
+                    if (_cachedDocs.isEmpty && state is! DocumentLoading && state is! DocumentInitial) {
                       return const SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
@@ -345,30 +347,41 @@ class _FolderScreenState extends State<FolderScreen> {
                       );
                     }
 
-                    return SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          mainAxisSpacing: 14,
-                          crossAxisSpacing: 14,
-                          childAspectRatio: 0.74,
+                    return SliverMainAxisGroup(
+                      slivers: [
+                        if (state is DocumentLoading)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: LinearProgressIndicator(),
+                            ),
+                          ),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
+                          sliver: SliverGrid(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              childAspectRatio: 0.74,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                if (index == _cachedDocs.length) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                final document = _cachedDocs[index];
+                                return _FolderDocumentCard(
+                                  document: document,
+                                  onTap: () => _openDocument(document),
+                                  onSaveToggle: () => _toggleSave(document),
+                                );
+                              },
+                              childCount: _hasMore ? _cachedDocs.length + 1 : _cachedDocs.length,
+                            ),
+                          ),
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            if (index == documents.length) {
-                              return const Center(child: CircularProgressIndicator());
-                            }
-                            final document = documents[index];
-                            return _FolderDocumentCard(
-                              document: document,
-                              onTap: () => _openDocument(document),
-                              onSaveToggle: () => _toggleSave(document),
-                            );
-                          },
-                          childCount: hasMore ? documents.length + 1 : documents.length,
-                        ),
-                      ),
+                      ],
                     );
                   },
                 ),

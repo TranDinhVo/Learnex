@@ -24,6 +24,8 @@ class FolderOverviewScreen extends StatefulWidget {
 }
 
 class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
+  List<dynamic> _cachedDocs = [];
+
   @override
   void initState() {
     super.initState();
@@ -78,15 +80,15 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
             builder: (context, state) {
               final isLoading = state is DocumentLoading;
               final errorMsg = state is DocumentError ? state.message : null;
-              List<dynamic> rawDocs = [];
-
               if (state is DocumentsLoaded) {
-                rawDocs = state.documents;
+                _cachedDocs = state.documents;
+              } else if (state is DocumentInitial) {
+                _cachedDocs = [];
               }
 
               // Group documents by subject dynamically
               final Map<String, List<Map<String, dynamic>>> subjectGroups = {};
-              for (var d in rawDocs) {
+              for (var d in _cachedDocs) {
                 final sub = d['subject'] ?? 'Khác';
                 if (!subjectGroups.containsKey(sub)) {
                   subjectGroups[sub] = [];
@@ -176,13 +178,16 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     sliver: SliverToBoxAdapter(
-                      child: isLoading
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 24.0),
-                              child: Center(child: CircularProgressIndicator()),
-                            )
-                          : (subjectGroups.isEmpty
-                                ? const Padding(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (isLoading)
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 16.0),
+                              child: LinearProgressIndicator(),
+                            ),
+                          if (!isLoading && subjectGroups.isEmpty)
+                            const Padding(
                                     padding: EdgeInsets.symmetric(
                                       vertical: 24.0,
                                     ),
@@ -221,7 +226,9 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                         },
                                       );
                                     }).toList(),
-                                  )),
+                                  ),
+                        ],
+                      ),
                     ),
                   ),
                   SliverPadding(
