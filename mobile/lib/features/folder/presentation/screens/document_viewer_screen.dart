@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/folder_document.dart';
+import '../bloc/document_bloc.dart';
+import '../bloc/document_event.dart';
 
 
 class DocumentViewerScreen extends StatelessWidget {
@@ -95,8 +98,39 @@ class DocumentViewerScreen extends StatelessWidget {
                         _IconCircleButton(icon: Icons.download_rounded, onPressed: () => _downloadFile(context)),
                         const SizedBox(width: 4),
                         _IconCircleButton(icon: Icons.share_rounded, onPressed: () {}),
-                        const SizedBox(width: 4),
-                        _IconCircleButton(icon: Icons.more_vert_rounded, onPressed: () {}),
+                        if (document.isMine) ...[
+                          const SizedBox(width: 4),
+                          _IconCircleButton(
+                            icon: Icons.delete_outline_rounded,
+                            iconColor: Colors.redAccent,
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Xoá tài liệu'),
+                                  content: const Text('Bạn có chắc chắn muốn xoá tài liệu này không? Hành động này không thể hoàn tác.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      child: const Text('Huỷ'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        context.read<DocumentBloc>().add(DeleteDocumentEvent(documentId: document.id));
+                                        Navigator.of(context).pop();
+                                        Navigator.of(context).pop(); // Go back to folder overview
+                                      },
+                                      child: const Text('Xoá', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ] else ...[
+                          const SizedBox(width: 4),
+                          _IconCircleButton(icon: Icons.more_vert_rounded, onPressed: () {}),
+                        ],
                       ],
                     ),
                   ),
@@ -282,10 +316,11 @@ class DocumentViewerScreen extends StatelessWidget {
 }
 
 class _IconCircleButton extends StatelessWidget {
-  const _IconCircleButton({required this.icon, required this.onPressed});
+  const _IconCircleButton({required this.icon, required this.onPressed, this.iconColor});
 
   final IconData icon;
   final VoidCallback onPressed;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +331,7 @@ class _IconCircleButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Icon(icon, size: 22, color: const Color(0xFF6B7280)),
+          child: Icon(icon, size: 22, color: iconColor ?? const Color(0xFF6B7280)),
         ),
       ),
     );

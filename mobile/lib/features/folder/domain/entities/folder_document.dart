@@ -96,7 +96,7 @@ class FolderDocument {
     return FolderDocument(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
-      fileName: 'Tài liệu',
+      fileName: json['title'] as String? ?? 'Tài liệu',
       category: json['subject'] as String? ?? 'Chung',
       type: docType,
       author: json['author_name'] as String? ?? json['author_username'] as String? ?? 'Unknown',

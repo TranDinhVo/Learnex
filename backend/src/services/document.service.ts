@@ -10,7 +10,8 @@ export const documentService = {
     file: Express.Multer.File,
     data: { title: string; description?: string; subject?: string; tags?: string[] }
   ): Promise<DocumentType> {
-    const fileUrl = await uploadFile(file.buffer, 'documents', `doc_${Date.now()}`, 'raw');
+    const ext = file.originalname.split('.').pop() || 'bin';
+    const fileUrl = await uploadFile(file.buffer, 'documents', `doc_${Date.now()}.${ext}`, 'raw');
 
     const [document] = await db('documents')
       .insert({
