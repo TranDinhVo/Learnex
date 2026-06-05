@@ -22,7 +22,7 @@ router.put(
 
 router.get(
   "/search",
-  validate([query("q").notEmpty().withMessage("Search query is required")]),
+  validate([query("q").optional().isString()]),
   userController.searchUsers,
 );
 

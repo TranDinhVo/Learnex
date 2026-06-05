@@ -201,10 +201,13 @@ class FeedRemoteDatasource {
   }
 
   /// Tìm kiếm người dùng theo tên
-  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+  Future<List<Map<String, dynamic>>> searchUsers(String query, {bool friendsOnly = false}) async {
     final response = await _dio.get(
       '/users/search',
-      queryParameters: {'q': query},
+      queryParameters: {
+        'q': query,
+        if (friendsOnly) 'friends_only': 'true',
+      },
     );
     final data = response.data['data'];
     if (data is List) {

@@ -25,6 +25,27 @@ export const checkDatabaseConnection = async () => {
     await db.raw(
       "ALTER TABLE posts ADD COLUMN IF NOT EXISTS excluded_user_ids JSONB DEFAULT '[]'::jsonb",
     );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public'",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS tagged_user_ids JSONB",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_urls JSONB",
+    );
+    await db.raw(
+      "ALTER TABLE posts ADD COLUMN IF NOT EXISTS document_id UUID REFERENCES documents(id) ON DELETE SET NULL",
+    );
+    await db.raw(
+      "ALTER TABLE documents ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0",
+    );
+    await db.raw(
+      "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_type VARCHAR(50)",
+    );
+    await db.raw(
+      "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS ref_id UUID",
+    );
 
 
     // Stories tables
