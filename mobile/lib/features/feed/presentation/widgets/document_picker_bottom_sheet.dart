@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../folder/presentation/bloc/document_bloc.dart';
 import '../../../folder/presentation/bloc/document_event.dart';
 import '../../../folder/presentation/bloc/document_state.dart';
+import '../../../folder/presentation/screens/add_document_screen.dart';
 
 class DocumentPickerBottomSheet extends StatefulWidget {
   const DocumentPickerBottomSheet({super.key});
@@ -15,8 +16,8 @@ class _DocumentPickerBottomSheetState extends State<DocumentPickerBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Tải danh sách tài liệu
-    context.read<DocumentBloc>().add(LoadDocumentsEvent());
+    // Load only current user's documents (not all public docs)
+    context.read<DocumentBloc>().add(LoadMyDocumentsEvent());
   }
 
   @override
@@ -63,6 +64,45 @@ class _DocumentPickerBottomSheetState extends State<DocumentPickerBottomSheet> {
               ),
             ),
             const Divider(),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.upload_file,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+              title: const Text(
+                'Tải lên tài liệu mới',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onTap: () async {
+                final doc = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddDocumentScreen()),
+                );
+                if (doc != null && doc is Map<String, dynamic>) {
+                  // ignore: use_build_context_synchronously
+                  Navigator.of(context).pop(doc);
+                }
+              },
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              width: double.infinity,
+              color: Colors.grey.shade50,
+              child: Text(
+                'Tài liệu đã tải lên',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
             Expanded(
               child: BlocBuilder<DocumentBloc, DocumentState>(
                 builder: (context, state) {

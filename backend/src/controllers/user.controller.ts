@@ -71,10 +71,11 @@ export const userController = {
   ): Promise<void> {
     try {
       const query = (req.query.q as string) || "";
+      const friendsOnly = req.query.friends_only === 'true';
       const pagination = getPaginationParams(
         req.query as { page?: string; limit?: string },
       );
-      const { data, total } = await userService.searchUsers(query, pagination);
+      const { data, total } = await userService.searchUsers(query, pagination, req.user?.userId, friendsOnly);
 
       res.status(200).json({
         success: true,

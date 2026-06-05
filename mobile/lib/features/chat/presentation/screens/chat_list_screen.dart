@@ -15,6 +15,7 @@ import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
+import 'package:learnex/shared/widgets/user_account_icon.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});

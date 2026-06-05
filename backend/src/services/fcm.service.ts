@@ -79,7 +79,7 @@ export const fcmService = {
       // (Tùy chọn) Lọc ra các token bị lỗi (thường là do user đã gỡ app hoặc token hết hạn) để xóa khỏi DB
       if (response.failureCount > 0) {
         const failedTokens: string[] = [];
-        response.responses.forEach((resp, idx) => {
+        response.responses.forEach((resp: any, idx: number) => {
           if (!resp.success) {
             failedTokens.push(tokens[idx]);
           }

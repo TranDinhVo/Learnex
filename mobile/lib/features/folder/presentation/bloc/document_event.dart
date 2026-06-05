@@ -6,7 +6,19 @@ class LoadDocumentsEvent extends DocumentEvent {
   LoadDocumentsEvent({this.subject});
 }
 
+class LoadMyDocumentsEvent extends DocumentEvent {
+  final String? subject;
+  LoadMyDocumentsEvent({this.subject});
+}
+
+class LoadSavedDocumentsEvent extends DocumentEvent {
+  final String? subject;
+  LoadSavedDocumentsEvent({this.subject});
+}
+
 class LoadMoreDocumentsEvent extends DocumentEvent {}
+
+class LoadSubjectsEvent extends DocumentEvent {}
 
 class SearchDocumentsEvent extends DocumentEvent {
   final String query;
@@ -16,13 +28,17 @@ class SearchDocumentsEvent extends DocumentEvent {
 class LoadRecommendationsEvent extends DocumentEvent {}
 
 class UploadDocumentEvent extends DocumentEvent {
-  final String filePath;
+  final String? filePath;
+  final List<int>? fileBytes;
+  final String fileName;
   final String title;
   final String? description;
   final String? subject;
   final List<String>? tags;
   UploadDocumentEvent({
-    required this.filePath,
+    this.filePath,
+    this.fileBytes,
+    required this.fileName,
     required this.title,
     this.description,
     this.subject,
@@ -38,4 +54,9 @@ class DownloadDocumentEvent extends DocumentEvent {
 class DeleteDocumentEvent extends DocumentEvent {
   final String documentId;
   DeleteDocumentEvent({required this.documentId});
+}
+
+class ToggleSaveDocumentEvent extends DocumentEvent {
+  final String documentId;
+  ToggleSaveDocumentEvent({required this.documentId});
 }

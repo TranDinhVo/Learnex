@@ -29,6 +29,7 @@ router.post(
     body('image_urls').optional().isArray(),
     body('document_id').optional().isUUID(),
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
+    body('location').optional().isString(),
     body('tagged_user_ids').optional().isArray(),
     body('tagged_user_ids.*').optional().isUUID(),
     body().custom((value, { req }) => {
@@ -51,6 +52,7 @@ router.put(
     body('content').optional().isString(),
     body('image_urls').optional().isArray(),
     body('visibility').optional().isString().isIn(['public', 'friends', 'private']),
+    body('location').optional().isString(),
     body('tagged_user_ids').optional().isArray(),
     body('tagged_user_ids.*').optional().isUUID(),
     body().custom((value, { req }) => {

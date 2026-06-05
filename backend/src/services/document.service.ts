@@ -10,7 +10,8 @@ export const documentService = {
     file: Express.Multer.File,
     data: { title: string; description?: string; subject?: string; tags?: string[] }
   ): Promise<DocumentType> {
-    const fileUrl = await uploadFile(file.buffer, 'documents', `doc_${Date.now()}`);
+    const ext = file.originalname.split('.').pop() || 'bin';
+    const fileUrl = await uploadFile(file.buffer, 'documents', `doc_${Date.now()}.${ext}`, 'raw');
 
     const [document] = await db('documents')
       .insert({
@@ -30,7 +31,8 @@ export const documentService = {
 
   async getAll(
     pagination: PaginationParams,
-    filters?: { subject?: string; user_id?: string }
+    filters?: { subject?: string; user_id?: string },
+    requestUserId?: string
   ): Promise<{ data: any[]; total: number }> {
     let query = db('documents as d')
       .select(
@@ -41,7 +43,15 @@ export const documentService = {
       )
       .leftJoin('users as u', 'd.user_id', 'u.id');
 
-    let countQuery = db('documents as d');
+    if (requestUserId) {
+      query.select(db.raw(`EXISTS(SELECT 1 FROM saved_documents sd WHERE sd.document_id = d.id AND sd.user_id = ?) as is_saved`, [requestUserId]));
+    }
+
+    // Only show approved or pending (NULL) docs in public feed — never show rejected
+    query = query.whereRaw('(d.is_approved IS NULL OR d.is_approved = true)');
+
+    let countQuery = db('documents as d')
+      .whereRaw('(d.is_approved IS NULL OR d.is_approved = true)');
 
     if (filters?.subject) {
       query = query.where('d.subject', filters.subject);
@@ -63,8 +73,50 @@ export const documentService = {
     return { data, total };
   },
 
-  async getById(documentId: string): Promise<any> {
-    const document = await db('documents as d')
+  // getMine: always show all user's own documents regardless of approval status
+  async getMine(
+    userId: string,
+    pagination: PaginationParams,
+    filters?: { subject?: string }
+  ): Promise<{ data: any[]; total: number }> {
+    let query = db('documents as d')
+      .select(
+        'd.*',
+        'u.full_name as author_name',
+        'u.username as author_username',
+        'u.avatar_url as author_avatar',
+        db.raw('true as is_mine'),
+        db.raw(`
+          CASE
+            WHEN d.is_approved IS NULL THEN 'pending'
+            WHEN d.is_approved = true THEN 'approved'
+            ELSE 'rejected'
+          END as approval_status
+        `)
+      )
+      .leftJoin('users as u', 'd.user_id', 'u.id')
+      .where('d.user_id', userId);
+
+    let countQuery = db('documents as d').where('d.user_id', userId);
+
+    if (filters?.subject) {
+      query = query.where('d.subject', filters.subject);
+      countQuery = countQuery.where('d.subject', filters.subject);
+    }
+
+    const [{ count }] = await countQuery.count('* as count');
+    const total = parseInt(count as string, 10);
+
+    const data = await query
+      .orderBy('d.created_at', 'desc')
+      .limit(pagination.limit)
+      .offset((pagination.page - 1) * pagination.limit);
+
+    return { data, total };
+  },
+
+  async getById(documentId: string, requestUserId?: string): Promise<any> {
+    const query = db('documents as d')
       .select(
         'd.*',
         'u.full_name as author_name',
@@ -72,8 +124,13 @@ export const documentService = {
         'u.avatar_url as author_avatar',
       )
       .leftJoin('users as u', 'd.user_id', 'u.id')
-      .where('d.id', documentId)
-      .first();
+      .where('d.id', documentId);
+
+    if (requestUserId) {
+      query.select(db.raw(`EXISTS(SELECT 1 FROM saved_documents sd WHERE sd.document_id = d.id AND sd.user_id = ?) as is_saved`, [requestUserId]));
+    }
+
+    const document = await query.first();
 
     if (!document) {
       throw new AppError('Document not found.', 404);
@@ -84,7 +141,8 @@ export const documentService = {
 
   async search(
     query: string,
-    pagination: PaginationParams
+    pagination: PaginationParams,
+    requestUserId?: string
   ): Promise<{ data: any[]; total: number }> {
     const searchTerm = `%${query}%`;
 
@@ -95,8 +153,13 @@ export const documentService = {
         'u.username as author_username',
         'u.avatar_url as author_avatar',
       )
-      .leftJoin('users as u', 'd.user_id', 'u.id')
-      .where(function () {
+      .leftJoin('users as u', 'd.user_id', 'u.id');
+
+    if (requestUserId) {
+      baseQuery.select(db.raw(`EXISTS(SELECT 1 FROM saved_documents sd WHERE sd.document_id = d.id AND sd.user_id = ?) as is_saved`, [requestUserId]));
+    }
+
+    baseQuery.where(function () {
         this.whereILike('d.title', searchTerm)
           .orWhereILike('d.description', searchTerm)
           .orWhereILike('d.subject', searchTerm);
@@ -199,5 +262,67 @@ export const documentService = {
     }
 
     return query;
+  },
+
+  async toggleSave(documentId: string, userId: string): Promise<{ is_saved: boolean }> {
+    const doc = await db('documents').where({ id: documentId }).first();
+    if (!doc) throw new AppError('Document not found.', 404);
+
+    const saved = await db('saved_documents')
+      .where({ user_id: userId, document_id: documentId })
+      .first();
+
+    if (saved) {
+      await db('saved_documents')
+        .where({ user_id: userId, document_id: documentId })
+        .del();
+      return { is_saved: false };
+    } else {
+      await db('saved_documents')
+        .insert({ user_id: userId, document_id: documentId });
+      return { is_saved: true };
+    }
+  },
+
+  async getSaved(
+    userId: string,
+    pagination: PaginationParams,
+    filters?: { subject?: string }
+  ): Promise<{ data: any[]; total: number }> {
+    let query = db('documents as d')
+      .select(
+        'd.*',
+        'u.full_name as author_name',
+        'u.username as author_username',
+        'u.avatar_url as author_avatar',
+        db.raw('true as is_saved')
+      )
+      .innerJoin('saved_documents as sd', 'd.id', 'sd.document_id')
+      .leftJoin('users as u', 'd.user_id', 'u.id')
+      .where('sd.user_id', userId);
+
+    let countQuery = db('saved_documents as sd')
+      .innerJoin('documents as d', 'sd.document_id', 'd.id')
+      .where('sd.user_id', userId);
+
+    if (filters?.subject) {
+      query = query.where('d.subject', filters.subject);
+      countQuery = countQuery.where('d.subject', filters.subject);
+    }
+
+    const [{ count }] = await countQuery.count('* as count');
+    const total = parseInt(count as string, 10);
+
+    const data = await query
+      .orderBy('sd.created_at', 'desc')
+      .limit(pagination.limit)
+      .offset((pagination.page - 1) * pagination.limit);
+
+    return { data, total };
+  },
+
+  async getSubjects(): Promise<any[]> {
+    const subjects = await db('subjects').orderBy('name', 'asc');
+    return subjects;
   },
 };

@@ -63,6 +63,7 @@ CREATE TABLE posts (
   image_urls      JSONB,
   document_id     UUID        REFERENCES documents(id) ON DELETE SET NULL,
   visibility      VARCHAR(20) DEFAULT 'public',
+  location        VARCHAR(255),
   tagged_user_ids JSONB,
   excluded_user_ids JSONB DEFAULT '[]'::jsonb,  -- [Thêm dòng này]
   is_deleted  BOOLEAN     DEFAULT FALSE,

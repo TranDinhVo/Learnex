@@ -401,6 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 avatarColor: Colors.indigo.shade100,
                                 avatarTextColor: Colors.indigo.shade700,
                                 content: postContent,
+                                location: post['location'] as String?,
                                 postType: imageUrls.isNotEmpty
                                     ? PostType.image
                                     : (post['document_id'] != null ? PostType.document : PostType.text),

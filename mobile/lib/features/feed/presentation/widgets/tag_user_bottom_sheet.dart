@@ -50,7 +50,7 @@ class _TagUserBottomSheetState extends State<TagUserBottomSheet> {
     
     _debounce = Timer(const Duration(milliseconds: 500), () async {
       try {
-        final results = await _datasource.searchUsers(query.trim());
+        final results = await _datasource.searchUsers(query.trim(), friendsOnly: true);
         if (mounted) {
           final authState = context.read<AuthBloc>().state;
           final currentUserId = authState is Authenticated ? authState.user.id : '';

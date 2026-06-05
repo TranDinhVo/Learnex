@@ -28,11 +28,16 @@ const documentFileFilter = (req: any, file: Express.Multer.File, cb: multer.File
     'video/quicktime',
     'video/x-msvideo',
     'video/x-matroska',
+    'application/octet-stream', // Cho phép upload dạng byte array từ client
   ];
-  if (allowedMimes.includes(file.mimetype)) {
+
+  const ext = file.originalname.split('.').pop()?.toLowerCase();
+  const allowedExts = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'zip', 'mp4', 'mov', 'avi', 'mkv'];
+
+  if (allowedMimes.includes(file.mimetype) || (ext && allowedExts.includes(ext))) {
     cb(null, true);
   } else {
-    cb(new AppError('This file type is not allowed.', 400));
+    cb(new AppError(`File type not allowed: ${file.mimetype}`, 400));
   }
 };
 

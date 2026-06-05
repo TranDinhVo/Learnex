@@ -12,7 +12,18 @@ class DocumentRepositoryImpl implements DocumentRepository {
       _datasource.getAll(page: page, limit: limit, subject: subject);
 
   @override
+  Future<Map<String, dynamic>> getMine({int page = 1, int limit = 20, String? subject}) =>
+      _datasource.getMine(page: page, limit: limit, subject: subject);
+
+  @override
+  Future<Map<String, dynamic>> getSaved({int page = 1, int limit = 20, String? subject}) =>
+      _datasource.getSaved(page: page, limit: limit, subject: subject);
+
+  @override
   Future<Map<String, dynamic>> search(String query) => _datasource.search(query);
+
+  @override
+  Future<List<dynamic>> getSubjects() => _datasource.getSubjects();
 
   @override
   Future<Map<String, dynamic>> getRecommendations() => _datasource.getRecommendations();
@@ -22,7 +33,9 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   @override
   Future<Map<String, dynamic>> upload({
-    required String filePath,
+    String? filePath,
+    List<int>? fileBytes,
+    required String fileName,
     required String title,
     String? description,
     String? subject,
@@ -30,6 +43,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }) =>
       _datasource.upload(
         filePath: filePath,
+        fileBytes: fileBytes,
+        fileName: fileName,
         title: title,
         description: description,
         subject: subject,
@@ -38,6 +53,9 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   @override
   Future<String> download(String id) => _datasource.download(id);
+
+  @override
+  Future<Map<String, dynamic>> toggleSave(String id) => _datasource.toggleSave(id);
 
   @override
   Future<void> trackView(String id) => _datasource.trackView(id);
