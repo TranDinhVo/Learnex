@@ -31,7 +31,11 @@ export const documentController = {
       if (req.query.subject) filters.subject = req.query.subject as string;
       if (req.query.user_id) filters.user_id = req.query.user_id as string;
 
-      const { data, total } = await documentService.getAll(pagination, filters);
+      if (req.query.mine === 'true' && req.user?.userId) {
+        filters.user_id = req.user.userId;
+      }
+
+      const { data, total } = await documentService.getAll(pagination, filters, req.user?.userId);
 
       res.status(200).json({
         success: true,
@@ -45,7 +49,7 @@ export const documentController = {
 
   async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const document = await documentService.getById(req.params.id as string);
+      const document = await documentService.getById(req.params.id as string, req.user?.userId);
       sendResponse(res, 200, document, 'Document retrieved');
     } catch (error) {
       next(error);
@@ -56,7 +60,7 @@ export const documentController = {
     try {
       const query = (req.query.q as string) || '';
       const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
-      const { data, total } = await documentService.search(query, pagination);
+      const { data, total } = await documentService.search(query, pagination, req.user?.userId);
 
       res.status(200).json({
         success: true,
@@ -100,6 +104,42 @@ export const documentController = {
       const limit = parseInt(req.query.limit as string || '10', 10);
       const recommendations = await documentService.getRecommendations(req.user!.userId, limit);
       sendResponse(res, 200, recommendations, 'Recommendations retrieved');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async toggleSave(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await documentService.toggleSave(req.params.id as string, req.user!.userId);
+      sendResponse(res, 200, result, result.is_saved ? 'Document saved' : 'Document unsaved');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getSaved(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
+      const filters: { subject?: string } = {};
+      if (req.query.subject) filters.subject = req.query.subject as string;
+
+      const { data, total } = await documentService.getSaved(req.user!.userId, pagination, filters);
+
+      res.status(200).json({
+        success: true,
+        data,
+        pagination: buildPaginationInfo(total, pagination),
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getSubjects(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const subjects = await documentService.getSubjects();
+      sendResponse(res, 200, subjects, 'Subjects retrieved');
     } catch (error) {
       next(error);
     }

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
+import '../bloc/document_bloc.dart';
+import '../bloc/document_event.dart';
+import '../bloc/document_state.dart';
 import 'folder_overview_screen.dart';
 import 'document_viewer_screen.dart';
 import '../../domain/entities/folder_document.dart';
@@ -10,112 +14,73 @@ import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
 
 class FolderScreen extends StatefulWidget {
-  const FolderScreen({super.key});
+  final String? initialSubject;
+  const FolderScreen({super.key, this.initialSubject});
 
   @override
   State<FolderScreen> createState() => _FolderScreenState();
 }
 
 class _FolderScreenState extends State<FolderScreen> {
-  final List<String> _subjects = const [
-    'Tất cả',
-    'Lập trình',
-    'Toán học',
-    'Vật lý',
-    'Triết học',
-    'Tiếng Anh',
-  ];
-
-  final List<String> _tabs = const [
-    'Tất cả',
-    'Của tôi',
-    'Đã lưu',
-  ];
-
-  final List<FolderDocument> _documents = const [
-    FolderDocument(
-      title: 'Giải tích 2 - Tổng hợp',
-      fileName: 'Giải tích 2 - Tổng hợp.pdf',
-      category: 'Toán học',
-      type: DocumentType.pdf,
-      author: 'HoangAn',
-      downloads: '1.2k',
-      fileSize: '4.2 MB',
-      currentPage: 1,
-      totalPages: 24,
-      chapterTitle: 'Chương 1: Tích phân không xác định',
-      summary: 'Bộ tài liệu tổng hợp các công thức, ví dụ và bài tập trọng tâm cho học phần Giải tích 2.',
-      accent: Color(0xFFFEE2E2),
-      iconColor: Color(0xFFEF4444),
-      isMine: true,
-      isSaved: true,
-    ),
-    FolderDocument(
-      title: 'Slide CNPM ch.1-5',
-      fileName: 'Slide-CNPM-ch1-5.pptx',
-      category: 'Lập trình',
-      type: DocumentType.presentation,
-      author: 'ThuyLinh',
-      downloads: '450',
-      fileSize: '18.6 MB',
-      currentPage: 1,
-      totalPages: 46,
-      chapterTitle: 'Tổng quan dự án phần mềm',
-      summary: 'Slide bài giảng cho các buổi đầu của môn Công nghệ Phần mềm.',
-      accent: Color(0xFFFFEDD5),
-      iconColor: Color(0xFFF97316),
-      isMine: false,
-      isSaved: true,
-    ),
-    FolderDocument(
-      title: 'Kiến trúc máy tính',
-      fileName: 'Kien-truc-may-tinh.docx',
-      category: 'Lập trình',
-      type: DocumentType.doc,
-      author: 'MinhDuc',
-      downloads: '892',
-      fileSize: '6.8 MB',
-      currentPage: 1,
-      totalPages: 18,
-      chapterTitle: 'Bộ nhớ và tổ chức máy tính',
-      summary: 'Ghi chú ngắn gọn về kiến trúc máy tính và các câu hỏi ôn tập thường gặp.',
-      accent: Color(0xFFDBEAFE),
-      iconColor: Color(0xFF3B82F6),
-      isMine: true,
-      isSaved: false,
-    ),
-    FolderDocument(
-      title: 'Source code BT lớn',
-      fileName: 'Source-code-BT-lon.zip',
-      category: 'Lập trình',
-      type: DocumentType.zip,
-      author: 'DevHacker',
-      downloads: '2.1k',
-      fileSize: '31.4 MB',
-      currentPage: 1,
-      totalPages: 12,
-      chapterTitle: 'Mẫu source code và tài nguyên',
-      summary: 'Gói mã nguồn tham khảo cho bài tập lớn và project cuối kỳ.',
-      accent: Color(0xFFE9D5FF),
-      iconColor: Color(0xFF8B5CF6),
-      isMine: false,
-      isSaved: false,
-    ),
-  ];
+  List<String> _subjects = ['Tất cả'];
+  final List<String> _tabs = const ['Tất cả', 'Của tôi', 'Đã lưu'];
 
   int _selectedSubjectIndex = 0;
   int _selectedTabIndex = 0;
 
-  List<FolderDocument> get _visibleDocuments {
-    return _documents.where((document) {
-      final subjectMatch = _selectedSubjectIndex == 0 || document.category == _subjects[_selectedSubjectIndex];
-      final tabMatch = switch (_selectedTabIndex) {
-        1 => document.isMine,
-        2 => document.isSaved,
-        _ => true,
-      };
-      return subjectMatch && tabMatch;
-    }).toList();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    
+    // Fetch subjects first
+    context.read<DocumentBloc>().add(LoadSubjectsEvent());
+    
+    if (widget.initialSubject != null) {
+      // Will set the index when subjects are loaded
+    }
+    
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      context.read<DocumentBloc>().add(LoadMoreDocumentsEvent());
+    }
+  }
+
+  void _loadData() {
+    final subject = _selectedSubjectIndex == 0 ? null : _subjects[_selectedSubjectIndex];
+    
+    if (_selectedTabIndex == 0) {
+      context.read<DocumentBloc>().add(LoadDocumentsEvent(subject: subject));
+    } else if (_selectedTabIndex == 1) {
+      context.read<DocumentBloc>().add(LoadMyDocumentsEvent(subject: subject));
+    } else if (_selectedTabIndex == 2) {
+      context.read<DocumentBloc>().add(LoadSavedDocumentsEvent(subject: subject));
+    }
+  }
+
+  void _onSubjectChanged(int index) {
+    setState(() {
+      _selectedSubjectIndex = index;
+    });
+    _loadData();
+  }
+
+  void _onTabChanged(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+    });
+    _loadData();
   }
 
   void _showComingSoon(String feature) {
@@ -160,197 +125,262 @@ class _FolderScreenState extends State<FolderScreen> {
     );
   }
 
+  void _toggleSave(FolderDocument document) {
+    if (document.id.isEmpty) return;
+    context.read<DocumentBloc>().add(ToggleSaveDocumentEvent(documentId: document.id));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFFFFFFF), Color(0xFFF8F9FA)],
+      body: BlocListener<DocumentBloc, DocumentState>(
+        listener: (context, state) {
+          if (state is SubjectsLoaded) {
+            setState(() {
+              _subjects = ['Tất cả', ...state.subjects.map((e) => e['name'].toString())];
+              if (widget.initialSubject != null) {
+                final index = _subjects.indexOf(widget.initialSubject!);
+                if (index != -1) {
+                  _selectedSubjectIndex = index;
+                  _loadData();
+                }
+              }
+            });
+          }
+          if (state is DocumentSaveToggled) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.isSaved ? 'Đã lưu tài liệu' : 'Đã bỏ lưu tài liệu')),
+            );
+            _loadData(); // Reload the list to update UI
+          }
+        },
+        child: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF8F9FA)],
+                ),
               ),
             ),
-          ),
-          CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                backgroundColor: Colors.white.withValues(alpha: 0.9),
-                elevation: 0,
-                pinned: true,
-                leadingWidth: 56,
-                titleSpacing: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  color: const Color(0xFF9CA3AF),
-                  onPressed: _goOverview,
-                ),
-                title: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+            CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverAppBar(
+                  backgroundColor: Colors.white.withValues(alpha: 0.9),
+                  elevation: 0,
+                  pinned: true,
+                  leadingWidth: 56,
+                  titleSpacing: 0,
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                    color: const Color(0xFF9CA3AF),
+                    onPressed: _goOverview,
+                  ),
+                  title: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.menu_book_rounded, color: theme.colorScheme.primary, size: 20),
                       ),
-                      child: Icon(Icons.menu_book_rounded, color: theme.colorScheme.primary, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Tài liệu',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF111827),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Tài liệu',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF111827),
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Quản lý folder và học liệu',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                          Text(
+                            'Quản lý folder và học liệu',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.cloud_upload_outlined, color: theme.colorScheme.primary),
+                      onPressed: () => _showComingSoon('Tải lên'),
                     ),
+                    const SizedBox(width: 8),
                   ],
                 ),
-                actions: [
-                  IconButton(
-                    icon: Icon(Icons.cloud_upload_outlined, color: theme.colorScheme.primary),
-                    onPressed: () => _showComingSoon('Tải lên'),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                  child: _SearchField(onPressed: () => _showComingSoon('Tìm kiếm')),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 44,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _subjects.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (context, index) {
-                      final selected = index == _selectedSubjectIndex;
-                      return ChoiceChip(
-                        label: Text(_subjects[index]),
-                        selected: selected,
-                        onSelected: (_) => setState(() => _selectedSubjectIndex = index),
-                        backgroundColor: const Color(0xFFE7E8E9),
-                        selectedColor: theme.colorScheme.primary,
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : const Color(0xFF4B5563),
-                          fontWeight: FontWeight.w600,
-                        ),
-                        shape: const StadiumBorder(),
-                        side: BorderSide.none,
-                      );
-                    },
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: _SearchField(onPressed: () {
+                      showSearch(context: context, delegate: _DocumentSearchDelegate(context.read<DocumentBloc>()));
+                    }),
                   ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 44,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _subjects.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 10),
+                      itemBuilder: (context, index) {
+                        final selected = index == _selectedSubjectIndex;
+                        return ChoiceChip(
+                          label: Text(_subjects[index]),
+                          selected: selected,
+                          onSelected: (_) => _onSubjectChanged(index),
+                          backgroundColor: const Color(0xFFE7E8E9),
+                          selectedColor: theme.colorScheme.primary,
+                          labelStyle: TextStyle(
+                            color: selected ? Colors.white : const Color(0xFF4B5563),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          shape: const StadiumBorder(),
+                          side: BorderSide.none,
+                        );
+                      },
                     ),
-                    child: Row(
-                      children: List.generate(_tabs.length, (index) {
-                        final selected = index == _selectedTabIndex;
-                        return Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () => setState(() => _selectedTabIndex = index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 220),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: selected ? theme.colorScheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                _tabs[index],
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: selected ? Colors.white : const Color(0xFF6B7280),
-                                  fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE5E7EB)),
+                      ),
+                      child: Row(
+                        children: List.generate(_tabs.length, (index) {
+                          final selected = index == _selectedTabIndex;
+                          return Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _onTabChanged(index),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: selected ? theme.colorScheme.primary : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  _tabs[index],
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: selected ? Colors.white : const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ),
+                          );
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+                BlocBuilder<DocumentBloc, DocumentState>(
+                  builder: (context, state) {
+                    if (state is DocumentLoading) {
+                      return const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (state is DocumentError) {
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: Text(
+                            state.message,
+                            style: const TextStyle(color: Colors.red),
                           ),
-                        );
-                      }),
-                    ),
-                  ),
+                        ),
+                      );
+                    }
+
+                    List<FolderDocument> documents = [];
+                    bool hasMore = false;
+
+                    if (state is DocumentsLoaded) {
+                      documents = state.documents.map((e) => FolderDocument.fromJson(e)).toList();
+                      hasMore = state.hasMore;
+                    }
+
+                    if (documents.isEmpty && state is! DocumentLoading && state is! DocumentInitial) {
+                      return const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: Text(
+                            'Chưa có tài liệu phù hợp.',
+                            style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
+                      sliver: SliverGrid(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 0.74,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index == documents.length) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            final document = documents[index];
+                            return _FolderDocumentCard(
+                              document: document,
+                              onTap: () => _openDocument(document),
+                              onSaveToggle: () => _toggleSave(document),
+                            );
+                          },
+                          childCount: hasMore ? documents.length + 1 : documents.length,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              if (_visibleDocuments.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Text(
-                      'Chưa có tài liệu phù hợp.',
-                      style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
-                  sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 14,
-                      crossAxisSpacing: 14,
-                      childAspectRatio: 0.74,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final document = _visibleDocuments[index];
-                        return _FolderDocumentCard(
-                          document: document,
-                          onTap: () => _openDocument(document),
-                        );
-                      },
-                      childCount: _visibleDocuments.length,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AppBottomNavBar(
-              currentIndex: 1,
-              onHomeTap: _goHome,
-              onFolderTap: _goOverview,
-              onAddTap: _createPost,
-              onChatTap: _goChat,
-              onMeetingTap: _goRooms,
+              ],
             ),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AppBottomNavBar(
+                currentIndex: 1,
+                onHomeTap: _goHome,
+                onFolderTap: _goOverview,
+                onAddTap: _createPost,
+                onChatTap: _goChat,
+                onMeetingTap: _goRooms,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -390,10 +420,11 @@ class _SearchField extends StatelessWidget {
 }
 
 class _FolderDocumentCard extends StatelessWidget {
-  const _FolderDocumentCard({required this.document, required this.onTap});
+  const _FolderDocumentCard({required this.document, required this.onTap, required this.onSaveToggle});
 
   final FolderDocument document;
   final VoidCallback onTap;
+  final VoidCallback onSaveToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -445,17 +476,24 @@ class _FolderDocumentCard extends StatelessWidget {
                       Positioned(
                         top: 10,
                         right: 10,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            shape: BoxShape.circle,
-                            boxShadow: const [
-                              BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 4)),
-                            ],
+                        child: GestureDetector(
+                          onTap: onSaveToggle,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(color: Color(0x14000000), blurRadius: 10, offset: Offset(0, 4)),
+                              ],
+                            ),
+                            child: Icon(
+                              document.isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, 
+                              size: 18, 
+                              color: document.isSaved ? Colors.blue : const Color(0xFF4B5563)
+                            ),
                           ),
-                          child: const Icon(Icons.bookmark_border_rounded, size: 18, color: Color(0xFF4B5563)),
                         ),
                       ),
                     ],
@@ -536,5 +574,80 @@ class _FolderDocumentCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _DocumentSearchDelegate extends SearchDelegate {
+  final DocumentBloc documentBloc;
+
+  _DocumentSearchDelegate(this.documentBloc);
+
+  @override
+  List<Widget>? buildActions(BuildContext context) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          query = '';
+        },
+      )
+    ];
+  }
+
+  @override
+  Widget? buildLeading(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.arrow_back),
+      onPressed: () {
+        close(context, null);
+      },
+    );
+  }
+
+  @override
+  Widget buildResults(BuildContext context) {
+    if (query.isNotEmpty) {
+      documentBloc.add(SearchDocumentsEvent(query: query));
+    }
+    
+    return BlocProvider.value(
+      value: documentBloc,
+      child: BlocBuilder<DocumentBloc, DocumentState>(
+        builder: (context, state) {
+          if (state is DocumentLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (state is DocumentSearchResults) {
+            final documents = state.results.map((e) => FolderDocument.fromJson(e)).toList();
+            if (documents.isEmpty) {
+              return const Center(child: Text('Không tìm thấy tài liệu nào.'));
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: documents.length,
+              itemBuilder: (context, index) {
+                final doc = documents[index];
+                return ListTile(
+                  leading: const Icon(Icons.picture_as_pdf),
+                  title: Text(doc.title),
+                  subtitle: Text('${doc.author} - ${doc.category}'),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: doc)),
+                    );
+                  },
+                );
+              },
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    return const Center(child: Text('Nhập từ khóa để tìm kiếm tài liệu'));
   }
 }

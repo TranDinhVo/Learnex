@@ -22,12 +22,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
   final List<String> _tags = [];
   String? _subject;
 
-  final List<String> _subjects = [
-    'Toán cao cấp',
-    'Vật lý đại cương',
-    'Kinh tế vi mô',
-    'Lập trình hướng đối tượng',
-  ];
+  List<String> _subjects = [];
 
   final List<String> _availableTags = [
     'Giải tích',
@@ -41,9 +36,13 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   bool get _canUpload {
     return _pickedFile != null &&
-        _titleCtrl.text.trim().isNotEmpty &&
-        _subject != null &&
-        _subject!.isNotEmpty;
+        _titleCtrl.text.trim().isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<DocumentBloc>().add(LoadSubjectsEvent());
   }
 
   Future<void> _pickFile() async {
@@ -116,6 +115,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
             );
+          } else if (state is SubjectsLoaded) {
+            setState(() {
+              _subjects = state.subjects.map((e) => e['name'].toString()).toList();
+            });
           }
         },
         child: SafeArea(
@@ -314,7 +317,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               const SizedBox(height: 14),
                               // Subject
                               Text(
-                                'Môn học *',
+                                'Môn học (tùy chọn)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),

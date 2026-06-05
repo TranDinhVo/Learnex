@@ -47,3 +47,14 @@ class DocumentRecommendationsLoaded extends DocumentState {
   final List<Map<String, dynamic>> recommendations;
   DocumentRecommendationsLoaded(this.recommendations);
 }
+
+class DocumentSaveToggled extends DocumentState {
+  final String documentId;
+  final bool isSaved;
+  DocumentSaveToggled({required this.documentId, required this.isSaved});
+}
+
+class SubjectsLoaded extends DocumentState {
+  final List<dynamic> subjects;
+  SubjectsLoaded(this.subjects);
+}

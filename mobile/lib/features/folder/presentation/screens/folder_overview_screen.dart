@@ -11,6 +11,8 @@ import '../bloc/document_event.dart';
 import '../bloc/document_state.dart';
 import 'folder_screen.dart';
 import 'add_document_screen.dart';
+import 'document_viewer_screen.dart';
+import '../../domain/entities/folder_document.dart';
 
 class FolderOverviewScreen extends StatefulWidget {
   const FolderOverviewScreen({super.key});
@@ -209,6 +211,11 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                         icon: Icons.folder_rounded,
                                         accent: const Color(0xFFE2DFFF),
                                         iconColor: const Color(0xFF3525CD),
+                                        onTap: () {
+                                          Navigator.of(context).pushReplacement(
+                                            MaterialPageRoute(builder: (_) => FolderScreen(initialSubject: entry.key)),
+                                          );
+                                        },
                                       );
                                     }).toList(),
                                   )),
@@ -289,6 +296,12 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                               iconColor: const Color(
                                                 0xFFBA1A1A,
                                               ),
+                                              onTap: () {
+                                                final folderDoc = FolderDocument.fromJson(doc);
+                                                Navigator.of(context).push(
+                                                  MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: folderDoc)),
+                                                );
+                                              },
                                             ),
                                           );
                                         }, childCount: rawDocs.length),
@@ -464,6 +477,7 @@ class _FolderMiniCard extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.iconColor,
+    required this.onTap,
   });
 
   final String title;
@@ -471,6 +485,7 @@ class _FolderMiniCard extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final Color iconColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -478,7 +493,7 @@ class _FolderMiniCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -541,6 +556,7 @@ class _RecentDocumentCard extends StatelessWidget {
     required this.icon,
     required this.iconBackground,
     required this.iconColor,
+    required this.onTap,
   });
 
   final String title;
@@ -549,6 +565,7 @@ class _RecentDocumentCard extends StatelessWidget {
   final IconData icon;
   final Color iconBackground;
   final Color iconColor;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -556,7 +573,7 @@ class _RecentDocumentCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {},
+        onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(

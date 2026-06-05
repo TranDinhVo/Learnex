@@ -24,6 +24,53 @@ class DocumentRemoteDatasource {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Lấy tài liệu của tôi
+  Future<Map<String, dynamic>> getMine({
+    int page = 1,
+    int limit = 20,
+    String? subject,
+  }) async {
+    final response = await _dio.get(
+      ApiEndpoints.documents,
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (subject != null) 'subject': subject,
+        'mine': 'true',
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Lấy tài liệu đã lưu
+  Future<Map<String, dynamic>> getSaved({
+    int page = 1,
+    int limit = 20,
+    String? subject,
+  }) async {
+    final response = await _dio.get(
+      ApiEndpoints.savedDocuments,
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (subject != null) 'subject': subject,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Bật/tắt lưu tài liệu
+  Future<Map<String, dynamic>> toggleSave(String id) async {
+    final response = await _dio.post(ApiEndpoints.toggleSaveDocument(id));
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Lấy danh sách môn học
+  Future<List<dynamic>> getSubjects() async {
+    final response = await _dio.get(ApiEndpoints.documentSubjects);
+    return response.data['data'] as List<dynamic>;
+  }
+
   /// Tìm kiếm tài liệu
   Future<Map<String, dynamic>> search(String query) async {
     final response = await _dio.get(

@@ -108,6 +108,42 @@ export const checkDatabaseConnection = async () => {
       `ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_story_preview TEXT`,
     );
 
+    // Subjects table
+    await db.raw(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
+    // Default subjects
+    const defaultSubjects = [
+      'Lập trình',
+      'Toán học',
+      'Vật lý',
+      'Triết học',
+      'Tiếng Anh',
+    ];
+    for (const subject of defaultSubjects) {
+      await db.raw(
+        `INSERT INTO subjects (name) VALUES (?) ON CONFLICT (name) DO NOTHING`,
+        [subject]
+      );
+    }
+
+    // Saved documents table
+    await db.raw(`
+      CREATE TABLE IF NOT EXISTS saved_documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, document_id)
+      )
+    `);
+
     console.log("✅ PostgreSQL migrations checked successfully");
   } catch (error) {
     console.error("❌ PostgreSQL connection failed:", error);
