@@ -89,7 +89,8 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
               // Group documents by subject dynamically
               final Map<String, List<Map<String, dynamic>>> subjectGroups = {};
               for (var d in _cachedDocs) {
-                final sub = d['subject'] ?? 'Khác';
+                final rawSub = d['subject'] as String?;
+                final sub = (rawSub != null && rawSub.trim().isNotEmpty) ? rawSub : 'Khác';
                 if (!subjectGroups.containsKey(sub)) {
                   subjectGroups[sub] = [];
                 }
