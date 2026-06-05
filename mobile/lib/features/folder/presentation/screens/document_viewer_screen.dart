@@ -228,20 +228,36 @@ class DocumentViewerScreen extends StatelessWidget {
                                               top: BorderSide(color: Color(0xFFF1F5F9)),
                                             ),
                                           ),
-                                          child: const Column(
+                                          child: Column(
                                             children: [
-                                              _FormulaLine(left: '∫', right: 'f(x)dx = F(x) + C'),
-                                              SizedBox(height: 28),
-                                              _TextPlaceholderBar(widthFactor: 1.0),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.92),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.97),
-                                              SizedBox(height: 10),
-                                              _TextPlaceholderBar(widthFactor: 0.72),
-                                              SizedBox(height: 32),
-                                              _FormulaLine(left: '∫', right: 'u dv = uv - ∫v du'),
-                                              SizedBox(height: 24),
+                                              const SizedBox(height: 32),
+                                              Icon(
+                                                Icons.file_present_rounded,
+                                                size: 64,
+                                                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                'Bản xem trước trực tiếp chưa khả dụng trên trình duyệt web.',
+                                                textAlign: TextAlign.center,
+                                                style: theme.textTheme.bodyMedium?.copyWith(
+                                                  color: const Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 24),
+                                              ElevatedButton.icon(
+                                                onPressed: () => _downloadFile(context),
+                                                icon: const Icon(Icons.download_rounded, size: 20),
+                                                label: const Text('Tải xuống / Xem tài liệu'),
+                                                style: ElevatedButton.styleFrom(
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 32),
                                             ],
                                           ),
                                         ),

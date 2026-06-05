@@ -36,8 +36,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
 
   bool get _canUpload {
     return _pickedFile != null &&
-        _titleCtrl.text.trim().isNotEmpty &&
-        _subject != null;
+        _titleCtrl.text.trim().isNotEmpty;
   }
 
   @override
@@ -342,7 +341,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               const SizedBox(height: 14),
                               // Subject
                               Text(
-                                'Môn học *',
+                                'Môn học (tùy chọn)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
