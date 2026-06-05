@@ -135,6 +135,13 @@ export class WebSocketService {
     const { type, data } = message;
 
     switch (type) {
+      case 'ping': {
+        this.sendToUser(senderId, {
+          type: 'pong',
+        });
+        break;
+      }
+
       case 'chat_message': {
         const { receiverId, content, fileUrl } = data;
         const savedMessage = await messageService.send(senderId, receiverId, { content, file_url: fileUrl });
