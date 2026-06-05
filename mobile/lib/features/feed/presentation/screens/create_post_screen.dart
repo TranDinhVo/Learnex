@@ -511,27 +511,25 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       clipBehavior: Clip.hardEdge,
-      child: Stack(
-        children: [
-          _buildGridContent(),
-        ],
-      ),
+      child: _buildGridContent(),
     );
   }
 
   Widget _buildGridContent() {
     final count = _selectedImages.length;
-    final h = 300.0; // Fixed height for grid
+    final h = 350.0; // Tăng chiều cao cho đẹp hơn
+    const double spacing = 3.0; // Khoảng cách giữa các ảnh
 
     if (count == 1) {
-      return SizedBox(
-        height: h,
-        width: double.infinity,
-        child: _buildImageItem(0),
+      return ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.6,
+        ),
+        child: _buildImageItem(0, isSingle: true),
       );
     } else if (count == 2) {
       return SizedBox(
@@ -539,7 +537,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Row(
           children: [
             Expanded(child: _buildImageItem(0)),
-            const SizedBox(width: 2),
+            const SizedBox(width: spacing),
             Expanded(child: _buildImageItem(1)),
           ],
         ),
@@ -550,13 +548,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Row(
           children: [
             Expanded(flex: 2, child: _buildImageItem(0)),
-            const SizedBox(width: 2),
+            const SizedBox(width: spacing),
             Expanded(
               flex: 1,
               child: Column(
                 children: [
                   Expanded(child: _buildImageItem(1)),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: spacing),
                   Expanded(child: _buildImageItem(2)),
                 ],
               ),
@@ -570,15 +568,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Column(
           children: [
             Expanded(flex: 2, child: _buildImageItem(0)),
-            const SizedBox(height: 2),
+            const SizedBox(height: spacing),
             Expanded(
               flex: 1,
               child: Row(
                 children: [
                   Expanded(child: _buildImageItem(1)),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: spacing),
                   Expanded(child: _buildImageItem(2)),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: spacing),
                   Expanded(child: _buildImageItem(3)),
                 ],
               ),
@@ -597,20 +595,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               child: Row(
                 children: [
                   Expanded(child: _buildImageItem(0)),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: spacing),
                   Expanded(child: _buildImageItem(1)),
                 ],
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: spacing),
             Expanded(
               flex: 1,
               child: Row(
                 children: [
                   Expanded(child: _buildImageItem(2)),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: spacing),
                   Expanded(child: _buildImageItem(3)),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: spacing),
                   Expanded(child: _buildImageItem(4)),
                 ],
               ),
@@ -621,35 +619,60 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     }
   }
 
-  Widget _buildImageItem(int index) {
+  Widget _buildImageItem(int index, {bool isSingle = false}) {
+    final imageWidget = kIsWeb
+        ? Image.network(
+            _selectedImages[index].path,
+            fit: isSingle ? BoxFit.contain : BoxFit.cover,
+          )
+        : Image.file(
+            File(_selectedImages[index].path),
+            fit: isSingle ? BoxFit.contain : BoxFit.cover,
+          );
+
+    if (isSingle) {
+      return Stack(
+        alignment: Alignment.topRight,
+        children: [
+          Container(
+            width: double.infinity,
+            color: Colors.black.withValues(alpha: 0.03),
+            child: imageWidget,
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: _buildCloseButton(index),
+          ),
+        ],
+      );
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        kIsWeb
-            ? Image.network(
-                _selectedImages[index].path,
-                fit: BoxFit.cover,
-              )
-            : Image.file(
-                File(_selectedImages[index].path),
-                fit: BoxFit.cover,
-              ),
+        imageWidget,
         Positioned(
           top: 8,
           right: 8,
-          child: GestureDetector(
-            onTap: () => setState(() => _selectedImages.removeAt(index)),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.close, size: 16, color: Colors.white),
-            ),
-          ),
+          child: _buildCloseButton(index),
         ),
       ],
+    );
+  }
+
+  Widget _buildCloseButton(int index) {
+    return GestureDetector(
+      onTap: () => setState(() => _selectedImages.removeAt(index)),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1),
+        ),
+        child: const Icon(Icons.close, size: 16, color: Colors.white),
+      ),
     );
   }
 }
