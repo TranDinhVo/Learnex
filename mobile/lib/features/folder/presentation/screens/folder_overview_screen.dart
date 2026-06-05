@@ -188,45 +188,37 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                             ),
                           if (!isLoading && subjectGroups.isEmpty)
                             const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 24.0,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'Không có môn học nào.',
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : GridView.count(
-                                    crossAxisCount: 2,
-                                    shrinkWrap: true,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
-                                    childAspectRatio: 1.02,
-                                    children: subjectGroups.entries.map((
-                                      entry,
-                                    ) {
-                                      return _FolderMiniCard(
-                                        title: entry.key,
-                                        countLabel:
-                                            '${entry.value.length} tài liệu',
-                                        icon: Icons.folder_rounded,
-                                        accent: const Color(0xFFE2DFFF),
-                                        iconColor: const Color(0xFF3525CD),
-                                        onTap: () {
-                                          Navigator.of(context).pushReplacement(
-                                            MaterialPageRoute(builder: (_) => FolderScreen(initialSubject: entry.key)),
-                                          );
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
+                              padding: EdgeInsets.symmetric(vertical: 24.0),
+                              child: Center(
+                                child: Text(
+                                  'Không có môn học nào.',
+                                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                                ),
+                              ),
+                            )
+                          else if (subjectGroups.isNotEmpty)
+                            GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 14,
+                              mainAxisSpacing: 14,
+                              childAspectRatio: 1.02,
+                              children: subjectGroups.entries.map((entry) {
+                                return _FolderMiniCard(
+                                  title: entry.key,
+                                  countLabel: '${entry.value.length} tài liệu',
+                                  icon: Icons.folder_rounded,
+                                  accent: const Color(0xFFE2DFFF),
+                                  iconColor: const Color(0xFF3525CD),
+                                  onTap: () {
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(builder: (_) => FolderScreen(initialSubject: entry.key)),
+                                    );
+                                  },
+                                );
+                              }).toList(),
+                            ),
                         ],
                       ),
                     ),
@@ -264,7 +256,7 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                     ),
                                   ),
                                 )
-                              : (rawDocs.isEmpty
+                              : (_cachedDocs.isEmpty
                                     ? const SliverToBoxAdapter(
                                         child: Center(
                                           child: Text(
@@ -281,7 +273,7 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                           index,
                                         ) {
                                           final doc =
-                                              rawDocs[index]
+                                              _cachedDocs[index]
                                                   as Map<String, dynamic>;
                                           final title =
                                               doc['title'] ??
@@ -316,7 +308,7 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                               },
                                             ),
                                           );
-                                        }, childCount: rawDocs.length),
+                                        }, childCount: _cachedDocs.length),
                                       ))),
                   ),
                 ],
