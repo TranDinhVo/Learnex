@@ -359,8 +359,8 @@ class _FolderScreenState extends State<FolderScreen> {
                         SliverPadding(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 108),
                           sliver: SliverGrid(
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
+                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 220,
                               mainAxisSpacing: 14,
                               crossAxisSpacing: 14,
                               childAspectRatio: 0.74,

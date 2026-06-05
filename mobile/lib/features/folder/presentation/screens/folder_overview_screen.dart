@@ -197,8 +197,8 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                               ),
                             )
                           else if (subjectGroups.isNotEmpty)
-                            GridView.count(
-                              crossAxisCount: 2,
+                            GridView.extent(
+                              maxCrossAxisExtent: 200,
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               crossAxisSpacing: 14,
