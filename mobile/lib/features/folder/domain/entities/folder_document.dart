@@ -60,7 +60,8 @@ class FolderDocument {
     else if (fileType.contains('zip') || fileType.contains('archive')) docType = DocumentType.zip;
 
     // Convert file size from bytes
-    final sizeBytes = json['file_size'] as int? ?? 0;
+    final rawSize = json['file_size'];
+    final sizeBytes = rawSize is num ? rawSize.toInt() : (rawSize is String ? int.tryParse(rawSize) ?? 0 : 0);
     String sizeStr;
     if (sizeBytes > 1024 * 1024) {
       sizeStr = '${(sizeBytes / (1024 * 1024)).toStringAsFixed(1)} MB';

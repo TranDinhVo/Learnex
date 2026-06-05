@@ -278,8 +278,12 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                           final title =
                                               doc['title'] ??
                                               'Tài liệu không tên';
-                                          final size = doc['file_size'] != null
-                                              ? '${(doc['file_size'] / 1024).toStringAsFixed(0)} KB'
+                                          final rawSize = doc['file_size'];
+                                          final sizeNum = rawSize is num
+                                              ? rawSize
+                                              : (rawSize is String ? num.tryParse(rawSize) : null);
+                                          final size = sizeNum != null
+                                              ? '${(sizeNum / 1024).toStringAsFixed(0)} KB'
                                               : '1.5 MB';
 
                                           return Padding(
