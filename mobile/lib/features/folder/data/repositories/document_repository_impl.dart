@@ -33,7 +33,9 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
   @override
   Future<Map<String, dynamic>> upload({
-    required String filePath,
+    String? filePath,
+    List<int>? fileBytes,
+    required String fileName,
     required String title,
     String? description,
     String? subject,
@@ -41,6 +43,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
   }) =>
       _datasource.upload(
         filePath: filePath,
+        fileBytes: fileBytes,
+        fileName: fileName,
         title: title,
         description: description,
         subject: subject,

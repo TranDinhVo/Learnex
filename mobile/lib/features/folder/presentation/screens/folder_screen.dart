@@ -12,6 +12,7 @@ import 'document_viewer_screen.dart';
 import '../../domain/entities/folder_document.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
+import 'add_document_screen.dart';
 
 class FolderScreen extends StatefulWidget {
   final String? initialSubject;
@@ -218,7 +219,10 @@ class _FolderScreenState extends State<FolderScreen> {
                   actions: [
                     IconButton(
                       icon: Icon(Icons.cloud_upload_outlined, color: theme.colorScheme.primary),
-                      onPressed: () => _showComingSoon('Tải lên'),
+                      onPressed: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => const AddDocumentScreen()));
+                        _loadData();
+                      },
                     ),
                     const SizedBox(width: 8),
                   ],

@@ -94,14 +94,25 @@ class DocumentRemoteDatasource {
 
   /// Upload tài liệu
   Future<Map<String, dynamic>> upload({
-    required String filePath,
+    String? filePath,
+    List<int>? fileBytes,
+    required String fileName,
     required String title,
     String? description,
     String? subject,
     List<String>? tags,
   }) async {
+    MultipartFile file;
+    if (fileBytes != null) {
+      file = MultipartFile.fromBytes(fileBytes, filename: fileName);
+    } else if (filePath != null) {
+      file = await MultipartFile.fromFile(filePath, filename: fileName);
+    } else {
+      throw Exception('Không có dữ liệu file');
+    }
+
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath),
+      'file': file,
       'title': title,
       if (description != null) 'description': description,
       if (subject != null) 'subject': subject,

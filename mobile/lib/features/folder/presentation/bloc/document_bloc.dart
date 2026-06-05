@@ -82,6 +82,8 @@ class DocumentBloc extends Bloc<DocumentEvent, DocumentState> {
     try {
       final result = await _repository.upload(
         filePath: event.filePath,
+        fileBytes: event.fileBytes,
+        fileName: event.fileName,
         title: event.title,
         description: event.description,
         subject: event.subject,

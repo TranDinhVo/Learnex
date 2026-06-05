@@ -8,7 +8,9 @@ abstract class DocumentRepository {
   Future<Map<String, dynamic>> getRecommendations();
   Future<Map<String, dynamic>> getById(String id);
   Future<Map<String, dynamic>> upload({
-    required String filePath,
+    String? filePath,
+    List<int>? fileBytes,
+    required String fileName,
     required String title,
     String? description,
     String? subject,

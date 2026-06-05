@@ -28,13 +28,17 @@ class SearchDocumentsEvent extends DocumentEvent {
 class LoadRecommendationsEvent extends DocumentEvent {}
 
 class UploadDocumentEvent extends DocumentEvent {
-  final String filePath;
+  final String? filePath;
+  final List<int>? fileBytes;
+  final String fileName;
   final String title;
   final String? description;
   final String? subject;
   final List<String>? tags;
   UploadDocumentEvent({
-    required this.filePath,
+    this.filePath,
+    this.fileBytes,
+    required this.fileName,
     required this.title,
     this.description,
     this.subject,

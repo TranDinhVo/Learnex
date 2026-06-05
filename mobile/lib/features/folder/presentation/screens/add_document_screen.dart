@@ -1,5 +1,6 @@
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/document_bloc.dart';
@@ -49,7 +50,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'docx', 'pptx'],
-      withData: true,
+      withData: kIsWeb,
     );
     if (result == null) return;
     final file = result.files.first;
@@ -79,11 +80,24 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
     });
   }
 
+  bool _isUploading = false;
+
   void _onUpload() {
-    if (_pickedFile == null || _pickedFile!.path == null) return;
+    if (_pickedFile == null) return;
+    if (_pickedFile!.path == null && _pickedFile!.bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: File không có đường dẫn hoặc dữ liệu byte.')),
+      );
+      return;
+    }
+    
+    setState(() => _isUploading = true);
+
     context.read<DocumentBloc>().add(
       UploadDocumentEvent(
-        filePath: _pickedFile!.path!,
+        filePath: _pickedFile!.path,
+        fileBytes: _pickedFile!.bytes?.toList(),
+        fileName: _pickedFile!.name,
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         subject: _subject,
@@ -107,14 +121,18 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
       body: BlocListener<DocumentBloc, DocumentState>(
         listener: (context, state) {
           if (state is DocumentUploaded) {
+            setState(() => _isUploading = false);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('🎉 Tài liệu đã được tải lên thành công!'), backgroundColor: Colors.green),
             );
-            Navigator.of(context).maybePop();
+            Navigator.of(context).maybePop(state.document);
           } else if (state is DocumentUploadError) {
+            setState(() => _isUploading = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Lỗi: ${state.message}'), backgroundColor: Colors.red),
             );
+          } else if (state is DocumentUploading) {
+            setState(() => _isUploading = true);
           } else if (state is SubjectsLoaded) {
             setState(() {
               _subjects = state.subjects.map((e) => e['name'].toString()).toList();
@@ -166,7 +184,7 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: _canUpload ? _onUpload : null,
+                              onPressed: (_canUpload && !_isUploading) ? _onUpload : null,
                               style: ElevatedButton.styleFrom(
                                 shape: const StadiumBorder(),
                                 backgroundColor: theme.primaryColor,
@@ -176,7 +194,12 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                                   vertical: 12,
                                 ),
                               ),
-                              child: const Text('Đăng'),
+                              child: _isUploading 
+                                  ? const SizedBox(
+                                      width: 20, height: 20, 
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                                    )
+                                  : const Text('Đăng'),
                             ),
                           ],
                         ),
