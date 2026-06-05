@@ -17,11 +17,10 @@ class DioClient {
       return 'http://localhost:8080/api';
     }
     if (Platform.isAndroid) {
-      // 10.0.2.2 trỏ về localhost của máy tính host từ Android emulator.
-      // Nếu chạy máy thật, đổi thành IP mạng LAN của máy tính (ví dụ: 'http://192.168.1.5:8080/api')
-      return 'http://10.0.2.2:8080/api';
+      // Đã đổi thành IP của máy tính để test trên máy thật
+      return 'http://192.168.1.151:8080/api';
     }
-    return 'http://localhost:8080/api'; // iOS simulator hoặc Web/Khác
+    return 'http://localhost:8080/api';
   }
 
   /// Tạo Dio instance với interceptor Auth + Log.
@@ -33,8 +32,10 @@ class DioClient {
       BaseOptions(
         baseUrl: baseUrl ?? _defaultBaseUrl,
         connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 120), // upload cần thời gian dài hơn
-        sendTimeout: const Duration(seconds: 120),    // upload cần thời gian dài hơn
+        receiveTimeout:
+            const Duration(seconds: 120), // upload cần thời gian dài hơn
+        sendTimeout:
+            const Duration(seconds: 120), // upload cần thời gian dài hơn
         // QUAN TRỌNG: Không đặt Content-Type cứng ở đây!
         // Khi gửi FormData (multipart), Dio sẽ tự động set 'multipart/form-data; boundary=...'
         // Nếu set cứng 'application/json' thì server không parse được file.

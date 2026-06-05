@@ -23,36 +23,39 @@ class NotificationService {
   })  : _messaging = messaging,
         _dio = dio;
 
-  /// Khởi tạo dịch vụ: xin quyền, lắng nghe message, đăng ký token
   Future<void> initialize() async {
     if (kIsWeb) {
       debugPrint("FCM is disabled on Web to prevent Firebase crash.");
       return;
     }
 
-    _messaging ??= FirebaseMessaging.instance;
+    try {
+      _messaging ??= FirebaseMessaging.instance;
 
-    // 1. Yêu cầu quyền thông báo
-    await requestPermission();
+      // 1. Yêu cầu quyền thông báo
+      await requestPermission();
 
-    // 2. Lắng nghe foreground messages
-    FirebaseMessaging.onMessage.listen((message) {
-      _foregroundController.add(message);
-    });
+      // 2. Lắng nghe foreground messages
+      FirebaseMessaging.onMessage.listen((message) {
+        _foregroundController.add(message);
+      });
 
-    // 3. Lắng nghe khi user tap vào notification (app ở background)
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
-      // Xử lý navigation dựa trên message.data
-      _handleMessageOpenedApp(message);
-    });
+      // 3. Lắng nghe khi user tap vào notification (app ở background)
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        // Xử lý navigation dựa trên message.data
+        _handleMessageOpenedApp(message);
+      });
 
-    // 4. Lấy và đăng ký FCM token
-    await _registerToken();
+      // 4. Lấy và đăng ký FCM token
+      await _registerToken();
 
-    // 5. Theo dõi khi token thay đổi
-    _messaging?.onTokenRefresh.listen((newToken) {
-      _sendTokenToServer(newToken);
-    });
+      // 5. Theo dõi khi token thay đổi
+      _messaging?.onTokenRefresh.listen((newToken) {
+        _sendTokenToServer(newToken);
+      });
+    } catch (e) {
+      debugPrint("NotificationService initialization failed: $e");
+    }
   }
 
   /// Xin quyền thông báo từ người dùng

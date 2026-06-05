@@ -64,6 +64,7 @@ CREATE TABLE posts (
   document_id     UUID        REFERENCES documents(id) ON DELETE SET NULL,
   visibility      VARCHAR(20) DEFAULT 'public',
   tagged_user_ids JSONB,
+  excluded_user_ids JSONB DEFAULT '[]'::jsonb,  -- [Thêm dòng này]
   is_deleted  BOOLEAN     DEFAULT FALSE,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
@@ -257,7 +258,47 @@ CREATE TABLE system_settings (
   description TEXT,
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+-- ============================================================
+-- 17. STORIES & REACTIONS
+-- ============================================================
+CREATE TABLE stories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  media_url TEXT,
+  media_type VARCHAR(10) DEFAULT 'image',
+  text_content TEXT,
+  text_color VARCHAR(7) DEFAULT '#FFFFFF',
+  bg_color VARCHAR(7) DEFAULT '#6366F1',
+  bg_gradient TEXT,
+  duration_sec INT DEFAULT 5,
+  visibility VARCHAR(20) DEFAULT 'friends',
+  is_active BOOLEAN DEFAULT TRUE,
+  is_archived BOOLEAN DEFAULT FALSE,
+  excluded_user_ids JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '12 hours'),
+  archived_at TIMESTAMPTZ
+);
 
+CREATE TABLE story_views (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+  viewer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  viewed_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(story_id, viewer_id)
+);
+
+CREATE TABLE story_reactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  story_id UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  emoji VARCHAR(10) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Cập nhật bảng direct_messages để hỗ trợ reply story
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_to_story_id UUID REFERENCES stories(id) ON DELETE SET NULL;
+ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_story_preview TEXT;
 -- Insert default settings
 INSERT INTO system_settings (key, value, description) VALUES
 ('maintenance_mode', 'false', 'Bật chế độ bảo trì toàn hệ thống'),

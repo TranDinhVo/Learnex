@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
+import Download from './pages/Download';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Posts from './pages/Posts';
@@ -16,6 +17,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/download" element={<Download />} />
         
         {/* Protected Admin Routes */}
         <Route

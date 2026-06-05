@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'firebase_options.dart';
 import 'app/app.dart';
 import 'app/di.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (kIsWeb) {
-    try {
-      await Firebase.initializeApp();
-    } catch (e) {
-      debugPrint("Firebase init ignored on web to prevent crash: $e");
-    }
-  } else {
-    await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase initialization failed, running app without FCM: $e");
   }
   setupDependencies();
   runApp(const App());
