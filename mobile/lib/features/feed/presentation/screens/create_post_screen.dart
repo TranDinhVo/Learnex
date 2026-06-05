@@ -13,6 +13,7 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../domain/enums/post_visibility.dart';
 import '../widgets/post_visibility_bottom_sheet.dart';
 import '../widgets/tag_user_bottom_sheet.dart';
+import '../widgets/location_picker_bottom_sheet.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -28,6 +29,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   PostVisibility _selectedVisibility = PostVisibility.public;
   Map<String, dynamic>? _attachedDocument;
   List<Map<String, dynamic>> _taggedUsers = [];
+  String? _location;
 
   @override
   void initState() {
@@ -39,7 +41,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   bool get _canSubmit {
     final content = _contentController.text.trim();
-    final hasContent = content.isNotEmpty || _selectedImages.isNotEmpty || _attachedDocument != null;
+    final hasContent = content.isNotEmpty || _selectedImages.isNotEmpty || _attachedDocument != null || _location != null;
     final isUnderLimit = content.length <= 2000;
     return hasContent && isUnderLimit && !_isSubmitting;
   }
@@ -80,9 +82,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   void _submit() {
     final content = _contentController.text.trim();
-    if (content.isEmpty && _selectedImages.isEmpty && _attachedDocument == null) {
+    if (content.isEmpty && _selectedImages.isEmpty && _attachedDocument == null && _location == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng thêm nội dung, ảnh hoặc tài liệu trước khi đăng')),
+        const SnackBar(content: Text('Vui lòng thêm nội dung, ảnh, tài liệu hoặc địa điểm trước khi đăng')),
       );
       return;
     }
@@ -99,6 +101,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           content: content.isEmpty ? null : content,
           documentId: _attachedDocument?['id']?.toString(),
           visibility: _selectedVisibility,
+          location: _location,
           taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
         ),
       );
@@ -141,6 +144,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               imageUrls: state.urls,
               documentId: _attachedDocument?['id']?.toString(),
               visibility: _selectedVisibility,
+              location: _location,
               taggedUserIds: _taggedUsers.map((e) => e['id'].toString()).toList(),
             ),
           );
@@ -365,6 +369,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               ),
             ],
 
+            if (_location != null) ...[
+              const SizedBox(height: 12),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('— tại ', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                  Chip(
+                    label: Text(_location!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onDeleted: () => setState(() => _location = null),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                    deleteIconColor: theme.colorScheme.error,
+                  ),
+                ],
+              ),
+            ],
+
             const SizedBox(height: 16),
             
             // Text Input
@@ -495,6 +517,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   icon: Icons.location_on,
                   label: 'Địa điểm',
                   color: theme.colorScheme.error,
+                  onTap: () async {
+                    final result = await showModalBottomSheet<String>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => LocationPickerBottomSheet(
+                        initialLocation: _location,
+                      ),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        _location = result.isEmpty ? null : result;
+                      });
+                    }
+                  },
                 ),
               ],
             ),
@@ -509,112 +546,125 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget _buildImageGrid() {
     if (_selectedImages.isEmpty) return const SizedBox();
 
+    final count = _selectedImages.length;
+    final ratio = count == 1 ? 4 / 3 : (count == 2 ? 2 / 1 : 1 / 1);
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200, width: 1),
       ),
       clipBehavior: Clip.hardEdge,
-      child: _buildGridContent(),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxHeight: 500,
+        ),
+        child: AspectRatio(
+          aspectRatio: ratio.toDouble(),
+          child: _buildGridContent(),
+        ),
+      ),
     );
   }
 
   Widget _buildGridContent() {
     final count = _selectedImages.length;
-    final h = 350.0; // Tăng chiều cao cho đẹp hơn
     const double spacing = 3.0; // Khoảng cách giữa các ảnh
 
     if (count == 1) {
-      return ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
-        ),
-        child: _buildImageItem(0, isSingle: true),
-      );
+      return _buildImageItem(0, isSingle: true);
     } else if (count == 2) {
-      return SizedBox(
-        height: h,
-        child: Row(
-          children: [
-            Expanded(child: _buildImageItem(0)),
-            const SizedBox(width: spacing),
-            Expanded(child: _buildImageItem(1)),
-          ],
-        ),
+      return Row(
+        children: [
+          Expanded(child: _buildImageItem(0)),
+          const SizedBox(width: spacing),
+          Expanded(child: _buildImageItem(1)),
+        ],
       );
     } else if (count == 3) {
-      return SizedBox(
-        height: h,
-        child: Row(
-          children: [
-            Expanded(flex: 2, child: _buildImageItem(0)),
-            const SizedBox(width: spacing),
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-                  Expanded(child: _buildImageItem(1)),
-                  const SizedBox(height: spacing),
-                  Expanded(child: _buildImageItem(2)),
-                ],
-              ),
+      return Row(
+        children: [
+          Expanded(flex: 2, child: _buildImageItem(0)),
+          const SizedBox(width: spacing),
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                Expanded(child: _buildImageItem(1)),
+                const SizedBox(height: spacing),
+                Expanded(child: _buildImageItem(2)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     } else if (count == 4) {
-      return SizedBox(
-        height: h,
-        child: Column(
-          children: [
-            Expanded(flex: 2, child: _buildImageItem(0)),
-            const SizedBox(height: spacing),
-            Expanded(
-              flex: 1,
-              child: Row(
-                children: [
-                  Expanded(child: _buildImageItem(1)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _buildImageItem(2)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _buildImageItem(3)),
-                ],
-              ),
+      return Column(
+        children: [
+          Expanded(flex: 2, child: _buildImageItem(0)),
+          const SizedBox(height: spacing),
+          Expanded(
+            flex: 1,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(1)),
+                const SizedBox(width: spacing),
+                Expanded(child: _buildImageItem(2)),
+                const SizedBox(width: spacing),
+                Expanded(child: _buildImageItem(3)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     } else {
-      // 5 images
-      return SizedBox(
-        height: h,
-        child: Column(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Row(
-                children: [
-                  Expanded(child: _buildImageItem(0)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _buildImageItem(1)),
-                ],
-              ),
+      // 5+ images
+      return Column(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(0)),
+                const SizedBox(width: spacing),
+                Expanded(child: _buildImageItem(1)),
+              ],
             ),
-            const SizedBox(height: spacing),
-            Expanded(
-              flex: 1,
-              child: Row(
-                children: [
-                  Expanded(child: _buildImageItem(2)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _buildImageItem(3)),
-                  const SizedBox(width: spacing),
-                  Expanded(child: _buildImageItem(4)),
-                ],
-              ),
+          ),
+          const SizedBox(height: spacing),
+          Expanded(
+            flex: 1,
+            child: Row(
+              children: [
+                Expanded(child: _buildImageItem(2)),
+                const SizedBox(width: spacing),
+                Expanded(child: _buildImageItem(3)),
+                const SizedBox(width: spacing),
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildImageItem(4),
+                      if (count > 5)
+                        Container(
+                          color: Colors.black54,
+                          alignment: Alignment.center,
+                          child: Text(
+                            '+${count - 5}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       );
     }
   }

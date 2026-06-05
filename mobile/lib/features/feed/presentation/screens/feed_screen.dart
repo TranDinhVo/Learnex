@@ -350,6 +350,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                   : (post['document_id'] != null
                                         ? PostType.document
                                         : PostType.text),
+                              location: post['location'] as String?,
                               imageUrls: imageUrls,
                               taggedUsers: post['tagged_users'] as List<dynamic>?,
                               documentName: post['document_title'] as String? ?? 'Tài liệu',

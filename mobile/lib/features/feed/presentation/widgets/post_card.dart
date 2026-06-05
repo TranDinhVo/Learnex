@@ -19,6 +19,7 @@ class PostCard extends StatelessWidget {
   final String? documentUrl;
   final List<String>? imageUrls;
   final List<dynamic>? taggedUsers;
+  final String? location;
   final int likes;
   final int comments;
   final VoidCallback? onAuthorTap;
@@ -51,6 +52,7 @@ class PostCard extends StatelessWidget {
     this.documentUrl,
     this.imageUrls,
     this.taggedUsers,
+    this.location,
     this.authorAvatarUrl,
     this.visibility,
     required this.likes,
@@ -179,6 +181,22 @@ class PostCard extends StatelessWidget {
                             ),
                           ),
                           _buildTaggedTextSpans(context, theme),
+                        ],
+                        if (location != null && location!.isNotEmpty) ...[
+                          TextSpan(
+                            text: ' tại ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          TextSpan(
+                            text: location,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
                         ],
                       ],
                     ),
@@ -426,14 +444,20 @@ class PostCard extends StatelessWidget {
 
   Widget _buildImageGrid() {
     final count = imageUrls!.length;
-    final h = count == 1 ? 250.0 : 300.0;
+    // Responsive aspect ratio based on image count
+    final ratio = count == 1 ? 4 / 3 : (count == 2 ? 2 / 1 : 1 / 1);
 
-    return SizedBox(
-      height: h,
-      child: Stack(
-        children: [
-          _buildGridContent(),
-        ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxHeight: 500, // Limit maximum height on wide screens
+      ),
+      child: AspectRatio(
+        aspectRatio: ratio.toDouble(),
+        child: Stack(
+          children: [
+            _buildGridContent(),
+          ],
+        ),
       ),
     );
   }
