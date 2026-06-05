@@ -16,8 +16,8 @@ class _DocumentPickerBottomSheetState extends State<DocumentPickerBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Tải danh sách tài liệu
-    context.read<DocumentBloc>().add(LoadDocumentsEvent());
+    // Load only current user's documents (not all public docs)
+    context.read<DocumentBloc>().add(LoadMyDocumentsEvent());
   }
 
   @override

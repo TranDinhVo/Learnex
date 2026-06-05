@@ -27,13 +27,23 @@ export const documentController = {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const pagination = getPaginationParams(req.query as { page?: string; limit?: string });
+
+      // ?mine=true → return only current user's documents (all approval states)
+      if (req.query.mine === 'true' && req.user?.userId) {
+        const filters: { subject?: string } = {};
+        if (req.query.subject) filters.subject = req.query.subject as string;
+        const { data, total } = await documentService.getMine(req.user.userId, pagination, filters);
+        return void res.status(200).json({
+          success: true,
+          data,
+          pagination: buildPaginationInfo(total, pagination),
+        });
+      }
+
+      // Public feed — filter out rejected docs
       const filters: { subject?: string; user_id?: string } = {};
       if (req.query.subject) filters.subject = req.query.subject as string;
       if (req.query.user_id) filters.user_id = req.query.user_id as string;
-
-      if (req.query.mine === 'true' && req.user?.userId) {
-        filters.user_id = req.user.userId;
-      }
 
       const { data, total } = await documentService.getAll(pagination, filters, req.user?.userId);
 

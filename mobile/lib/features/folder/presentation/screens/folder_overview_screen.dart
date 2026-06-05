@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
@@ -145,7 +147,8 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                             ),
                           );
                           if (mounted) {
-                            docBloc.add(LoadDocumentsEvent());
+                            // Load user's own docs so new upload appears immediately
+                            docBloc.add(LoadMyDocumentsEvent());
                           }
                         },
                       ),
@@ -297,7 +300,9 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                                 0xFFBA1A1A,
                                               ),
                                               onTap: () {
-                                                final folderDoc = FolderDocument.fromJson(doc);
+                                                final authState = context.read<AuthBloc>().state;
+                                                final currentUserId = authState is Authenticated ? authState.user.id : null;
+                                                final folderDoc = FolderDocument.fromJson(doc, currentUserId: currentUserId);
                                                 Navigator.of(context).push(
                                                   MaterialPageRoute(builder: (_) => DocumentViewerScreen(document: folderDoc)),
                                                 );

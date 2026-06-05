@@ -46,7 +46,11 @@ export const documentService = {
       query.select(db.raw(`EXISTS(SELECT 1 FROM saved_documents sd WHERE sd.document_id = d.id AND sd.user_id = ?) as is_saved`, [requestUserId]));
     }
 
-    let countQuery = db('documents as d');
+    // Only show approved or pending (NULL) docs in public feed — never show rejected
+    query = query.whereRaw('(d.is_approved IS NULL OR d.is_approved = true)');
+
+    let countQuery = db('documents as d')
+      .whereRaw('(d.is_approved IS NULL OR d.is_approved = true)');
 
     if (filters?.subject) {
       query = query.where('d.subject', filters.subject);
@@ -55,6 +59,48 @@ export const documentService = {
     if (filters?.user_id) {
       query = query.where('d.user_id', filters.user_id);
       countQuery = countQuery.where('d.user_id', filters.user_id);
+    }
+
+    const [{ count }] = await countQuery.count('* as count');
+    const total = parseInt(count as string, 10);
+
+    const data = await query
+      .orderBy('d.created_at', 'desc')
+      .limit(pagination.limit)
+      .offset((pagination.page - 1) * pagination.limit);
+
+    return { data, total };
+  },
+
+  // getMine: always show all user's own documents regardless of approval status
+  async getMine(
+    userId: string,
+    pagination: PaginationParams,
+    filters?: { subject?: string }
+  ): Promise<{ data: any[]; total: number }> {
+    let query = db('documents as d')
+      .select(
+        'd.*',
+        'u.full_name as author_name',
+        'u.username as author_username',
+        'u.avatar_url as author_avatar',
+        db.raw('true as is_mine'),
+        db.raw(`
+          CASE
+            WHEN d.is_approved IS NULL THEN 'pending'
+            WHEN d.is_approved = true THEN 'approved'
+            ELSE 'rejected'
+          END as approval_status
+        `)
+      )
+      .leftJoin('users as u', 'd.user_id', 'u.id')
+      .where('d.user_id', userId);
+
+    let countQuery = db('documents as d').where('d.user_id', userId);
+
+    if (filters?.subject) {
+      query = query.where('d.subject', filters.subject);
+      countQuery = countQuery.where('d.subject', filters.subject);
     }
 
     const [{ count }] = await countQuery.count('* as count');

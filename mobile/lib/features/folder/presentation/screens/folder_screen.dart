@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:learnex/shared/widgets/app_bottom_nav_bar.dart';
 
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../feed/presentation/screens/feed_screen.dart';
 import '../bloc/document_bloc.dart';
@@ -325,7 +327,9 @@ class _FolderScreenState extends State<FolderScreen> {
                     bool hasMore = false;
 
                     if (state is DocumentsLoaded) {
-                      documents = state.documents.map((e) => FolderDocument.fromJson(e)).toList();
+                      final authState = context.read<AuthBloc>().state;
+                      final currentUserId = authState is Authenticated ? authState.user.id : null;
+                      documents = state.documents.map((e) => FolderDocument.fromJson(e, currentUserId: currentUserId)).toList();
                       hasMore = state.hasMore;
                     }
 

@@ -27,6 +27,8 @@ class FolderDocument {
   /// Thêm property id để xử lý api
   final String id;
   final String fileUrl;
+  final String userId;
+  final String approvalStatus; // 'pending' | 'approved' | 'rejected'
 
   const FolderDocument({
     this.id = '',
@@ -46,9 +48,11 @@ class FolderDocument {
     required this.isMine,
     required this.isSaved,
     this.fileUrl = '',
+    this.userId = '',
+    this.approvalStatus = 'pending',
   });
 
-  factory FolderDocument.fromJson(Map<String, dynamic> json) {
+  factory FolderDocument.fromJson(Map<String, dynamic> json, {String? currentUserId}) {
     DocumentType docType = DocumentType.pdf;
     final fileType = json['file_type'] as String? ?? '';
     if (fileType.contains('presentation') || fileType.contains('powerpoint')) docType = DocumentType.presentation;
@@ -85,6 +89,9 @@ class FolderDocument {
         break;
     }
 
+    final docUserId = json['user_id'] as String? ?? '';
+    final isMine = currentUserId != null && docUserId == currentUserId;
+
     return FolderDocument(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
@@ -100,9 +107,11 @@ class FolderDocument {
       summary: json['description'] as String? ?? '',
       accent: accentColor,
       iconColor: iconColor,
-      isMine: false, // Will be overridden if needed or we can ignore
+      isMine: json['is_mine'] as bool? ?? isMine,
       isSaved: json['is_saved'] as bool? ?? false,
       fileUrl: json['file_url'] as String? ?? '',
+      userId: docUserId,
+      approvalStatus: json['approval_status'] as String? ?? 'pending',
     );
   }
 }

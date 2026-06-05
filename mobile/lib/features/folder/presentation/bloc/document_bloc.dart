@@ -91,7 +91,8 @@ class DocumentBloc extends Bloc<DocumentEvent, DocumentState> {
       );
       final data = result['data'] ?? result;
       emit(DocumentUploaded(data as Map<String, dynamic>));
-      add(LoadDocumentsEvent());
+      // Load user's own docs so they see their new upload immediately (even if pending approval)
+      add(LoadMyDocumentsEvent());
     } on DioException catch (e) {
       emit(DocumentUploadError(_extractError(e)));
     } catch (e) {

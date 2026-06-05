@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/folder_document.dart';
+
 
 class DocumentViewerScreen extends StatelessWidget {
   const DocumentViewerScreen({super.key, required this.document});
@@ -15,6 +17,25 @@ class DocumentViewerScreen extends StatelessWidget {
       barrierColor: Colors.black.withValues(alpha: 0.2),
       builder: (_) => _LearnexAiSheet(document: document),
     );
+  }
+
+  Future<void> _downloadFile(BuildContext context) async {
+    final url = Uri.tryParse(document.fileUrl);
+    if (url == null || document.fileUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không có đường dẫn file.')),
+      );
+      return;
+    }
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể mở file. Vui lòng thử lại.')),
+        );
+      }
+    }
   }
 
   @override
@@ -71,7 +92,7 @@ class DocumentViewerScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        _IconCircleButton(icon: Icons.download_rounded, onPressed: () {}),
+                        _IconCircleButton(icon: Icons.download_rounded, onPressed: () => _downloadFile(context)),
                         const SizedBox(width: 4),
                         _IconCircleButton(icon: Icons.share_rounded, onPressed: () {}),
                         const SizedBox(width: 4),
