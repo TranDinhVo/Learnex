@@ -15,6 +15,8 @@ import '../../domain/entities/folder_document.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
 import 'add_document_screen.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
+import '../../../../shared/widgets/user_account_icon.dart';
 
 class FolderScreen extends StatefulWidget {
   final String? initialSubject;
@@ -228,7 +230,7 @@ class _FolderScreenState extends State<FolderScreen> {
                         _loadData();
                       },
                     ),
-                    const SizedBox(width: 8),
+                    const UserAccountIcon(),
                   ],
                 ),
                 SliverToBoxAdapter(
@@ -449,12 +451,7 @@ class _FolderDocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (document.type) {
-      DocumentType.pdf => Icons.picture_as_pdf_rounded,
-      DocumentType.presentation => Icons.slideshow_rounded,
-      DocumentType.doc => Icons.description_rounded,
-      DocumentType.zip => Icons.folder_zip_rounded,
-    };
+    final icon = FileIconHelper.getIcon(document.fileUrl);
 
     return Material(
       color: Colors.transparent,

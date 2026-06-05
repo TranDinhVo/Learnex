@@ -11,10 +11,13 @@ import '../../../room/presentation/screens/room_list_screen.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
 import '../bloc/document_state.dart';
+import '../../../../shared/widgets/user_account_icon.dart';
 import 'folder_screen.dart';
 import 'add_document_screen.dart';
 import 'document_viewer_screen.dart';
+import 'document_search_screen.dart';
 import '../../domain/entities/folder_document.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 
 class FolderOverviewScreen extends StatefulWidget {
   const FolderOverviewScreen({super.key});
@@ -155,14 +158,20 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                           }
                         },
                       ),
-                      const SizedBox(width: 8),
+                      const UserAccountIcon(),
                     ],
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
                     sliver: SliverToBoxAdapter(
                       child: _SearchBar(
-                        onTap: () => _showComingSoon(context, 'Tìm kiếm'),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const DocumentSearchScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -295,14 +304,9 @@ class _FolderOverviewScreenState extends State<FolderOverviewScreen> {
                                               title: title,
                                               sizeLabel: size,
                                               dateLabel: 'Vừa xong',
-                                              icon:
-                                                  Icons.picture_as_pdf_rounded,
-                                              iconBackground: const Color(
-                                                0xFFFFE4E6,
-                                              ),
-                                              iconColor: const Color(
-                                                0xFFBA1A1A,
-                                              ),
+                                              icon: FileIconHelper.getIcon(doc['file_url']),
+                                              iconBackground: FileIconHelper.getBackgroundColor(doc['file_url']),
+                                              iconColor: FileIconHelper.getColor(doc['file_url']),
                                               onTap: () {
                                                 final authState = context.read<AuthBloc>().state;
                                                 final currentUserId = authState is Authenticated ? authState.user.id : null;

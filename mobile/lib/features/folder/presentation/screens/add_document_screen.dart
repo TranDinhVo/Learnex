@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
 import '../bloc/document_state.dart';
@@ -246,10 +247,10 @@ class _AddDocumentScreenState extends State<AddDocumentScreen> {
                                               ),
                                             ],
                                           ),
-                                          child: const Icon(
-                                            Icons.cloud_upload,
+                                          child: Icon(
+                                            _pickedFile == null ? Icons.cloud_upload : FileIconHelper.getIcon(_pickedFile!.name),
                                             size: 32,
-                                            color: Colors.blue,
+                                            color: _pickedFile == null ? Colors.blue : FileIconHelper.getColor(_pickedFile!.name),
                                           ),
                                         ),
                                         const SizedBox(height: 10),

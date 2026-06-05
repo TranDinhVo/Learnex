@@ -108,9 +108,21 @@ class DocumentBloc extends Bloc<DocumentEvent, DocumentState> {
   }
 
   Future<void> _onDelete(DeleteDocumentEvent event, Emitter<DocumentState> emit) async {
+    final currentState = state;
     try {
       await _repository.delete(event.documentId);
-      add(LoadDocumentsEvent());
+      if (currentState is DocumentsLoaded) {
+        final updatedDocs = currentState.documents
+            .where((doc) => doc['id'].toString() != event.documentId)
+            .toList();
+        emit(DocumentsLoaded(
+          documents: updatedDocs,
+          hasMore: currentState.hasMore,
+          currentPage: currentState.currentPage,
+        ));
+      } else {
+        add(LoadDocumentsEvent());
+      }
     } catch (_) {}
   }
 

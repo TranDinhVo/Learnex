@@ -15,6 +15,7 @@ import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../screens/room_detail_screen.dart';
 import '../../data/models/room_model.dart';
+import 'package:learnex/shared/widgets/user_account_icon.dart';
 
 class RoomListScreen extends StatefulWidget {
   const RoomListScreen({super.key});
@@ -464,19 +465,7 @@ class _RoomListScreenState extends State<RoomListScreen> {
                           tooltip: 'Tạo phòng học',
                           onPressed: _showCreateRoomDialog,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: theme.colorScheme.primaryContainer, width: 2),
-                              color: theme.colorScheme.surfaceContainerHighest,
-                            ),
-                            child: const Icon(Icons.person, size: 20),
-                          ),
-                        ),
+                        const UserAccountIcon(),
                       ],
                     ),
                     SliverToBoxAdapter(

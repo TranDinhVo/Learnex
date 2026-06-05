@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 
 enum DocumentType {
   pdf,
@@ -69,26 +70,9 @@ class FolderDocument {
       sizeStr = '${(sizeBytes / 1024).toStringAsFixed(1)} KB';
     }
 
-    // Default colors based on type
-    Color accentColor = const Color(0xFFFEE2E2);
-    Color iconColor = const Color(0xFFEF4444);
-    switch (docType) {
-      case DocumentType.presentation:
-        accentColor = const Color(0xFFFFEDD5);
-        iconColor = const Color(0xFFF97316);
-        break;
-      case DocumentType.doc:
-        accentColor = const Color(0xFFDBEAFE);
-        iconColor = const Color(0xFF3B82F6);
-        break;
-      case DocumentType.zip:
-        accentColor = const Color(0xFFE9D5FF);
-        iconColor = const Color(0xFF8B5CF6);
-        break;
-      case DocumentType.pdf:
-      default:
-        break;
-    }
+    final fileUrl = json['file_url'] as String? ?? '';
+    Color accentColor = FileIconHelper.getBackgroundColor(fileUrl);
+    Color iconColor = FileIconHelper.getColor(fileUrl);
 
     final docUserId = json['user_id'] as String? ?? '';
     final isMine = currentUserId != null && docUserId == currentUserId;

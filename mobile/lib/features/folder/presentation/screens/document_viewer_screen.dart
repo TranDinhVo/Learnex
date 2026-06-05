@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/folder_document.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
+import '../../../../shared/utils/file_icon_helper.dart';
 
 
 class DocumentViewerScreen extends StatelessWidget {
@@ -30,6 +31,7 @@ class DocumentViewerScreen extends StatelessWidget {
       );
       return;
     }
+    context.read<DocumentBloc>().add(DownloadDocumentEvent(documentId: document.id));
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -232,9 +234,9 @@ class DocumentViewerScreen extends StatelessWidget {
                                             children: [
                                               const SizedBox(height: 32),
                                               Icon(
-                                                Icons.file_present_rounded,
+                                                FileIconHelper.getIcon(document.fileUrl),
                                                 size: 64,
-                                                color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                                                color: FileIconHelper.getColor(document.fileUrl).withValues(alpha: 0.5),
                                               ),
                                               const SizedBox(height: 16),
                                               Text(
