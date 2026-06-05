@@ -5,7 +5,7 @@ import '../../domain/entities/folder_document.dart';
 import '../bloc/document_bloc.dart';
 import '../bloc/document_event.dart';
 import '../../../../shared/utils/file_icon_helper.dart';
-
+import '../../data/repositories/ai_repository.dart';
 
 class DocumentViewerScreen extends StatelessWidget {
   const DocumentViewerScreen({super.key, required this.document});
@@ -443,10 +443,79 @@ class _AIFab extends StatelessWidget {
   }
 }
 
-class _LearnexAiSheet extends StatelessWidget {
+class _LearnexAiSheet extends StatefulWidget {
   const _LearnexAiSheet({required this.document});
 
   final FolderDocument document;
+
+  @override
+  State<_LearnexAiSheet> createState() => _LearnexAiSheetState();
+}
+
+class _LearnexAiSheetState extends State<_LearnexAiSheet> {
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final List<Map<String, String>> _messages = [];
+  bool _isLoading = false;
+
+  void _sendMessage() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _isLoading) return;
+
+    setState(() {
+      _messages.add({'role': 'user', 'content': text});
+      _isLoading = true;
+    });
+    _textController.clear();
+    _scrollToBottom();
+
+    try {
+      // Inline initialization of AiRepository for simplicity
+      final aiRepo = AiRepository();
+      final reply = await aiRepo.chat(
+        documentTitle: widget.document.title,
+        documentDescription: widget.document.summary,
+        documentSubject: widget.document.category,
+        messages: _messages,
+      );
+
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'assistant', 'content': reply});
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -465,7 +534,7 @@ class _LearnexAiSheet extends StatelessWidget {
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.6,
+              height: MediaQuery.of(context).size.height * 0.8,
               decoration: const BoxDecoration(
                 color: Color(0xFFFCFCFD),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -539,45 +608,60 @@ class _LearnexAiSheet extends StatelessWidget {
                   ),
                   Expanded(
                     child: ListView(
+                      controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       children: [
-                        _AiSection(
-                          icon: Icons.summarize_outlined,
-                          title: 'Tóm tắt nội dung',
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F5),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFE5E7EB)),
-                            ),
-                            child: Text(
-                              'Tài liệu ${document.title} gồm ${document.totalPages > 20 ? 'nhiều' : 'vài'} phần trọng tâm. Chương 1 tập trung vào ${document.chapterTitle.toLowerCase()}, sau đó mở rộng sang các ứng dụng và bài tập liên quan.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFF464555),
-                                height: 1.55,
+                        if (_messages.isEmpty) ...[
+                          _AiSection(
+                            icon: Icons.summarize_outlined,
+                            title: 'Tóm tắt nội dung',
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF3F4F5),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Text(
+                                widget.document.summary.isNotEmpty ? widget.document.summary : 'Chưa có tóm tắt cho tài liệu này. Bạn có thể hỏi AI để biết thêm chi tiết.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF464555),
+                                  height: 1.55,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 20),
+                        ],
                         const _AiSection(
                           icon: Icons.forum_outlined,
                           title: 'Hỏi đáp về tài liệu',
-                          child: Column(
-                            children: [
-                              _UserMessageBubble(
-                                text: 'Giải thích phương pháp tích phân từng phần?',
-                                timeLabel: 'Bạn • 10:42 AM',
-                              ),
-                              SizedBox(height: 14),
-                              _AiMessageBubble(
-                                text: 'Tích phân từng phần dùng công thức ∫u dv = uv - ∫v du. Khi chọn u và dv, hãy ưu tiên Log - Đa - Lượng - Mũ để rút gọn biểu thức hiệu quả hơn.',
-                                timeLabel: 'Learnex AI • Vừa xong',
-                              ),
-                            ],
-                          ),
+                          child: SizedBox.shrink(),
                         ),
+                        const SizedBox(height: 12),
+                        ..._messages.map((msg) {
+                          final isUser = msg['role'] == 'user';
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: isUser
+                                ? _UserMessageBubble(
+                                    text: msg['content']!,
+                                    timeLabel: 'Bạn',
+                                  )
+                                : _AiMessageBubble(
+                                    text: msg['content']!,
+                                    timeLabel: 'Learnex AI',
+                                  ),
+                          );
+                        }),
+                        if (_isLoading)
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 14),
+                            child: _AiMessageBubble(
+                              text: 'Đang suy nghĩ...',
+                              timeLabel: 'Learnex AI',
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -605,30 +689,43 @@ class _LearnexAiSheet extends StatelessWidget {
                               border: Border.all(color: const Color(0xFFE5E7EB)),
                             ),
                             alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Hỏi về nội dung tài liệu...',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: const Color(0xFF9CA3AF),
+                            child: TextField(
+                              controller: _textController,
+                              decoration: InputDecoration(
+                                hintText: 'Hỏi về nội dung tài liệu...',
+                                hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF9CA3AF),
+                                ),
+                                border: InputBorder.none,
                               ),
+                              onSubmitted: (_) => _sendMessage(),
                             ),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3525CD),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x403525CD),
-                                blurRadius: 16,
-                                offset: Offset(0, 8),
-                              ),
-                            ],
+                        GestureDetector(
+                          onTap: _sendMessage,
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: _isLoading ? Colors.grey : const Color(0xFF3525CD),
+                              borderRadius: BorderRadius.circular(18),
+                              boxShadow: _isLoading ? [] : const [
+                                BoxShadow(
+                                  color: Color(0x403525CD),
+                                  blurRadius: 16,
+                                  offset: Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: _isLoading 
+                                ? const Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                           ),
-                          child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                         ),
                       ],
                     ),
