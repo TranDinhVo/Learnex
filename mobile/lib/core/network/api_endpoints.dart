@@ -42,6 +42,7 @@ class ApiEndpoints {
   static const String savedDocuments = '/documents/saved';
   static String documentById(String id) => '/documents/$id';
   static String downloadDocument(String id) => '/documents/$id/download';
+  static String streamDocument(String id) => '/documents/$id/stream';
   static String viewDocument(String id) => '/documents/$id/view';
   static String toggleSaveDocument(String id) => '/documents/$id/save';
 

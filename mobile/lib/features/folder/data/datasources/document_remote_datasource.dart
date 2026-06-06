@@ -125,11 +125,18 @@ class DocumentRemoteDatasource {
     return response.data as Map<String, dynamic>;
   }
 
-  /// Tải tài liệu (tăng download count)
+  /// Tải tài liệu (tăng download count, trả về attachment URL)
   Future<String> download(String id) async {
     final response = await _dio.get(ApiEndpoints.downloadDocument(id));
     final data = response.data as Map<String, dynamic>;
-    return (data['data']?['url'] ?? data['url'] ?? '') as String;
+    // Backend trả về { data: { file_url: '...' } }
+    final fileUrl = (data['data']?['file_url'] ?? '') as String;
+    return fileUrl;
+  }
+
+  /// Lấy URL stream tải trực tiếp từ backend (bypass Cloudinary)
+  String streamUrl(String id) {
+    return ApiEndpoints.streamDocument(id);
   }
 
   /// Track view

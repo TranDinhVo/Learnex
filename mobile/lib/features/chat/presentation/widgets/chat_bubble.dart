@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatBubble extends StatelessWidget {
   final bool isMe;
@@ -44,11 +45,26 @@ class ChatBubble extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(bottom: isBottom ? 16.0 : 2.0),
-      child: isMe ? _buildMyBubble(theme) : _buildOtherBubble(theme),
+      child: isMe ? _buildMyBubble(context, theme) : _buildOtherBubble(context, theme),
     );
   }
 
-  Widget _buildMyBubble(ThemeData theme) {
+  void _openFile(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không thể mở file. Vui lòng thử lại.')),
+          );
+        }
+      }
+    }
+  }
+
+  Widget _buildMyBubble(BuildContext context, ThemeData theme) {
     final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
     final isImage = isFile && fileUrl != null && _isImageUrl(fileUrl!);
 
@@ -56,8 +72,12 @@ class ChatBubble extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (isFile)
-          Container(
-            padding: const EdgeInsets.all(16),
+          GestureDetector(
+            onTap: () {
+              if (fileUrl != null) _openFile(context, fileUrl!);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: const Color(0xFF3730A3),
               borderRadius: BorderRadius.only(
@@ -115,7 +135,8 @@ class ChatBubble extends StatelessWidget {
                 ),
               ],
             ),
-          )
+          ),
+        )
         else if (isImage)
           ClipRRect(
             borderRadius: BorderRadius.only(
@@ -246,7 +267,7 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildOtherBubble(ThemeData theme) {
+  Widget _buildOtherBubble(BuildContext context, ThemeData theme) {
     final isCallHistory = !isFile && message != null && message!.startsWith('[CALL_HISTORY]:');
     final isImage = isFile && fileUrl != null && _isImageUrl(fileUrl!);
 
@@ -306,7 +327,12 @@ class ChatBubble extends StatelessWidget {
                             fontSize: 14,
                           ),
                         )
-                      : (isImage ? _buildOtherImageBubble(theme) : (isFile ? _buildOtherFileBubble(theme) : Column(
+                      : (isImage ? _buildOtherImageBubble(theme) : (isFile ? GestureDetector(
+                          onTap: () {
+                            if (fileUrl != null) _openFile(context, fileUrl!);
+                          },
+                          child: _buildOtherFileBubble(theme),
+                        ) : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(

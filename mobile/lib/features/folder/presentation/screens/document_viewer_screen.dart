@@ -25,17 +25,36 @@ class DocumentViewerScreen extends StatelessWidget {
   }
 
   Future<void> _downloadFile(BuildContext context) async {
-    final url = Uri.tryParse(document.fileUrl);
-    if (url == null || document.fileUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không có đường dẫn file.')),
-      );
+    // 1. Gửi request báo cho backend biết để tăng số lượt tải (download_count)
+    context.read<DocumentBloc>().add(DownloadDocumentEvent(documentId: document.id));
+
+    // 2. Lấy URL gốc của file từ Cloudinary
+    String downloadUrl = document.fileUrl;
+
+    // 3. Chèn cờ `fl_attachment` vào Cloudinary URL để ép trình duyệt mobile tải file về thay vì xem trực tiếp
+    // Điều này giúp tránh lỗi ERR_INVALID_RESPONSE trên Chrome Android khi mở file raw
+    if (downloadUrl.contains('/raw/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/raw/upload/', '/raw/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/image/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/image/upload/', '/image/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/video/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/video/upload/', '/video/upload/fl_attachment/');
+    }
+
+    final uri = Uri.tryParse(downloadUrl);
+    if (uri == null || downloadUrl.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không có đường dẫn file hợp lệ.')),
+        );
+      }
       return;
     }
-    context.read<DocumentBloc>().add(DownloadDocumentEvent(documentId: document.id));
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
+
+    // 4. Mở trình duyệt ngoài để tiến hành tải file
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Không thể mở file. Vui lòng thử lại.')),
@@ -137,7 +156,6 @@ class DocumentViewerScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const _ViewerProgressBar(progress: 0.65),
                 ],
               ),
             ),
@@ -263,7 +281,7 @@ class DocumentViewerScreen extends StatelessWidget {
                                         child: Column(
                                           children: [
                                             Text(
-                                              'Bản xem trước trực tiếp chưa khả dụng trên thiết bị web.',
+                                              'Bản xem trước trực tiếp chưa khả dụng. Vui lòng tải xuống.',
                                               textAlign: TextAlign.center,
                                               style: theme.textTheme.bodyMedium?.copyWith(
                                                 color: const Color(0xFF64748B),
@@ -313,7 +331,6 @@ class DocumentViewerScreen extends StatelessWidget {
                       right: 0,
                       child: Column(
                         children: [
-                          _PageIndicator(document: document),
                           const SizedBox(height: 16),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -596,18 +613,20 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
 
     return Material(
       color: Colors.transparent,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(color: Colors.black.withValues(alpha: 0.2)),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(color: Colors.black.withValues(alpha: 0.2)),
+              ),
             ),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.8,
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: MediaQuery.of(context).size.height * 0.75,
               decoration: const BoxDecoration(
                 color: Color(0xFFFCFCFD),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
@@ -863,6 +882,7 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

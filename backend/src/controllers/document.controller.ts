@@ -1,8 +1,25 @@
 import { Request, Response, NextFunction } from 'express';
+import https from 'https';
+import http from 'http';
+import path from 'path';
 import { documentService } from '../services/document.service';
 import { sendResponse } from '../utils/response';
 import { getPaginationParams, buildPaginationInfo } from '../utils/pagination';
 import { AppError } from '../utils/AppError';
+
+/**
+ * Convert a Cloudinary URL to force attachment download.
+ * Inserts the fl_attachment transformation flag into the URL.
+ */
+function toAttachmentUrl(url: string, filename?: string): string {
+  const flag = filename
+    ? `fl_attachment:${filename.replace(/\s+/g, '_')}`
+    : 'fl_attachment';
+  return url.replace(
+    /(\/(raw|image|video)\/upload\/)/,
+    `$1${flag}/`
+  );
+}
 
 export const documentController = {
   async upload(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -85,7 +102,42 @@ export const documentController = {
   async download(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const document = await documentService.download(req.params.id as string);
-      sendResponse(res, 200, { file_url: document.file_url }, 'Download URL retrieved');
+      const originalUrl = document.file_url as string;
+      // Add fl_attachment so mobile browsers trigger download instead of ERR_INVALID_RESPONSE
+      const fileUrl = originalUrl?.includes('cloudinary.com')
+        ? toAttachmentUrl(originalUrl, path.basename(originalUrl))
+        : originalUrl;
+      sendResponse(res, 200, { file_url: fileUrl }, 'Download URL retrieved');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async streamDownload(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const document = await documentService.download(req.params.id as string);
+      const fileUrl = document.file_url as string;
+      if (!fileUrl) {
+        return next(new AppError('File URL not found.', 404));
+      }
+
+      const filename = path.basename(fileUrl.split('?')[0]) || 'download';
+      const mimeType = (document.file_type as string) || 'application/octet-stream';
+
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Cache-Control', 'no-cache');
+
+      const protocol = fileUrl.startsWith('https') ? https : http;
+      protocol.get(fileUrl, (fileRes) => {
+        if (fileRes.statusCode !== 200) {
+          res.status(502).json({ success: false, message: 'Failed to fetch file from storage.' });
+          return;
+        }
+        fileRes.pipe(res);
+      }).on('error', (err) => {
+        next(new AppError('Failed to stream file: ' + err.message, 502));
+      });
     } catch (error) {
       next(error);
     }

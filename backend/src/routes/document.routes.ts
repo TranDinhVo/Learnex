@@ -46,8 +46,11 @@ router.post(
 // Get single document
 router.get('/:id', optionalAuth, documentController.getById);
 
-// Download document (increments count)
+// Download document (increments count + returns attachment URL)
 router.get('/:id/download', documentController.download);
+
+// Proxy stream download - streams file directly from Cloudinary to client (for mobile)
+router.get('/:id/stream', requireAuth, documentController.streamDownload);
 
 // Track view
 router.post('/:id/view', requireAuth, documentController.trackView);
