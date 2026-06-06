@@ -5,9 +5,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../core/network/dio_client.dart';
 import '../core/services/websocket_service.dart';
 import '../core/services/notification_service.dart';
-import '../core/services/notification_service.dart';
 import '../core/services/webrtc_service.dart';
 import '../core/services/media_upload_service.dart';
+import '../core/services/audio_service.dart';
 
 // Auth
 import '../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -48,6 +48,11 @@ import '../features/story/presentation/bloc/story_bloc.dart';
 // AI
 import '../features/folder/data/repositories/ai_repository.dart';
 
+// Search
+import '../features/search/data/datasources/search_remote_datasource.dart';
+import '../features/search/data/repositories/search_repository_impl.dart';
+import '../features/search/presentation/bloc/search_bloc.dart';
+
 final getIt = GetIt.instance;
 
 void setupDependencies() {
@@ -62,8 +67,15 @@ void setupDependencies() {
     DioClient.create(storage: getIt<FlutterSecureStorage>()),
   );
 
+  getIt.registerSingleton<AudioService>(
+    AudioService(),
+  );
+
   getIt.registerSingleton<WebSocketService>(
-    WebSocketService(storage: getIt<FlutterSecureStorage>()),
+    WebSocketService(
+      storage: getIt<FlutterSecureStorage>(),
+      audioService: getIt<AudioService>(),
+    ),
   );
 
   getIt.registerSingleton<NotificationService>(
@@ -97,6 +109,9 @@ void setupDependencies() {
   getIt.registerLazySingleton<StoryRemoteDataSource>(
     () => StoryRemoteDataSource(dio: getIt<Dio>()),
   );
+  getIt.registerLazySingleton<SearchRemoteDatasource>(
+    () => SearchRemoteDatasource(getIt<Dio>()),
+  );
 
   // ── Repositories ──
   getIt.registerLazySingleton<AuthRepositoryImpl>(
@@ -122,6 +137,9 @@ void setupDependencies() {
   );
   getIt.registerLazySingleton<AiRepository>(
     () => AiRepository(getIt<Dio>()),
+  );
+  getIt.registerLazySingleton<SearchRepositoryImpl>(
+    () => SearchRepositoryImpl(remoteDatasource: getIt<SearchRemoteDatasource>()),
   );
 
   // ── BLoCs ──
@@ -175,5 +193,10 @@ void setupDependencies() {
       wsService: getIt<WebSocketService>(),
       dio: getIt<Dio>(),
     ),
+  );
+
+  // ── Search ──
+  getIt.registerFactory<SearchBloc>(
+    () => SearchBloc(repository: getIt<SearchRepositoryImpl>()),
   );
 }

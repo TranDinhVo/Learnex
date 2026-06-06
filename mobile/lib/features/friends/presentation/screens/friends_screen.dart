@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../app/di.dart';
 import '../../../profile/presentation/screens/user_profile_screen.dart';
 import '../../../chat/presentation/screens/chat_detail_screen.dart';
+import '../../../search/presentation/screens/global_search_screen.dart';
 import '../bloc/friend_bloc.dart';
 import '../bloc/friend_event.dart';
 import '../bloc/friend_state.dart';
@@ -241,17 +242,15 @@ class _FriendsScreenState extends State<FriendsScreen>
         Padding(
           padding: const EdgeInsets.only(right: 8.0),
           child: IconButton(
-            icon: Icon(Icons.person_search, color: theme.colorScheme.primary),
-            onPressed: () {
-              setState(() => _isSearching = !_isSearching);
-              if (!_isSearching) {
-                _searchController.clear();
-                _searchResults.clear();
-              }
-            },
+            icon: Icon(Icons.search, color: theme.colorScheme.primary),
             style: IconButton.styleFrom(
               backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.05),
             ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+              );
+            },
           ),
         ),
       ],

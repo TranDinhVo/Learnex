@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/enums/post_visibility.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:dio/dio.dart';
 import '../../../../app/di.dart';
 import '../../data/repositories/feed_repository_impl.dart';
 import '../widgets/story_strip.dart';
@@ -14,16 +13,16 @@ import '../bloc/feed_bloc.dart';
 import '../bloc/feed_event.dart';
 import '../bloc/feed_state.dart';
 import 'create_post_screen.dart';
-import 'edit_post_screen.dart';
-import 'notification_screen.dart';
 import 'post_detail_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/user_profile_screen.dart';
+import '../../../search/presentation/screens/global_search_screen.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
+import 'package:learnex/shared/widgets/notification_bell.dart';
 
 import '../../../friends/presentation/bloc/friend_bloc.dart';
 import '../../../friends/presentation/bloc/friend_event.dart';
@@ -37,7 +36,6 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  int _unreadNotificationsCount = 0;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -46,18 +44,6 @@ class _FeedScreenState extends State<FeedScreen> {
     // Tải bảng tin và danh sách bạn bè từ API thực tế
     context.read<FeedBloc>().add(LoadFeedEvent());
     context.read<FriendBloc>().add(LoadFriendsEvent());
-    _loadUnreadNotificationsCount();
-  }
-
-  Future<void> _loadUnreadNotificationsCount() async {
-    try {
-      final response = await getIt<Dio>().get('/notifications/unread-count');
-      if (mounted) {
-        setState(() {
-          _unreadNotificationsCount = response.data['data']['count'] ?? 0;
-        });
-      }
-    } catch (_) {}
   }
 
   @override
@@ -207,44 +193,13 @@ class _FeedScreenState extends State<FeedScreen> {
                       ),
                       IconButton(
                         icon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+                          );
+                        },
                       ),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.notifications_none,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const NotificationScreen(),
-                                ),
-                              );
-                              // Refresh unread count after returning
-                              _loadUnreadNotificationsCount();
-                            },
-                          ),
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.error,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      NotificationBell(iconColor: theme.colorScheme.onSurfaceVariant),
                       const UserAccountIcon(),
                     ],
                   ),

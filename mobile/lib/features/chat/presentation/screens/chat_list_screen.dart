@@ -15,7 +15,9 @@ import '../../../feed/presentation/screens/create_post_screen.dart';
 import '../../../folder/presentation/screens/folder_overview_screen.dart';
 import '../../../room/presentation/screens/room_list_screen.dart';
 import '../../../friends/presentation/screens/friends_screen.dart';
+import '../../../search/presentation/screens/global_search_screen.dart';
 import 'package:learnex/shared/widgets/user_account_icon.dart';
+import 'package:learnex/shared/widgets/notification_bell.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -73,30 +75,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ),
                   IconButton(
                     icon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const GlobalSearchScreen()),
+                      );
+                    },
                   ),
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.notifications_none, color: theme.colorScheme.onSurfaceVariant),
-                        onPressed: () {},
-                      ),
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.error,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 1.5),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  NotificationBell(iconColor: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 8),
                 ],
               ),

@@ -11,6 +11,7 @@ import '../features/story/presentation/bloc/story_bloc.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/websocket_service.dart';
+import '../core/services/audio_service.dart';
 import '../core/services/webrtc_service.dart';
 import '../features/chat/presentation/widgets/incoming_call_overlay.dart';
 import '../features/chat/presentation/screens/p2p_call_screen.dart';
@@ -42,6 +43,9 @@ class _AppState extends State<App> {
     // Listen for foreground messages
     notificationService.onForegroundMessage.listen((message) {
       if (message.notification != null) {
+        // Phát âm thanh thông báo
+        getIt<AudioService>().playMessageSound();
+        
         _scaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
             content: Column(

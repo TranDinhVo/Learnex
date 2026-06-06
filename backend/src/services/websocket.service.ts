@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { TokenPayload } from '../models/types';
 import { messageService } from './message.service';
 import { roomService } from './room.service';
+import { fcmService } from './fcm.service';
 import { db } from '../config/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -260,6 +261,21 @@ export class WebSocketService {
               type: 'room_call_invite',
               data: { callerId: senderId, callerName, callType, roomId }
             });
+
+            // Trigger FCM Push Notification
+            try {
+              const u = await db('users').select('fcm_token').where({ id: member.user_id }).first();
+              if (u && u.fcm_token) {
+                fcmService.sendPushNotification(
+                  u.fcm_token,
+                  "Cuộc gọi nhóm",
+                  `${callerName} đang gọi trong nhóm`,
+                  { type: 'room_call_invite', roomId, callerId: senderId, callType: callType || 'video' }
+                ).catch(e => console.error("[FCM] Call push error:", e));
+              }
+            } catch (e) {
+              console.error("[FCM] Error fetching token for room call:", e);
+            }
           }
         }
         break;
@@ -359,6 +375,21 @@ export class WebSocketService {
           type: 'private_call_invite',
           data: { callerId: senderId, callerName, callType, roomId }
         });
+
+        // Trigger FCM Push Notification
+        try {
+          const u = await db('users').select('fcm_token').where({ id: targetId }).first();
+          if (u && u.fcm_token) {
+            fcmService.sendPushNotification(
+              u.fcm_token,
+              "Cuộc gọi đến",
+              `${callerName} đang gọi cho bạn`,
+              { type: 'private_call_invite', roomId, callerId: senderId, callType: callType || 'video' }
+            ).catch(e => console.error("[FCM] Call push error:", e));
+          }
+        } catch (e) {
+          console.error("[FCM] Error fetching token for private call:", e);
+        }
         break;
       }
 

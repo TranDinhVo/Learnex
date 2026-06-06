@@ -2,6 +2,7 @@ import { db } from "../config/database";
 import { AppError } from "../utils/AppError";
 import { Notification } from "../models/types";
 import { PaginationParams } from "../utils/pagination";
+import { fcmService } from "./fcm.service";
 
 export const notificationService = {
   async create(data: {
@@ -15,6 +16,28 @@ export const notificationService = {
     const [notification] = await db("notifications")
       .insert(data)
       .returning("*");
+
+    // Trigger FCM Push Notification
+    try {
+      const user = await db("users").select("fcm_token").where({ id: data.user_id }).first();
+      if (user && user.fcm_token) {
+        // Do not await to avoid blocking the main response
+        fcmService.sendPushNotification(
+          user.fcm_token,
+          data.title,
+          data.body || "",
+          {
+            type: data.type,
+            ref_type: data.ref_type || "",
+            ref_id: data.ref_id || "",
+            notification_id: notification.id
+          }
+        ).catch(err => console.error("[FCM] Failed to send push:", err));
+      }
+    } catch (err) {
+      console.error("[FCM] Error fetching user token:", err);
+    }
+
     return notification;
   },
 

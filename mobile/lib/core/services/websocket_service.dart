@@ -6,12 +6,14 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../network/api_interceptor.dart';
+import 'audio_service.dart';
 
 /// Dịch vụ WebSocket: kết nối, nhận message qua stream,
 /// tự động reconnect với exponential backoff (1s → 2s → 4s → max 30s).
 class WebSocketService {
   final FlutterSecureStorage _storage;
   final String _baseWsUrl;
+  final AudioService _audioService;
 
   WebSocketChannel? _channel;
   StreamSubscription? _subscription;
@@ -46,8 +48,10 @@ class WebSocketService {
 
   WebSocketService({
     required FlutterSecureStorage storage,
+    required AudioService audioService,
     String? baseWsUrl,
   })  : _storage = storage,
+        _audioService = audioService,
         _baseWsUrl = baseWsUrl ?? _defaultWsUrl;
 
   /// Kết nối WebSocket với JWT token
@@ -102,6 +106,29 @@ class WebSocketService {
 
         // Xử lý pong heartbeat
         if (data['type'] == 'pong') return;
+
+        // Xử lý âm thanh
+        switch (data['type']) {
+          case 'chat_message':
+          case 'room_message':
+            // Phát âm thanh khi nhận tin nhắn
+            _audioService.playMessageSound();
+            break;
+          case 'private_call_invite':
+          case 'room_call_invite':
+            // Bắt đầu đổ chuông
+            _audioService.startRingtone();
+            break;
+          case 'private_call_accept':
+          case 'private_call_reject':
+          case 'private_call_end':
+          case 'user_joined_call':
+          case 'leave_call':
+          case 'user_left_call':
+            // Dừng chuông khi có phản hồi cuộc gọi
+            _audioService.stopRingtone();
+            break;
+        }
 
         _messageController.add(data);
       }

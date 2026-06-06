@@ -61,7 +61,7 @@ export default function DownloadPage() {
               <span className="hidden sm:inline">Quản trị viên</span>
             </Link>
             <a
-              href="https://drive.google.com/file/d/1W687YjfHaRT8O91bHyHc-r9bhmMc1CIi/view?usp=sharing"
+              href={import.meta.env.VITE_APK_DOWNLOAD_URL}
               download
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium text-sm hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-500/10 hover:shadow-purple-500/25 transition-all flex items-center gap-1.5"
             >
@@ -100,7 +100,7 @@ export default function DownloadPage() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <a
-                href="https://drive.google.com/file/d/1W687YjfHaRT8O91bHyHc-r9bhmMc1CIi/view?usp=sharing"
+                href={import.meta.env.VITE_APK_DOWNLOAD_URL}
                 download
                 className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/35 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2.5 text-base"
               >

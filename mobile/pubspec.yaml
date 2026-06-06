@@ -28,6 +28,8 @@ dependencies:
   emoji_picker_flutter: ^4.4.0
   record: ^6.2.1
   audioplayers: ^6.7.0
+  rxdart: ^0.28.0
+  equatable: ^2.0.8
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -39,3 +41,5 @@ environment:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sounds/
