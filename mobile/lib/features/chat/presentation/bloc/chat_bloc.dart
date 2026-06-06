@@ -39,7 +39,8 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     // Lắng nghe tin nhắn realtime từ WebSocket
     _wsSubscription = _wsService.messages.listen((data) {
       if (data['type'] == 'chat_message') {
-        add(ReceiveMessageEvent(message: data['data'] as Map<String, dynamic>));
+        final messageData = data['data'] as Map<String, dynamic>;
+        add(ReceiveMessageEvent(message: messageData));
       } else if (data['type'] == 'typing') {
         add(PeerTypingStatusEvent(peerId: data['data']['senderId'], isTyping: true));
       } else if (data['type'] == 'stop_typing') {

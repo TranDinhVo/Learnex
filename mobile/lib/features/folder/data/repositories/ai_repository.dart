@@ -10,6 +10,7 @@ class AiRepository {
     required String documentTitle,
     required String documentDescription,
     required String documentSubject,
+    String fileUrl = '',
     required List<Map<String, String>> messages,
   }) async {
     try {
@@ -19,13 +20,15 @@ class AiRepository {
           'documentTitle': documentTitle,
           'documentDescription': documentDescription,
           'documentSubject': documentSubject,
+          'fileUrl': fileUrl,
           'messages': messages,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true) {
+        // Backend returns: { status: 'success', message: '...', data: { reply: '...' } }
+        if (data['status'] == 'success' && data['data'] != null) {
           return data['data']['reply'] as String;
         } else {
           throw Exception(data['message'] ?? 'Failed to chat with AI');

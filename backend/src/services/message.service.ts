@@ -4,7 +4,6 @@ import { DirectMessage } from '../models/types';
 import { PaginationParams } from '../utils/pagination';
 import { notificationService } from './notification.service';
 import { webSocketService } from './websocket.service';
-import { fcmService } from './fcm.service';
 
 export const messageService = {
   async send(
@@ -46,21 +45,6 @@ export const messageService = {
       ref_type: 'direct_message',
       ref_id: message.id,
     });
-
-    // Send FCM push notification if user has FCM token
-    if (receiver?.fcm_token) {
-      fcmService.sendPushNotification(
-        receiver.fcm_token,
-        'New Message',
-        `${sender?.full_name || 'Someone'} sent you a message.`,
-        { 
-          type: 'message',
-          ref_type: 'direct_message',
-          ref_id: message.id,
-          sender_id: senderId,
-        }
-      ).catch(err => console.error('[FCM] Error sending message notification:', err));
-    }
 
     return message;
   },

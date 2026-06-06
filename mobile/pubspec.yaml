@@ -39,6 +39,3 @@ environment:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/sounds/message_notification.wav
-    - assets/sounds/incoming_call_ringtone.wav

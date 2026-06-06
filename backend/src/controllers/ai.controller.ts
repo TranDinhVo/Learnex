@@ -6,7 +6,7 @@ import { AppError } from '../utils/AppError';
 export const aiController = {
   async chat(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { documentTitle, documentDescription, documentSubject, messages } = req.body;
+      const { documentTitle, documentDescription, documentSubject, fileUrl, messages } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return next(new AppError('Messages array is required', 400));
@@ -21,6 +21,7 @@ export const aiController = {
         documentTitle: documentTitle || 'Tài liệu không tên',
         documentDescription: documentDescription || '',
         documentSubject: documentSubject || '',
+        fileUrl: fileUrl || '',
         messages: validMessages,
       });
 

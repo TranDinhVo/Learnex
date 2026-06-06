@@ -455,11 +455,71 @@ class _LearnexAiSheet extends StatefulWidget {
   State<_LearnexAiSheet> createState() => _LearnexAiSheetState();
 }
 
+// Persistent chat history across open/close — keyed by document id
+final Map<String, List<Map<String, String>>> _aiChatHistoryCache = {};
+final Map<String, String?> _aiSummaryCache = {};
+
 class _LearnexAiSheetState extends State<_LearnexAiSheet> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<Map<String, String>> _messages = [];
+  late List<Map<String, String>> _messages;
   bool _isLoading = false;
+  bool _isSummarizing = false;
+  String? _summaryText;
+
+  String get _docId => widget.document.id.isNotEmpty ? widget.document.id : widget.document.title;
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore from session cache
+    _messages = _aiChatHistoryCache[_docId] ?? [];
+    _summaryText = _aiSummaryCache[_docId];
+
+    // Auto-summarize on first open if we have no summary yet
+    if (_summaryText == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _autoSummarize());
+    }
+  }
+
+  Future<void> _autoSummarize() async {
+    if (!mounted) return;
+    setState(() => _isSummarizing = true);
+    try {
+      final aiRepo = GetIt.instance<AiRepository>();
+      final summary = await aiRepo.chat(
+        documentTitle: widget.document.title,
+        documentDescription: widget.document.summary,
+        documentSubject: widget.document.category,
+        fileUrl: widget.document.fileUrl,
+        messages: [
+          {
+            'role': 'user',
+            'content':
+                'Hãy tóm tắt ngắn gọn nội dung của tài liệu "${widget.document.title}" thuộc môn "${widget.document.category}". '
+                'Mô tả gốc: "${widget.document.summary.isNotEmpty ? widget.document.summary : 'Chưa có mô tả'}".',
+          }
+        ],
+      );
+      if (mounted) {
+        setState(() {
+          _summaryText = summary;
+          _isSummarizing = false;
+        });
+        _aiSummaryCache[_docId] = summary;
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _summaryText = widget.document.summary.isNotEmpty
+              ? widget.document.summary
+              : 'Không thể tải tóm tắt. Bạn có thể hỏi AI bên dưới.';
+          _isSummarizing = false;
+        });
+        _aiSummaryCache[_docId] = _summaryText;
+      }
+    }
+  }
 
   void _sendMessage() async {
     final text = _textController.text.trim();
@@ -469,6 +529,7 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
       _messages.add({'role': 'user', 'content': text});
       _isLoading = true;
     });
+    _aiChatHistoryCache[_docId] = List.from(_messages);
     _textController.clear();
     _scrollToBottom();
 
@@ -478,6 +539,7 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
         documentTitle: widget.document.title,
         documentDescription: widget.document.summary,
         documentSubject: widget.document.category,
+        fileUrl: widget.document.fileUrl,
         messages: _messages,
       );
 
@@ -486,18 +548,27 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
           _messages.add({'role': 'assistant', 'content': reply});
           _isLoading = false;
         });
+        _aiChatHistoryCache[_docId] = List.from(_messages);
         _scrollToBottom();
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi: $e')),
         );
       }
     }
+  }
+
+  void _clearHistory() {
+    setState(() {
+      _messages.clear();
+      _summaryText = null;
+    });
+    _aiChatHistoryCache.remove(_docId);
+    _aiSummaryCache.remove(_docId);
+    _autoSummarize();
   }
 
   void _scrollToBottom() {
@@ -613,33 +684,88 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
                       controller: _scrollController,
                       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       children: [
-                        if (_messages.isEmpty) ...[
-                          _AiSection(
-                            icon: Icons.summarize_outlined,
-                            title: 'Tóm tắt nội dung',
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF3F4F5),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
-                              ),
-                              child: Text(
-                                widget.document.summary.isNotEmpty ? widget.document.summary : 'Chưa có tóm tắt cho tài liệu này. Bạn có thể hỏi AI để biết thêm chi tiết.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: const Color(0xFF464555),
-                                  height: 1.55,
+                        // --- AI Summary Section ---
+                        _AiSection(
+                          icon: Icons.summarize_outlined,
+                          title: 'Tóm tắt nội dung',
+                          child: _isSummarizing
+                              ? Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F4F5),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 16, height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF3525CD),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'AI đang tóm tắt tài liệu...',
+                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: const Color(0xFF9CA3AF),
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F4F5),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                                  ),
+                                  child: Text(
+                                    _summaryText ?? 'Chưa có tóm tắt.',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      color: const Color(0xFF464555),
+                                      height: 1.55,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 20),
+                        // --- Chat Section Header ---
+                        if (_messages.isNotEmpty)
+                          Row(
+                            children: [
+                              const Icon(Icons.forum_outlined, color: Color(0xFF6D79F7), size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                'HỎI ĐÁP VỀ TÀI LIỆU',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: const Color(0xFF6B7280),
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.6,
                                 ),
                               ),
-                            ),
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: _clearHistory,
+                                child: Text(
+                                  'Xoá lịch sử',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          const _AiSection(
+                            icon: Icons.forum_outlined,
+                            title: 'Hỏi đáp về tài liệu',
+                            child: SizedBox.shrink(),
                           ),
-                          const SizedBox(height: 20),
-                        ],
-                        const _AiSection(
-                          icon: Icons.forum_outlined,
-                          title: 'Hỏi đáp về tài liệu',
-                          child: SizedBox.shrink(),
-                        ),
                         const SizedBox(height: 12),
                         ..._messages.map((msg) {
                           final isUser = msg['role'] == 'user';
