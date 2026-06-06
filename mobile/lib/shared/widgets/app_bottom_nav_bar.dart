@@ -21,7 +21,6 @@ class AppBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 72,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade100)),
@@ -35,9 +34,11 @@ class AppBottomNavBar extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
             _buildNavItem(
               context,
               icon: Icons.home,
@@ -76,6 +77,7 @@ class AppBottomNavBar extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -90,28 +92,33 @@ class AppBottomNavBar extends StatelessWidget {
     final theme = Theme.of(context);
     final color = isActive || isPrimary ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant;
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: isPrimary ? 32 : 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
                 color: color,
+                size: isPrimary ? 32 : 24,
               ),
-            ),
-          ],
+              if (!isPrimary) const SizedBox(height: 4),
+              if (!isPrimary)
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
         ),
       ),
     );
