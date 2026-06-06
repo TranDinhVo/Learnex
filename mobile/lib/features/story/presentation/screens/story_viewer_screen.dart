@@ -8,6 +8,7 @@ import '../bloc/story_bloc.dart';
 import '../bloc/story_event.dart';
 import '../widgets/friend_picker_bottom_sheet.dart';
 import '../../../../../core/services/websocket_service.dart';
+import 'package:video_player/video_player.dart';
 
 class StoryViewerScreen extends StatefulWidget {
   final List<StoryModel> stories;
@@ -40,6 +41,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
   bool _isSending = false;
   List<Map<String, dynamic>> _viewers = [];
   StreamSubscription? _wsSubscription;
+  VideoPlayerController? _videoController;
   
   final List<String> _emojis = ['❤️', '😂', '😮', '😢', '👏'];
 
@@ -58,10 +60,13 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
       if (_msgFocusNode.hasFocus) {
         _animController.stop();
         _storyTimer?.cancel();
+        _videoController?.pause();
       } else {
         // Unfocused, resume playing
         _animController.forward();
-        final remaining = const Duration(seconds: 5) * (1.0 - _animController.value);
+        _videoController?.play();
+        final duration = _animController.duration ?? const Duration(seconds: 5);
+        final remaining = duration * (1.0 - _animController.value);
         _storyTimer = Timer(remaining, () {
           _nextStory();
         });
@@ -153,12 +158,40 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
 
     _animController.stop();
     _animController.reset();
-    _animController.duration = const Duration(seconds: 5);
-    _animController.forward();
-    
-    _storyTimer = Timer(const Duration(seconds: 5), () {
-      _nextStory();
-    });
+
+    _videoController?.dispose();
+    _videoController = null;
+
+    if (story.mediaType == 'video' && story.mediaUrl != null) {
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(story.mediaUrl!));
+      try {
+        await _videoController!.initialize();
+        if (mounted) {
+          setState(() {});
+          final duration = _videoController!.value.duration;
+          _animController.duration = duration;
+          _videoController!.play();
+          _animController.forward();
+          _storyTimer = Timer(duration, () {
+            _nextStory();
+          });
+        }
+      } catch (e) {
+        // Fallback if video fails to load
+        _animController.duration = const Duration(seconds: 5);
+        _animController.forward();
+        _storyTimer = Timer(const Duration(seconds: 5), () {
+          _nextStory();
+        });
+      }
+    } else {
+      _animController.duration = const Duration(seconds: 5);
+      _animController.forward();
+      
+      _storyTimer = Timer(const Duration(seconds: 5), () {
+        _nextStory();
+      });
+    }
   }
 
   void _onTapDown(TapDownDetails details) {
@@ -187,12 +220,16 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
   void _onLongPressStart(LongPressStartDetails details) {
     _animController.stop();
     _storyTimer?.cancel();
+    _videoController?.pause();
   }
 
   void _onLongPressEnd(LongPressEndDetails details) {
+    if (_msgFocusNode.hasFocus) return; // wait for keyboard dismiss
     _animController.forward();
+    _videoController?.play();
     // Resume timer with remaining time
-    final remaining = const Duration(seconds: 5) * (1.0 - _animController.value);
+    final duration = _animController.duration ?? const Duration(seconds: 5);
+    final remaining = duration * (1.0 - _animController.value);
     _storyTimer = Timer(remaining, () {
       _nextStory();
     });
@@ -202,6 +239,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     // Pause story while sheet is open
     _animController.stop();
     _storyTimer?.cancel();
+    _videoController?.pause();
 
     showModalBottomSheet(
       context: context,
@@ -359,6 +397,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     // Pause story while modal is open
     _animController.stop();
     _storyTimer?.cancel();
+    _videoController?.pause();
 
     showModalBottomSheet(
       context: context,
@@ -419,6 +458,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
     _animController.dispose();
     _msgController.dispose();
     _msgFocusNode.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
@@ -671,6 +711,19 @@ class _StoryViewerScreenState extends State<StoryViewerScreen> with SingleTicker
           ),
         ),
       );
+    } else if (story.mediaType == 'video') {
+      if (_videoController != null && _videoController!.value.isInitialized) {
+        return FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: _videoController!.value.size.width,
+            height: _videoController!.value.size.height,
+            child: VideoPlayer(_videoController!),
+          ),
+        );
+      } else {
+        return const Center(child: CircularProgressIndicator(color: Colors.white));
+      }
     } else {
       return Image.network(
         story.mediaUrl ?? '',

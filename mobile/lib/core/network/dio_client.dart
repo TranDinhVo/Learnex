@@ -13,14 +13,7 @@ class DioClient {
 
   /// Base URL mặc định tự động nhận diện nền tảng
   static String get _defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8080/api';
-    }
-    if (Platform.isAndroid) {
-      // Đã đổi thành IP của máy tính để test trên máy thật
-      return 'http://192.168.1.151:8080/api';
-    }
-    return 'http://localhost:8080/api';
+    return 'https://learnex-backend-40yr.onrender.com/api';
   }
 
   /// Tạo Dio instance với interceptor Auth + Log.

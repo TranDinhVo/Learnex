@@ -83,13 +83,18 @@ class StoryBloc extends Bloc<StoryEvent, StoryState> {
 
       // 1. Upload media if exists
       if (event.mediaPath != null) {
-        final formData = FormData.fromMap({
-          'files': await MultipartFile.fromFile(event.mediaPath!),
-        });
-        final uploadRes = await dio.post('/upload/images', data: formData);
-        final urls = uploadRes.data['data']['urls'] as List;
-        if (urls.isNotEmpty) {
-          mediaUrl = urls[0];
+        if (event.mediaType == 'video') {
+          final formData = FormData.fromMap({
+            'document': await MultipartFile.fromFile(event.mediaPath!),
+          });
+          final uploadRes = await dio.post('/upload/document', data: formData);
+          mediaUrl = uploadRes.data['data']['url'];
+        } else {
+          final formData = FormData.fromMap({
+            'image': await MultipartFile.fromFile(event.mediaPath!),
+          });
+          final uploadRes = await dio.post('/upload/image', data: formData);
+          mediaUrl = uploadRes.data['data']['url'];
         }
       }
 

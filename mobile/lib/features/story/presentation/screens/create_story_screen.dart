@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'dart:io';
 import '../bloc/story_bloc.dart';
 import '../bloc/story_event.dart';
@@ -17,6 +18,8 @@ class CreateStoryScreen extends StatefulWidget {
 class _CreateStoryScreenState extends State<CreateStoryScreen> {
   bool _isTextMode = false;
   String? _selectedMediaPath;
+  String _mediaType = 'image';
+  VideoPlayerController? _videoController;
   
   // Text Mode variables
   final TextEditingController _textController = TextEditingController();
@@ -38,14 +41,31 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _videoController?.dispose();
     super.dispose();
   }
 
   Future<void> _pickMedia() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
+    final XFile? media = await _picker.pickMedia(imageQuality: 80);
+    if (media != null) {
+      final ext = media.path.split('.').last.toLowerCase();
+      final isVideo = ['mp4', 'mov', 'avi', 'mkv'].contains(ext);
+      
+      _videoController?.dispose();
+      _videoController = null;
+      
+      if (isVideo) {
+        _videoController = VideoPlayerController.file(File(media.path))
+          ..initialize().then((_) {
+            setState(() {});
+            _videoController?.setLooping(true);
+            _videoController?.play();
+          });
+      }
+
       setState(() {
-        _selectedMediaPath = image.path;
+        _selectedMediaPath = media.path;
+        _mediaType = isVideo ? 'video' : 'image';
         _isTextMode = false;
       });
     }
@@ -72,7 +92,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       
       context.read<StoryBloc>().add(CreateStoryEvent(
         mediaPath: _selectedMediaPath,
-        mediaType: 'image',
+        mediaType: _mediaType,
         visibility: _visibility,
         excludedUserIds: _visibility == 'except' ? _excludedUserIds : null,
       ));
@@ -213,14 +233,24 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         ),
       );
     } else {
-      // Image Mode
+      // Media Mode
       return Stack(
         fit: StackFit.expand,
         children: [
-          Image.file(
-            File(_selectedMediaPath!),
-            fit: BoxFit.cover,
-          ),
+          if (_mediaType == 'video' && _videoController != null && _videoController!.value.isInitialized)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoController!.value.size.width,
+                height: _videoController!.value.size.height,
+                child: VideoPlayer(_videoController!),
+              ),
+            )
+          else
+            Image.file(
+              File(_selectedMediaPath!),
+              fit: BoxFit.cover,
+            ),
           // Gradient overlay for better text visibility if we add text later
           Container(
             decoration: BoxDecoration(

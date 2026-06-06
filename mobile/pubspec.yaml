@@ -30,6 +30,7 @@ dependencies:
   audioplayers: ^6.7.0
   rxdart: ^0.28.0
   equatable: ^2.0.8
+  video_player: ^2.11.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
