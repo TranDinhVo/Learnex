@@ -45,6 +45,9 @@ import '../features/story/data/datasources/story_remote_datasource.dart';
 import '../features/story/data/repositories/story_repository_impl.dart';
 import '../features/story/presentation/bloc/story_bloc.dart';
 
+// AI
+import '../features/folder/data/repositories/ai_repository.dart';
+
 final getIt = GetIt.instance;
 
 void setupDependencies() {
@@ -116,6 +119,9 @@ void setupDependencies() {
   );
   getIt.registerLazySingleton<StoryRepositoryImpl>(
     () => StoryRepositoryImpl(remoteDataSource: getIt<StoryRemoteDataSource>()),
+  );
+  getIt.registerLazySingleton<AiRepository>(
+    () => AiRepository(getIt<Dio>()),
   );
 
   // ── BLoCs ──

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/audio_notification_service.dart';
 
-class IncomingCallOverlay extends StatelessWidget {
+class IncomingCallOverlay extends StatefulWidget {
   final String callerName;
   final String callType; // 'voice' or 'video'
   final VoidCallback onAccept;
@@ -15,8 +16,30 @@ class IncomingCallOverlay extends StatelessWidget {
   });
 
   @override
+  State<IncomingCallOverlay> createState() => _IncomingCallOverlayState();
+}
+
+class _IncomingCallOverlayState extends State<IncomingCallOverlay> {
+  late AudioNotificationService _audioNotification;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioNotification = AudioNotificationService();
+    // Phát ringtone + rung khi cuộc gọi đến
+    _audioNotification.playIncomingCallRingtone();
+  }
+
+  @override
+  void dispose() {
+    // Dừng ringtone khi overlay bị đóng
+    _audioNotification.stopIncomingCallRingtone();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isVideo = callType == 'video';
+    final isVideo = widget.callType == 'video';
 
     return Positioned(
       top: 50,
@@ -50,7 +73,7 @@ class IncomingCallOverlay extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  callerName.isNotEmpty ? callerName[0].toUpperCase() : 'U',
+                  widget.callerName.isNotEmpty ? widget.callerName[0].toUpperCase() : 'U',
                   style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -62,7 +85,7 @@ class IncomingCallOverlay extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      callerName,
+                      widget.callerName,
                       style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
@@ -88,7 +111,7 @@ class IncomingCallOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GestureDetector(
-                    onTap: onDecline,
+                    onTap: widget.onDecline,
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(
@@ -100,7 +123,7 @@ class IncomingCallOverlay extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   GestureDetector(
-                    onTap: onAccept,
+                    onTap: widget.onAccept,
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(

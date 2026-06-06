@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { TokenPayload } from '../models/types';
 import { messageService } from './message.service';
 import { roomService } from './room.service';
+import { fcmService } from './fcm.service';
 import { db } from '../config/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -247,12 +248,36 @@ export class WebSocketService {
         const { roomId, callerName, callType } = data;
         const activeParticipants = this.activeCallParticipants.get(roomId) || new Set();
         const members = await roomService.getMembers(roomId);
+        
         for (const member of members) {
           if (member.user_id !== senderId && !activeParticipants.has(member.user_id)) {
+            // Send real-time signal via WebSocket
             this.sendToUser(member.user_id, {
               type: 'room_call_invite',
               data: { callerId: senderId, callerName, callType, roomId }
             });
+
+            // Send FCM push notification if user has token
+            try {
+              const memberUser = await db('users').where({ id: member.user_id }).first();
+              if (memberUser?.fcm_token) {
+                const callTypeLabel = callType === 'video' ? 'video call' : 'call';
+                fcmService.sendPushNotification(
+                  memberUser.fcm_token,
+                  'Room Call',
+                  `${callerName} started a ${callTypeLabel} in the room`,
+                  {
+                    type: 'call',
+                    call_type: callType,
+                    caller_id: senderId,
+                    caller_name: callerName,
+                    room_id: roomId,
+                  }
+                ).catch(err => console.error('[FCM] Error sending room call notification:', err));
+              }
+            } catch (err) {
+              console.error('[FCM] Error sending room call notification:', err);
+            }
           }
         }
         break;
@@ -348,10 +373,34 @@ export class WebSocketService {
 
       case 'private_call_invite': {
         const { targetId, callType, roomId, callerName } = data;
+        
+        // Send real-time signal via WebSocket
         this.sendToUser(targetId, {
           type: 'private_call_invite',
           data: { callerId: senderId, callerName, callType, roomId }
         });
+
+        // Send FCM push notification if user is offline or has token
+        try {
+          const targetUser = await db('users').where({ id: targetId }).first();
+          if (targetUser?.fcm_token) {
+            const callTypeLabel = callType === 'video' ? 'video call' : 'call';
+            fcmService.sendPushNotification(
+              targetUser.fcm_token,
+              'Incoming Call',
+              `${callerName} is calling you...`,
+              {
+                type: 'call',
+                call_type: callType,
+                caller_id: senderId,
+                caller_name: callerName,
+                room_id: roomId,
+              }
+            ).catch(err => console.error('[FCM] Error sending call notification:', err));
+          }
+        } catch (err) {
+          console.error('[FCM] Error fetching target user for call notification:', err);
+        }
         break;
       }
 

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import '../network/api_endpoints.dart';
+import 'audio_notification_service.dart';
 
 /// Dịch vụ Firebase Cloud Messaging:
 /// - Yêu cầu quyền thông báo
@@ -11,6 +12,7 @@ import '../network/api_endpoints.dart';
 class NotificationService {
   FirebaseMessaging? _messaging;
   final Dio _dio;
+  final AudioNotificationService _audioNotification = AudioNotificationService();
 
   final _foregroundController = StreamController<RemoteMessage>.broadcast();
 
@@ -38,6 +40,8 @@ class NotificationService {
     // 2. Lắng nghe foreground messages
     FirebaseMessaging.onMessage.listen((message) {
       _foregroundController.add(message);
+      // Phát âm thanh thông báo dựa vào loại notification
+      _handleNotificationSound(message);
     });
 
     // 3. Lắng nghe khi user tap vào notification (app ở background)
@@ -95,7 +99,20 @@ class NotificationService {
     // Ví dụ: mở post detail, chat, friend request, ...
   }
 
+  /// Phát âm thanh thông báo dựa vào loại notification
+  Future<void> _handleNotificationSound(RemoteMessage message) async {
+    final notificationType = message.data['type'] ?? 'message';
+    
+    // Chỉ phát âm thanh cho message và call notifications
+    if (notificationType == 'message') {
+      await _audioNotification.playMessageNotification();
+    } else if (notificationType == 'call') {
+      await _audioNotification.playIncomingCallRingtone();
+    }
+  }
+
   void dispose() {
     _foregroundController.close();
+    _audioNotification.dispose();
   }
 }

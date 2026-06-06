@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../../../auth/data/repositories/mock_auth_repository.dart';
+import 'package:dio/dio.dart';
 
 class AiRepository {
-  final String _baseUrl = 'http://localhost:8080/api';
+  final Dio _dio;
+
+  AiRepository(this._dio);
 
   Future<String> chat({
     required String documentTitle,
@@ -11,31 +12,33 @@ class AiRepository {
     required String documentSubject,
     required List<Map<String, String>> messages,
   }) async {
-    final token = MockAuthRepository.userToken;
-    
-    final response = await http.post(
-      Uri.parse('$_baseUrl/ai/chat'),
-      headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'documentTitle': documentTitle,
-        'documentDescription': documentDescription,
-        'documentSubject': documentSubject,
-        'messages': messages,
-      }),
-    );
+    try {
+      final response = await _dio.post(
+        '/ai/chat',
+        data: jsonEncode({
+          'documentTitle': documentTitle,
+          'documentDescription': documentDescription,
+          'documentSubject': documentSubject,
+          'messages': messages,
+        }),
+      );
 
-    if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
-      if (jsonResponse['success'] == true) {
-        return jsonResponse['data']['reply'] as String;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['success'] == true) {
+          return data['data']['reply'] as String;
+        } else {
+          throw Exception(data['message'] ?? 'Failed to chat with AI');
+        }
       } else {
-        throw Exception(jsonResponse['message'] ?? 'Failed to chat with AI');
+        throw Exception('Lỗi kết nối Learnex AI (Status: ${response.statusCode})');
       }
-    } else {
-      throw Exception('Failed to communicate with Learnex AI (Status: ${response.statusCode})');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Bạn chưa đăng nhập. Hãy đăng nhập để dùng Learnex AI.');
+      }
+      final msg = e.response?.data?['message'] ?? e.message ?? 'Không thể kết nối đến máy chủ';
+      throw Exception(msg);
     }
   }
 }

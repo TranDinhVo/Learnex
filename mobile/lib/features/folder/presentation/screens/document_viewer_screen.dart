@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get_it/get_it.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/folder_document.dart';
 import '../bloc/document_bloc.dart';
@@ -142,132 +143,165 @@ class DocumentViewerScreen extends StatelessWidget {
             ),
             Expanded(
               child: Container(
-                color: const Color(0xFFE8E8E8),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
                 child: Stack(
                   children: [
                     SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
+                      padding: const EdgeInsets.fromLTRB(20, 32, 20, 140),
                       child: Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 800),
-                          child: AspectRatio(
-                            aspectRatio: 1 / 1.41,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color(0x0A000000),
-                                    blurRadius: 20,
-                                    offset: Offset(0, 8),
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1A000000),
+                                  blurRadius: 30,
+                                  offset: Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Top Cover Header
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [Color(0xFF3525CD), Color(0xFF5A4EE5)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
                                   ),
-                                  BoxShadow(
-                                    color: Color(0x0A3525CD),
-                                    blurRadius: 40,
-                                    offset: Offset(0, 12),
-                                  ),
-                                ],
-                              ),
-                              child: Stack(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          width: 96,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary.withValues(alpha: 0.18),
-                                            borderRadius: BorderRadius.circular(999),
-                                          ),
+                                  width: double.infinity,
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(18),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.15),
+                                          shape: BoxShape.circle,
                                         ),
-                                        const SizedBox(height: 48),
-                                        Text(
-                                          document.title.toUpperCase(),
-                                          textAlign: TextAlign.center,
-                                          style: theme.textTheme.headlineMedium?.copyWith(
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: -0.8,
-                                            color: const Color(0xFF111827),
-                                          ),
+                                        child: Icon(
+                                          FileIconHelper.getIcon(document.fileUrl),
+                                          size: 56,
+                                          color: Colors.white,
                                         ),
-                                        const SizedBox(height: 16),
-                                        Text(
+                                      ),
+                                      const SizedBox(height: 28),
+                                      Text(
+                                        document.title,
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.headlineMedium?.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.5,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(24),
+                                        ),
+                                        child: Text(
                                           document.chapterTitle,
-                                          textAlign: TextAlign.center,
-                                          style: theme.textTheme.titleLarge?.copyWith(
+                                          style: theme.textTheme.titleSmall?.copyWith(
                                             fontWeight: FontWeight.w700,
-                                            color: theme.colorScheme.primary.withValues(alpha: 0.82),
+                                            color: Colors.white,
+                                            letterSpacing: 0.5,
                                           ),
                                         ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          document.summary,
-                                          textAlign: TextAlign.center,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
-                                            color: const Color(0xFF475569),
-                                            height: 1.5,
-                                          ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Body content
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        document.summary.isNotEmpty ? document.summary : 'Tài liệu chia sẻ kiến thức trên Learnex.',
+                                        textAlign: TextAlign.center,
+                                        style: theme.textTheme.bodyLarge?.copyWith(
+                                          color: const Color(0xFF475569),
+                                          height: 1.6,
                                         ),
-                                        const SizedBox(height: 24),
-                                        Wrap(
-                                          alignment: WrapAlignment.center,
-                                          spacing: 10,
-                                          runSpacing: 10,
+                                      ),
+                                      const SizedBox(height: 32),
+                                      Wrap(
+                                        alignment: WrapAlignment.center,
+                                        spacing: 12,
+                                        runSpacing: 12,
+                                        children: [
+                                          _InfoChip(icon: Icons.description_rounded, label: document.fileSize),
+                                          _InfoChip(icon: Icons.person_rounded, label: document.author),
+                                          _InfoChip(icon: Icons.download_rounded, label: document.downloads),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 48),
+                                      // Action area
+                                      Container(
+                                        padding: const EdgeInsets.all(24),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF8FAFC),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                                        ),
+                                        child: Column(
                                           children: [
-                                            _InfoChip(icon: Icons.description_rounded, label: document.fileSize),
-                                            _InfoChip(icon: Icons.person_rounded, label: document.author),
-                                            _InfoChip(icon: Icons.download_rounded, label: document.downloads),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 32),
-                                        Container(
-                                          padding: const EdgeInsets.only(top: 24),
-                                          decoration: const BoxDecoration(
-                                            border: Border(
-                                              top: BorderSide(color: Color(0xFFF1F5F9)),
+                                            Text(
+                                              'Bản xem trước trực tiếp chưa khả dụng trên thiết bị web.',
+                                              textAlign: TextAlign.center,
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: const Color(0xFF64748B),
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                          ),
-                                          child: Column(
-                                            children: [
-                                              const SizedBox(height: 32),
-                                              Icon(
-                                                FileIconHelper.getIcon(document.fileUrl),
-                                                size: 64,
-                                                color: FileIconHelper.getColor(document.fileUrl).withValues(alpha: 0.5),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              Text(
-                                                'Bản xem trước trực tiếp chưa khả dụng trên trình duyệt web.',
-                                                textAlign: TextAlign.center,
-                                                style: theme.textTheme.bodyMedium?.copyWith(
-                                                  color: const Color(0xFF64748B),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 24),
-                                              ElevatedButton.icon(
+                                            const SizedBox(height: 24),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              height: 56,
+                                              child: ElevatedButton.icon(
                                                 onPressed: () => _downloadFile(context),
-                                                icon: const Icon(Icons.download_rounded, size: 20),
-                                                label: const Text('Tải xuống / Xem tài liệu'),
+                                                icon: const Icon(Icons.cloud_download_rounded, size: 24, color: Colors.white),
+                                                label: const Text(
+                                                  'Tải xuống / Xem tài liệu',
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                                 style: ElevatedButton.styleFrom(
-                                                  elevation: 0,
-                                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                  backgroundColor: const Color(0xFF3525CD),
+                                                  elevation: 8,
+                                                  shadowColor: const Color(0xFF3525CD).withValues(alpha: 0.4),
                                                   shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(8),
+                                                    borderRadius: BorderRadius.circular(16),
                                                   ),
                                                 ),
                                               ),
-                                              const SizedBox(height: 32),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -289,37 +323,6 @@ class DocumentViewerScreen extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 24,
-                      right: 16,
-                      child: IgnorePointer(
-                        child: Opacity(
-                          opacity: 0.4,
-                          child: Container(
-                            width: 92,
-                            height: 128,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: const [
-                                BoxShadow(color: Color(0x0A000000), blurRadius: 12, offset: Offset(0, 4)),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _TextPlaceholderBar(widthFactor: 0.55, height: 6),
-                                SizedBox(height: 8),
-                                _TextPlaceholderBar(widthFactor: 0.8, height: 6),
-                                SizedBox(height: 6),
-                                _TextPlaceholderBar(widthFactor: 1.0, height: 6),
-                              ],
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                   ],
@@ -470,8 +473,7 @@ class _LearnexAiSheetState extends State<_LearnexAiSheet> {
     _scrollToBottom();
 
     try {
-      // Inline initialization of AiRepository for simplicity
-      final aiRepo = AiRepository();
+      final aiRepo = GetIt.instance<AiRepository>();
       final reply = await aiRepo.chat(
         documentTitle: widget.document.title,
         documentDescription: widget.document.summary,
