@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notification.routes';
 import chatRoutes from './routes/chat.routes';
 import storyRoutes from './routes/story.routes';
 import reportRoutes from './routes/reports.routes';
+import aiRoutes from './routes/ai.routes';
 
 const app = express();
 
@@ -61,6 +62,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Unhandled Routes
 app.use((req: Request, res: Response, next: NextFunction) => {
