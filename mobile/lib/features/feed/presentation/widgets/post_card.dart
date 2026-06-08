@@ -390,9 +390,20 @@ class PostCard extends StatelessWidget {
     return InkWell(
       onTap: documentUrl != null
           ? () async {
-              final uri = Uri.tryParse(documentUrl!);
-              if (uri != null && await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              String downloadUrl = documentUrl!;
+              if (downloadUrl.contains('/raw/upload/')) {
+                downloadUrl = downloadUrl.replaceFirst('/raw/upload/', '/raw/upload/fl_attachment/');
+              } else if (downloadUrl.contains('/image/upload/')) {
+                downloadUrl = downloadUrl.replaceFirst('/image/upload/', '/image/upload/fl_attachment/');
+              } else if (downloadUrl.contains('/video/upload/')) {
+                downloadUrl = downloadUrl.replaceFirst('/video/upload/', '/video/upload/fl_attachment/');
+              }
+
+              final uri = Uri.tryParse(downloadUrl);
+              if (uri != null) {
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (_) {}
               }
             }
           : null,

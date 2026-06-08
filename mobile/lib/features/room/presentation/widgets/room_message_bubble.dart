@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../data/models/room_model.dart';
 import '../../../../../shared/widgets/custom_avatar.dart';
 
@@ -118,31 +119,75 @@ class RoomMessageBubble extends StatelessWidget {
     );
   }
 
+  void _downloadFile(BuildContext context, String url) async {
+    String downloadUrl = url;
+    if (downloadUrl.contains('/raw/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/raw/upload/', '/raw/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/image/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/image/upload/', '/image/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/video/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/video/upload/', '/video/upload/fl_attachment/');
+    }
+
+    final uri = Uri.tryParse(downloadUrl);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Không thể mở file. Vui lòng thử lại.')),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildFileCard(BuildContext context, String fileUrl) {
     final theme = Theme.of(context);
     final isImage = _isImageUrl(fileUrl);
 
     if (isImage) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          fileUrl,
-          width: 220,
-          fit: BoxFit.cover,
-          loadingBuilder: (ctx, child, progress) => progress == null
-              ? child
-              : Container(
-                  width: 220,
-                  height: 160,
-                  color: Colors.grey.shade200,
-                  child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2)),
+      return GestureDetector(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => Scaffold(
+                backgroundColor: Colors.black,
+                appBar: AppBar(
+                  backgroundColor: Colors.black,
+                  iconTheme: const IconThemeData(color: Colors.white),
                 ),
-          errorBuilder: (ctx, _, __) => Container(
+                body: Center(
+                  child: InteractiveViewer(
+                    child: Image.network(fileUrl),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            fileUrl,
             width: 220,
-            height: 160,
-            color: Colors.grey.shade200,
-            child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+            fit: BoxFit.cover,
+            loadingBuilder: (ctx, child, progress) => progress == null
+                ? child
+                : Container(
+                    width: 220,
+                    height: 160,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+            errorBuilder: (ctx, _, __) => Container(
+              width: 220,
+              height: 160,
+              color: Colors.grey.shade200,
+              child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+            ),
           ),
         ),
       );
@@ -150,38 +195,41 @@ class RoomMessageBubble extends StatelessWidget {
 
     final fileName = Uri.parse(fileUrl).pathSegments.last;
     
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isMe ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.insert_drive_file,
-            color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              fileName,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: () => _downloadFile(context, fileUrl),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isMe ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.insert_drive_file,
+              color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
             ),
-          ),
-          const SizedBox(width: 12),
-          Icon(
-            Icons.download,
-            size: 20,
-            color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-          ),
-        ],
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                fileName,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              Icons.download,
+              size: 20,
+              color: isMe ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
+            ),
+          ],
+        ),
       ),
     );
   }

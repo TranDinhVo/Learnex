@@ -50,7 +50,16 @@ class ChatBubble extends StatelessWidget {
   }
 
   void _openFile(BuildContext context, String url) async {
-    final uri = Uri.tryParse(url);
+    String downloadUrl = url;
+    if (downloadUrl.contains('/raw/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/raw/upload/', '/raw/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/image/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/image/upload/', '/image/upload/fl_attachment/');
+    } else if (downloadUrl.contains('/video/upload/')) {
+      downloadUrl = downloadUrl.replaceFirst('/video/upload/', '/video/upload/fl_attachment/');
+    }
+
+    final uri = Uri.tryParse(downloadUrl);
     if (uri != null) {
       try {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
