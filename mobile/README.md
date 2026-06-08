@@ -1,17 +1,106 @@
-# learnex
+# Learnex - Mobile App (Flutter)
 
-A new Flutter project.
+Learnex là ứng dụng mạng xã hội học tập tích hợp đa chức năng: Nhắn tin, Gọi điện nhóm (WebRTC), Quản lý tài liệu và Tương tác bài đăng. Đây là phần mã nguồn ứng dụng di động dành cho Android/iOS.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 1. Công nghệ sử dụng
 
-A few resources to get you started if this is your first Flutter project:
+- **Framework:** Flutter
+- **Ngôn ngữ:** Dart
+- **Quản lý trạng thái (State Management):** BLoC (Business Logic Component)
+- **Dependency Injection:** `get_it`
+- **Routing:** `go_router`
+- **Giao tiếp mạng:** `dio` (REST API), `web_socket_channel` (WebSocket/Socket.IO cho Real-time chat)
+- **Gọi thoại / Video (Real-time Communication):** `flutter_webrtc`
+- **Push Notifications:** Firebase Cloud Messaging (FCM)
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 2. Yêu cầu Hệ thống / Môi trường
+
+- **Flutter SDK:** Phiên bản `>=3.0.0` (Khuyến nghị 3.22.x hoặc mới nhất)
+- **Dart SDK:** `>=3.0.0 <4.0.0`
+- **Android Studio** (để chạy trên máy ảo Android hoặc thiết bị thật) hoặc **Xcode** (để chạy trên iOS/Mac).
+
+---
+
+## 3. Các Package / Dependency Chính (từ `pubspec.yaml`)
+
+- `flutter_bloc` (^8.1.5) - Quản lý State.
+- `dio` (^5.4.3) - HTTP client để gọi API.
+- `web_socket_channel` (^3.0.1) - Kết nối WebSocket thời gian thực (Chat, Signaling Webrtc).
+- `flutter_webrtc` (^1.4.1) - WebRTC dùng cho chức năng gọi điện Audio/Video nhóm trong phòng học.
+- `firebase_core` (^3.3.0) & `firebase_messaging` (^15.1.0) - Nhận thông báo Push Notifications.
+- `flutter_secure_storage` (^9.2.2) - Lưu trữ token bảo mật.
+- `url_launcher`, `file_picker`, `image_picker`, `record`, `audioplayers` - Quản lý File và Media.
+
+---
+
+## 4. Hướng dẫn Cài đặt & Chạy Project
+
+### Bước 1: Clone dự án và cài đặt dependencies
+
+Mở Terminal/Command Prompt, di chuyển vào thư mục `mobile`:
+
+```bash
+cd mobile
+flutter pub get
+```
+
+### Bước 3: Chạy ứng dụng
+
+Chạy ứng dụng trên thiết bị thật hoặc máy ảo (Emulator/Simulator):
+
+```bash
+flutter run
+```
+
+Để build ra file APK dùng cho máy Android:
+
+```bash
+flutter build apk --release
+```
+
+---
+
+## 5. Tài khoản Test (Mẫu)
+
+Vì ứng dụng có chức năng đăng ký/đăng nhập, bạn có thể tự tạo tài khoản ngay trên ứng dụng.
+Ngoài ra, nếu Backend có cung cấp dữ liệu mẫu (Seed Data), bạn có thể dùng tài khoản Admin mẫu:
+
+- **Email/Username:** `user1@learnex.edu.vn`
+- **Password:** `123456` _(Hoặc tài khoản tương tự do backend sinh ra)_
+
+---
+
+## 6. Cấu hình Firebase (Push Notifications)
+
+Dự án Learnex **KHÔNG** sử dụng Firebase Firestore hay Firebase Storage để lưu dữ liệu (Dữ liệu được lưu ở PostgreSQL thông qua Node.js Backend, và file lưu qua Cloudinary). Firebase ở đây **CHỈ DÙNG CHO PUSH NOTIFICATIONS (FCM)**.
+
+Để Push Notification hoạt động, bạn CẦN có cấu hình Firebase của riêng bạn:
+
+1. Vào [Firebase Console](https://console.firebase.google.com/), tạo một Project mới.
+2. Thêm App Android / iOS vào project.
+3. **Đối với Android:** đã có file `google-services.json` trong thư mục: `mobile/android/app/google-services.json`.
+4. **Đối với iOS:** đã có file `GoogleService-Info.plist` trong thư mục: `mobile/ios/Runner/GoogleService-Info.plist`
+
+5. _(Khuyến nghị)_: Chạy lệnh Firebase CLI để tự động cấu hình (nếu chưa có file `firebase_options.dart`):
+   ```bash
+   flutterfire configure
+   ```
+
+_Lưu ý: Không cần thiết lập Firebase Rules hay Collections mẫu trên Firebase vì mọi dữ liệu thực tế (Users, Posts, Messages, Documents, Rooms) đều nằm ở Database PostgreSQL trên máy chủ Backend của Learnex._
+
+---
+
+## 7. Các Lưu ý Quan trọng để Project Hoạt động Tốt
+
+1. **Lỗi `ERR_INVALID_RESPONSE` khi mở link Cloudinary:**
+   Ứng dụng xử lý việc tải file bằng cách chèn cờ `fl_attachment` vào URL gốc của Cloudinary trực tiếp trên ứng dụng Mobile, giúp hệ điều hành ép trình duyệt tải file thay vì mở trực tiếp. Đảm bảo logic này không bị sửa đổi ở các module (Chat, Folder, Feed).
+2. **Cấp quyền (Permissions):**
+   Ứng dụng gọi Webrtc và ghi âm, tải file, do đó trên Android và iOS cần cấp đầy đủ quyền Camera, Micro và Bộ nhớ (Storage/Photos).
+3. **Migrate Kotlin (Cảnh báo khi build Android):**
+   Hiện tại `build.gradle.kts` và một số plugin đang dùng chuẩn cũ của Kotlin. Nếu Flutter trong tương lai ngưng hỗ trợ, bạn sẽ cần nâng cấp các plugin: `audioplayers_android`, `emoji_picker_flutter`, `flutter_webrtc`, `record_android` lên version hỗ trợ "Built-in Kotlin".
+4. **Kết nối Localhost:**
+   Nếu bạn chạy backend ở Localhost, đổi URL trong code Mobile từ HTTP `localhost` sang `10.0.2.2` (nếu dùng Android Emulator) hoặc địa chỉ IPv4 LAN của máy bạn.
