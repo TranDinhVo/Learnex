@@ -2,6 +2,10 @@
 
 LearnEx là mạng xã hội học tập tương tác. Repository này chứa toàn bộ mã nguồn của dự án (Backend, Web, Mobile). Tuy nhiên, **Backend và Web Frontend đã được deploy độc lập**. File README này sẽ tập trung hướng dẫn bạn cách clone mã nguồn và chạy ứng dụng **Mobile (Flutter)** trực tiếp kết nối với hệ thống đã deploy.
 
+## Báo cáo đồ án
+
+📄 Báo cáo đồ án: [BaoCaoDoAn_Mobile.pdf](docs/BaoCaoDoAn_Mobile.pdf)
+
 ## 🛠 Công nghệ sử dụng
 
 - **Framework**: Flutter
